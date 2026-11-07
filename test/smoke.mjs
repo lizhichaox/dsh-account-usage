@@ -575,13 +575,13 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   stateQueue.length = 0;
   const sourceRows = walk(mixedTree, (node) => hasClass(node, 'aup-source-row')).map(flat);
   assert.equal(sourceRows.length, 2, 'one row per source in a mixed session: ' + JSON.stringify(sourceRows));
-  assert.ok(sourceRows[0].includes('DeepSeek 平台'), 'platform row first');
+  assert.ok(sourceRows[0].includes('DeepSeek API'), 'platform row first');
   assert.ok(sourceRows[1].includes('OpenCode Go'), 'third-party row second');
   assert.ok(sourceRows[1].includes('2.5M'), 'third-party row shows its session tokens');
   const mixedAccount = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   assert.equal(walk(mixedAccount, (node) => hasClass(node, 'aup-account-note')).length, 0, 'no bottom note line on the account card');
   const mixedStats = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0];
-  assert.equal(walk(mixedStats, (node) => hasClass(node, 'aup-badge') && flat(node).includes('DeepSeek 平台')).length, 0, 'no misleading platform badge once the card holds several sources');
+  assert.equal(walk(mixedStats, (node) => hasClass(node, 'aup-badge') && flat(node).includes('DeepSeek API')).length, 0, 'no misleading platform badge once the card holds several sources');
 
   // Mixed sessions also read the third-party balance and show it next to the DeepSeek wallet.
   stateQueue.push(
@@ -634,7 +634,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   stateQueue.length = 0;
   const titles = walk(tree, (n) => hasClass(n, 'aup-card-title')).map((n) => flat(n));
   assert.deepEqual(titles, ['Session usage', 'Usage statistics', 'Account balance'], 'non-Chinese locales render English titles');
-  assert.equal(flat(walk(tree, (node) => hasClass(node, 'aup-models-provider'))[0]), 'DeepSeek account', 'provider names localize to English');
+  assert.equal(flat(walk(tree, (node) => hasClass(node, 'aup-models-provider'))[0]), 'DeepSeek API', 'provider names localize to English');
 }
 
 // --------------------------------------------------------------- settings --
