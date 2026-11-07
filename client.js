@@ -161,14 +161,16 @@ window.__ModuleLoader__.load({
       'tokens.stat.requests': '请求次数',
       'tokens.stat.cacheHit': '缓存命中',
       'tokens.stat.avg': '平均 / 请求',
-      'tokens.stat.turnsSteps': '轮 / 步',
+      'tokens.stat.turns': '轮数',
+      'tokens.stat.steps': '步数',
       'tokens.stat.speed': '输出速度',
       'tokens.stat.llm': '模型用时',
       'tokens.stat.tool': '工具用时',
-      'tokens.stat.ttft': '首 token 平均',
-      'tokens.duration.minutes': '{minutes} 分 {seconds} 秒',
-      'tokens.duration.seconds': '{seconds} 秒',
-      'tokens.duration.milliseconds': '{milliseconds} 毫秒',
+      'tokens.stat.ttft': '首 Token',
+      'tokens.duration.compactMinutes': '{minutes}分{seconds}秒',
+      'tokens.duration.compactSeconds': '{seconds}秒',
+      'tokens.duration.compactMs': '{milliseconds}毫秒',
+      'tokens.duration.compactHours': '{hours}时{minutes}分',
       'tokens.breakdown.system': '系统',
       'tokens.breakdown.tools': '工具',
       'tokens.breakdown.messages': '消息',
@@ -253,14 +255,16 @@ window.__ModuleLoader__.load({
       'tokens.stat.requests': 'Requests',
       'tokens.stat.cacheHit': 'Cache hit',
       'tokens.stat.avg': 'Avg',
-      'tokens.stat.turnsSteps': 'Turns/Steps',
+      'tokens.stat.turns': 'Turns',
+      'tokens.stat.steps': 'Steps',
       'tokens.stat.speed': 'Speed',
       'tokens.stat.llm': 'LLM time',
       'tokens.stat.tool': 'Tool time',
-      'tokens.stat.ttft': 'Avg TTFT',
-      'tokens.duration.minutes': '{minutes}m {seconds}s',
-      'tokens.duration.seconds': '{seconds}s',
-      'tokens.duration.milliseconds': '{milliseconds}ms',
+      'tokens.stat.ttft': 'TTFT',
+      'tokens.duration.compactMinutes': '{minutes}m{seconds}s',
+      'tokens.duration.compactSeconds': '{seconds}s',
+      'tokens.duration.compactMs': '{milliseconds}ms',
+      'tokens.duration.compactHours': '{hours}h{minutes}m',
       'tokens.breakdown.system': 'System',
       'tokens.breakdown.tools': 'Tools',
       'tokens.breakdown.messages': 'Messages',
@@ -351,11 +355,11 @@ window.__ModuleLoader__.load({
       '.aup-model-name.aup-model-name-long{font-size:11px}',
       '.aup-model-tokens{flex:none;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
       '.aup-model-more{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
-      '.aup-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 16px}',
+      '.aup-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 10px}',
       '.aup-session-sep{flex:none;height:1px;background:var(--dsw-alias-border-l2)}',
-      '.aup-detail-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0;font-size:13px;line-height:18px;flex-wrap:nowrap}',
-      '.aup-detail-label{min-width:0;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
-      '.aup-detail-value{flex:none;color:var(--dsw-alias-label-primary);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}',
+      '.aup-stat-cell{display:flex;flex-direction:column;gap:2px;min-width:0}',
+      '.aup-stat-label{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:visible}',
+      '.aup-stat-value{font-size:15px;line-height:20px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.aup-context-breakdown{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
       '.aup-context-compose{display:flex;height:5px;gap:1px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-skeleton)}',
       '.aup-context-seg{flex:1 1 0;min-width:2px;height:100%}',
@@ -457,7 +461,7 @@ window.__ModuleLoader__.load({
       '.aup-hint{font-size:13px;line-height:16px}',
       // ---- content shedding at short card heights (no scrolling) ----
       '@container aup-card (max-height:380px){.aup-card-session .aup-compose{display:none}}',
-      '@container aup-card (max-height:330px){.aup-card-session .aup-detail-grid{display:none}}',
+      '@container aup-card (max-height:330px){.aup-card-session .aup-stat-grid{display:none}}',
       '@container aup-card (max-height:260px){.aup-card-session .aup-models{display:none}}',
       '@container aup-card (max-height:250px){.aup-card-session .aup-context{display:none}}',
       '@container aup-card (max-height:150px){.aup-card-session .aup-session-grid{display:none}}',
@@ -1700,10 +1704,14 @@ window.__ModuleLoader__.load({
           : undefined;
       const duration = (ms) => {
         if (!Number.isFinite(ms) || ms <= 0) return undefined;
-        if (ms < 1000) return t('tokens.duration.milliseconds', { milliseconds: String(Math.round(ms)) });
+        if (ms < 1000) return t('tokens.duration.compactMs', { milliseconds: String(Math.round(ms)) });
         const seconds = ms / 1000;
-        if (seconds < 60) return t('tokens.duration.seconds', { seconds: String(Math.round(seconds * 10) / 10) });
-        return t('tokens.duration.minutes', { minutes: String(Math.floor(seconds / 60)), seconds: String(Math.round(seconds % 60)) });
+        if (seconds < 60) return t('tokens.duration.compactSeconds', { seconds: String(Math.round(seconds * 10) / 10) });
+        const totalSeconds = Math.round(seconds);
+        const minutes = Math.floor(totalSeconds / 60);
+        if (minutes < 60) return t('tokens.duration.compactMinutes', { minutes: String(minutes), seconds: String(totalSeconds % 60) });
+        const hours = Math.floor(minutes / 60);
+        return t('tokens.duration.compactHours', { hours: String(hours), minutes: String(minutes % 60) });
       };
       const llmTime = sessionStats === null || sessionStats === undefined ? undefined : duration(sessionStats.llmMs);
       const toolTime = sessionStats === null || sessionStats === undefined ? undefined : duration(sessionStats.toolMs);
@@ -1712,7 +1720,8 @@ window.__ModuleLoader__.load({
           ? duration(sessionStats.ttftMs / sessionStats.ttftSteps)
           : undefined;
       const detailItems = [
-        { key: 'turnsSteps', label: t('tokens.stat.turnsSteps'), value: turns === undefined && steps === undefined ? undefined : (turns === undefined ? '—' : String(turns)) + ' / ' + (steps === undefined ? '—' : String(steps)) },
+        { key: 'turns', label: t('tokens.stat.turns'), value: turns === undefined ? undefined : String(turns) },
+        { key: 'steps', label: t('tokens.stat.steps'), value: steps === undefined ? undefined : String(steps) },
         { key: 'requests', label: t('tokens.stat.requests'), value: requestCount > 0 ? String(requestCount) : undefined },
         { key: 'cacheHit', label: t('tokens.stat.cacheHit'), value: cacheHit === undefined ? undefined : cacheHit + '%' },
         { key: 'average', label: t('tokens.stat.avg'), value: average === undefined || average <= 0 ? undefined : formatTokens(average) },
@@ -1835,9 +1844,9 @@ window.__ModuleLoader__.load({
           ? null
           : h(
               'div',
-              { className: 'aup-detail-grid' },
+              { className: 'aup-stat-grid' },
               detailItems.map((item) =>
-                h('div', { key: item.key, className: 'aup-detail-row' }, h('span', { className: 'aup-detail-label' }, item.label), h('span', { className: 'aup-detail-value' }, item.value))
+                h('div', { key: item.key, className: 'aup-stat-cell' }, h('span', { className: 'aup-stat-label' }, item.label), h('span', { className: 'aup-stat-value' }, item.value))
               )
             ),
         modelBlock === null ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
