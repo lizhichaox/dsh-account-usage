@@ -378,6 +378,7 @@ const DEFAULT_SETTINGS = {
   autoRefresh: true,
   showCost: true,
   hideComposerStats: true,
+  usageList: true,
   cards: { session: true, stats: true, account: true }
 };
 function render(usageState, projection, dimensionValue, settingsValue, settingsOpen, sessionModelsValue, providerBalancesValue) {
@@ -578,6 +579,24 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(sourceRows[0].includes('DeepSeek API'), 'platform row first');
   assert.ok(sourceRows[1].includes('OpenCode Go'), 'third-party row second');
   assert.ok(sourceRows[1].includes('2.5M'), 'third-party row shows its session tokens');
+  // The default usage view is a compact trend: no per-period text rows, only bars.
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [{ date: '2026-11-07', tokens: 1_000_000, cost: 1.5, count: 10 }], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 }], totalTokens: 1_000_000 },
+    { phase: 'idle', items: [], error: undefined },
+    { ...DEFAULT_SETTINGS, usageList: false },
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const trendTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
+  stateQueue.length = 0;
+  assert.ok(walk(trendTree, (node) => hasClass(node, 'aup-trend')).length === 1, 'compact trend renders by default');
+  assert.equal(walk(trendTree, (node) => hasClass(node, 'aup-series-row') && !hasClass(node, 'aup-skeleton-row')).length, 0, 'no per-period rows in trend mode');
+  assert.ok(walk(trendTree, (node) => hasClass(node, 'aup-trend-bar')).length > 0, 'trend bars render');
+
   const mixedAccount = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   assert.equal(walk(mixedAccount, (node) => hasClass(node, 'aup-account-note')).length, 0, 'no bottom note line on the account card');
   const mixedStats = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0];
@@ -670,7 +689,7 @@ function walkRoles(node, role, out = []) {
   );
   const dialog = walkRoles(open, 'dialog')[0];
   assert.ok(dialog, 'settings dialog opens');
-  assert.equal(walkRoles(dialog, 'switch').length, 6, 'three card switches + spend + auto refresh + hide composer stats');
+  assert.equal(walkRoles(dialog, 'switch').length, 7, 'three card switches + spend + auto refresh + hide composer stats + usage detail list');
   const miniTabs = walk(dialog, (node) => node.props && String(node.props.className || '').includes('aup-dims-mini'))[0];
   assert.equal(walk(miniTabs, (node) => node.type === 'button').length, 5, 'five range options');
   assert.ok(walk(dialog, (node) => node.props && node.props.className === 'aup-pop-link').length === 1, 'reset action present');

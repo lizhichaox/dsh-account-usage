@@ -46,6 +46,7 @@ window.__ModuleLoader__.load({
       autoRefresh: true,
       showCost: true,
       hideComposerStats: true,
+      usageList: false,
       cards: { session: true, stats: true, account: true }
     };
 
@@ -62,6 +63,7 @@ window.__ModuleLoader__.load({
           dimension,
           autoRefresh: typeof parsed.autoRefresh === 'boolean' ? parsed.autoRefresh : DEFAULT_SETTINGS.autoRefresh,
           showCost: typeof parsed.showCost === 'boolean' ? parsed.showCost : DEFAULT_SETTINGS.showCost,
+          usageList: typeof parsed.usageList === 'boolean' ? parsed.usageList : DEFAULT_SETTINGS.usageList,
           hideComposerStats: typeof parsed.hideComposerStats === 'boolean' ? parsed.hideComposerStats : DEFAULT_SETTINGS.hideComposerStats,
           cards: {
             session: typeof cards.session === 'boolean' ? cards.session : DEFAULT_SETTINGS.cards.session,
@@ -111,6 +113,7 @@ window.__ModuleLoader__.load({
       'settings.autoRefreshHint': '用量 2 分钟 · 余额 5 分钟',
       'settings.showCost': '显示消费金额',
       'settings.hideComposerStats': '隐藏底栏会话统计',
+      'settings.usageList': '用量明细列表',
       'settings.reset': '恢复默认',
       'settings.close': '关闭',
       'settings.allHidden': '三张卡片都已隐藏，点右上角设置可重新开启。',
@@ -215,6 +218,7 @@ window.__ModuleLoader__.load({
       'settings.autoRefreshHint': 'Usage 2 min · Balance 5 min',
       'settings.showCost': 'Show spend',
       'settings.hideComposerStats': 'Hide composer stats',
+      'settings.usageList': 'Usage detail list',
       'settings.reset': 'Reset to defaults',
       'settings.close': 'Close',
       'settings.allHidden': 'All three cards are hidden. Turn them back on in the display settings.',
@@ -730,6 +734,7 @@ window.__ModuleLoader__.load({
         switchRow('account', 'settings.card.account', settings.cards.account, (value) => ({ cards: { account: value } })),
         switchRow('showCost', 'settings.showCost', settings.showCost, (value) => ({ showCost: value })),
         switchRow('hideComposerStats', 'settings.hideComposerStats', settings.hideComposerStats, (value) => ({ hideComposerStats: value })),
+        switchRow('usageList', 'settings.usageList', settings.usageList, (value) => ({ usageList: value })),
         h(
           'div',
           { className: 'aup-pop-row' },
@@ -1835,7 +1840,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Date-dimension statistics over real platform usage (local estimates as fallback). */
-    function UsageSection({ state, dimension, onDimension, onRetry, t, fallbackCurrency, locale, showCost, categories }) {
+    function UsageSection({ state, dimension, onDimension, onRetry, t, fallbackCurrency, locale, showCost, listMode, categories }) {
       const moveDimension = (event) => {
         const index = DIMENSIONS.findIndex((entry) => entry.id === dimension);
         let next = null;
@@ -2046,7 +2051,40 @@ window.__ModuleLoader__.load({
           : sourceBlock,
         series.total === 0
           ? h(Hint, null, t('stats.empty'))
-          : h('div', { className: 'aup-series', ref: seriesRef }, rows)
+          : listMode === true
+            ? h('div', { className: 'aup-series', ref: seriesRef }, rows)
+            : h(
+                'div',
+                { className: 'aup-trend' },
+                h(
+                  'div',
+                  { className: 'aup-trend-bars' },
+                  visibleCells.map((cell) =>
+                    h(
+                      'div',
+                      {
+                        key: cell.key,
+                        className: 'aup-trend-col',
+                        title: showCost !== false && cell.cost > 0
+                          ? cell.label + ' · ' + formatTokens(cell.total) + ' tokens · ' + formatCost(cell.cost, currency, locale, estimate)
+                          : cell.label + ' · ' + formatTokens(cell.total) + ' tokens'
+                      },
+                      h('span', {
+                        className: 'aup-trend-bar',
+                        'data-current': cell.current ? true : undefined,
+                        'data-zero': cell.total === 0 ? true : undefined,
+                        style: { height: series.max === 0 || cell.total === 0 ? '2px' : Math.max(4, Math.round((cell.total / series.max) * 100)) + '%' }
+                      })
+                    )
+                  )
+                ),
+                h(
+                  'div',
+                  { className: 'aup-trend-axis' },
+                  h('span', null, visibleCells.length === 0 ? '' : visibleCells[0].label),
+                  h('span', null, visibleCells.length === 0 ? '' : visibleCells[visibleCells.length - 1].label)
+                )
+              )
       );
     }
 
@@ -2695,6 +2733,7 @@ window.__ModuleLoader__.load({
               fallbackCurrency: currency,
               locale: displayLocale,
               showCost: settings.showCost,
+              listMode: settings.usageList === true,
               categories: providerSessionUsage
             })
           : null,
