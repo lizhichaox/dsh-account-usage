@@ -11,11 +11,11 @@ Harness 的「插件市场」（Discover）不是中心化商店，而是**索�
 | GitHub 仓库 | <https://github.com/lizhichaox/dsh-account-usage>（public，`main`） |
 | 市场索引 | <https://lizhichaox.github.io/dsh-account-usage/market/index.json> |
 | 索引托管 | GitHub Pages（仓库根目录；`.nojekyll` 保证 JSON 原样输出，无重定向） |
-| 当前安装源 | **Git commit pin**（精确 commit 见 `market/index.json` 的 `versions[0].source.commit`） |
+| 当前安装源 | **npm**：`dsh-account-usage@1.0.0`（索引 `source.type = npm`） |
 | 包名 / 版本 | `dsh-account-usage` / `1.0.0` |
 | 兼容性 | `engines.dsh: ^0.2.2-rc.1`（与当前 runtime 匹配） |
-| npm | **尚未发布**（可选；见文末 npm 流程） |
-| 校验 | 官方 `@deepseek-ai/dsh-plugin-market-index` 的 `parseMarketIndex` 已通过；Git 源真实安装 + Host 路由实测通过 |
+| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.0`，2026-11-07 03:01:09Z） |
+| 校验 | 官方 `parseMarketIndex` 通过；**npm 源真实安装** + Host 路由实测通过；CI 全绿 |
 
 安装侧使用：
 
@@ -23,28 +23,30 @@ Harness 的「插件市场」（Discover）不是中心化商店，而是**索�
 2. Discover 添加索引 URL：`https://lizhichaox.github.io/dsh-account-usage/market/index.json`
 3. 安装「账号用量」。
 
-## 更新发布流程（Git 源，当前方式）
+## 更新发布流程
 
 ```sh
-# 1. 改完代码后自检
+# 1. 改完代码 + 升版本号后自检
 npm run verify
 
-# 2. 提交代码
-git add -A && git commit -m "feat: ..."
-git push
+# 2. 提交并推送代码
+git add -A && git commit -m "feat: ... v1.0.1" && git push
 
-# 3. 用当前 HEAD 重新生成索引（写入新 commit + 时间戳）
-npm run market:index
+# 3. 发布 npm（需要 npm 登录；2FA 账号用带 bypass 2FA 的 granular token）
+npm publish
 
-# 4. 提交索引（Pages 会自动重建）
+# 4. 用 npm 上的真实发布时间重新生成索引（切到 npm 源）
+npm run market:index:npm
+
+# 5. 提交索引（GitHub Pages 会自动重建）
 git add market/index.json && git commit -m "chore: update market index" && git push
 
-# 5. 打 tag / GitHub Release
+# 6. tag / GitHub Release
 git tag -a v1.0.1 -m "dsh-account-usage v1.0.1" && git push --tags
 ```
 
-> 每次更新都必须重新生成 `market/index.json`：市场按 **精确 commit** 安装，旧索引仍指向旧提交。
-> 版本号递增（SemVer）并同步 `package.json`。
+> 每次更新都必须重新生成 `market/index.json`；市场按 **精确版本** 安装。
+> 纯 Git 分发也可以用 `npm run market:index`（commit pin），但当前索引走 npm。
 
 ## npm 发布（可选，后续推荐）
 

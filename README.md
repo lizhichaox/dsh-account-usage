@@ -182,11 +182,14 @@ https://lizhichaox.github.io/dsh-account-usage/market/index.json
 
 3. 找到「账号用量」点安装即可（零配置，装完直接可用）。
 
-也可以命令行直接安装（对应索引里的 Git commit pin）：
+也可以命令行直接安装 npm 发布版：
 
 ```sh
-dsh plugin --profile desktop add github:lizhichaox/dsh-account-usage
+dsh plugin --profile desktop add dsh-account-usage
 ```
+
+npm 页面：<https://www.npmjs.com/package/dsh-account-usage>（也可用 Git 源：
+`dsh plugin --profile desktop add github:lizhichaox/dsh-account-usage`）。
 
 本地开发时，本目录已以 link 方式安装到 `desktop` profile（bundle `dsh-account-usage`）。
 修改 `client.js` 后 `dsh-client-hmr` 会在页面内自动重载浏览器半边；
