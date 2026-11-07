@@ -464,7 +464,7 @@ window.__ModuleLoader__.load({
       '.aup-card-account .aup-balance-item{flex-direction:row;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}',
       '.aup-card-account .aup-balance{grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 16px;align-content:center;padding:2px 0}',
       '.aup-card-account .aup-balance-value{font-size:18px;line-height:24px;letter-spacing:-.005em}',
-      '.aup-card-account .aup-balance-value.aup-minor{font-size:15px;line-height:20px;font-weight:500;color:var(--dsw-alias-label-primary)}',
+      '.aup-card-account .aup-balance-value.aup-minor{font-size:18px;line-height:24px;font-weight:500;color:var(--dsw-alias-label-primary)}',
       '.aup-card-account .aup-balance-label{font-size:13px;line-height:16px;font-weight:500}',
       '.aup-account-note{margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-hint{font-size:13px;line-height:16px}',
