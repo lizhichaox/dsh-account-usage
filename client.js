@@ -157,6 +157,7 @@ window.__ModuleLoader__.load({
       'tokens.contextValue': '{used} / {window}（{percent}%）',
       'tokens.contextUnknown': '暂无上下文数据',
       'tokens.detail': '会话明细',
+      'tokens.modelMeta': '{requests} 次请求 · 占比 {share}%',
       'tokens.byModel': '按模型',
       'tokens.moreModels': '另有 {count} 个模型',
       'tokens.stat.requests': '请求次数',
@@ -176,6 +177,7 @@ window.__ModuleLoader__.load({
       'tokens.breakdown.messages': '消息',
       'balance.total': '总额',
       'account.providerNote': '余额由 {provider} 提供',
+      'account.providerUpdated': '更新于 {time}',
       'account.providerUsedRate': '已用 {percent}%',
     };
 
@@ -251,6 +253,7 @@ window.__ModuleLoader__.load({
       'tokens.contextValue': '{used} / {window} ({percent}%)',
       'tokens.contextUnknown': 'No context data yet',
       'tokens.detail': 'Session details',
+      'tokens.modelMeta': '{requests} calls · {share}%',
       'tokens.byModel': 'By model',
       'tokens.moreModels': '{count} more models',
       'tokens.stat.requests': 'Requests',
@@ -270,6 +273,7 @@ window.__ModuleLoader__.load({
       'tokens.breakdown.messages': 'Messages',
       'balance.total': 'Total',
       'account.providerNote': 'Balance provided by {provider}',
+      'account.providerUpdated': 'Updated {time}',
       'account.providerUsedRate': '{percent}% used',
     };
 
@@ -351,11 +355,15 @@ window.__ModuleLoader__.load({
       '.aup-card-session .aup-session-cell:nth-child(even){align-items:flex-end;text-align:right}',
       '.aup-models{display:flex;flex-direction:column;gap:2px;flex:none;min-height:0}',
       '.aup-models-caption{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
+      '.aup-model-item{display:flex;flex-direction:column;gap:2px;min-width:0}',
+      '.aup-model-meta{display:flex;justify-content:space-between;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:16px}',
       '.aup-model-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0;font-size:13px;line-height:17px;font-variant-numeric:tabular-nums}',
       '.aup-model-name{min-width:0;font-size:12px;line-height:16px;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-name.aup-model-name-long{font-size:11px}',
       '.aup-model-tokens{flex:none;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
       '.aup-model-more{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
+      '.aup-token-dot{flex:none;width:6px;height:6px;border-radius:2px}',
+      '.aup-provider-updated{margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-stat-list{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px}',
       '.aup-session-sep{flex:none;height:1px;background:var(--dsw-alias-border-l2)}',
       '.aup-stat-row{display:grid;grid-template-columns:60px minmax(0,1fr);align-items:baseline;gap:4px;min-width:0;font-size:13px;line-height:20px}',
@@ -400,7 +408,7 @@ window.__ModuleLoader__.load({
       '.aup-provider-meta-value{font-size:16px;line-height:22px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.aup-provider-rate{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-provider-note{margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
-      '.aup-card-session .aup-session-label{margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:normal;overflow-wrap:anywhere}',
+      '.aup-card-session .aup-session-label{display:flex;align-items:center;gap:5px;margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
       '.aup-card-session .aup-session-value{margin:0;font-size:13px;line-height:18px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.aup-card-session .aup-bar{height:8px}',
       '.aup-session-total{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex:none;width:100%}',
@@ -705,6 +713,14 @@ window.__ModuleLoader__.load({
     // ------------------------------------------------------------- providers --
 
     /** Human labels for the model providers a session can record. */
+    /** One color per token bucket, shared by the composition bar and the detail labels. */
+    const TOKEN_COLORS = {
+      input: 'var(--dsw-static-blue-450, #4d93f8)',
+      output: 'var(--dsw-static-violet-400, #a78bfa)',
+      cacheRead: 'var(--dsw-static-amber-500, #f59e0b)',
+      cacheWrite: 'var(--dsw-static-neutral-bluish-400, #adb2b8)'
+    };
+
     /** Proper names for non-DeepSeek providers; DeepSeek route names are localized. */
     const PROVIDER_NAMES = {
       openrouter: 'OpenRouter',
@@ -1377,6 +1393,14 @@ window.__ModuleLoader__.load({
       ].filter((item) => item.value !== undefined);
     }
 
+    /** First fetchedAt among provider balance rows (all rows share the same fetch). */
+    function singleFetchedAt(rows) {
+      for (const row of rows) {
+        if (row !== null && row !== undefined && Number.isFinite(row.fetchedAt)) return row.fetchedAt;
+      }
+      return undefined;
+    }
+
     /** Provider session detail: per-model totals plus context composition. */
     function SessionDetailCard({ t, useProjection, sessionModels, extraLabel }) {
       const usage = useProjection('tokenUsage');
@@ -1387,6 +1411,27 @@ window.__ModuleLoader__.load({
       const total = usage ? (usage.uncachedInputTokens || 0) + (usage.outputTokens || 0) + (usage.cacheReadTokens || 0) + (usage.cacheWriteTokens || 0) : 0;
       const requestCount = modelRows.reduce((sum, item) => sum + (Number.isFinite(item.requests) ? item.requests : 0), 0);
       const detailItems = buildDetailStats({ t, usage, sessionStats, requestCount, total });
+      const sessionTokens = modelRows.reduce((sum, item) => sum + (Number.isFinite(item.tokens) ? item.tokens : 0), 0);
+      const renderModel = (item) => {
+        const text = shortModelName(item.model);
+        const share = sessionTokens > 0 && Number.isFinite(item.tokens) ? Math.round((item.tokens / sessionTokens) * 100) : 0;
+        return h(
+          'div',
+          { key: (item.provider || '') + '/' + item.model, className: 'aup-model-item' },
+          h(
+            'div',
+            { className: 'aup-model-row' },
+            h('span', { className: 'aup-model-name' + (text.length > 22 ? ' aup-model-name-long' : ''), title: item.model }, text),
+            h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
+          ),
+          h(
+            'div',
+            { className: 'aup-model-meta' },
+            h('span', null, t('tokens.modelMeta', { requests: String(Number.isFinite(item.requests) ? item.requests : 0), share: String(share) }))
+          )
+        );
+      };
+
       const groups = new Map();
       for (const item of modelRows.slice(0, 3)) {
         const key = typeof item.provider === 'string' ? item.provider : '';
@@ -1407,30 +1452,10 @@ window.__ModuleLoader__.load({
               ),
               [...groups.entries()].flatMap(([provider, items]) =>
                 provider === '' || groups.size === 1
-                  ? items.map((item) =>
-                      h(
-                        'div',
-                        { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
-                        (() => {
-                          const text = shortModelName(item.model);
-                          return h('span', { className: 'aup-model-name' + (text.length > 22 ? ' aup-model-name-long' : ''), title: item.model }, text);
-                        })(),
-                        h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
-                      )
-                    )
+                  ? items.map((item) => renderModel(item))
                   : [
                       h('span', { key: 'provider-' + provider, className: 'aup-model-provider' }, providerLabel(provider, t)),
-                      ...items.map((item) =>
-                        h(
-                          'div',
-                          { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
-                          (() => {
-                            const text = shortModelName(item.model);
-                            return h('span', { className: 'aup-model-name' + (text.length > 22 ? ' aup-model-name-long' : ''), title: item.model }, text);
-                          })(),
-                          h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
-                        )
-                      )
+                      ...items.map((item) => renderModel(item))
                     ]
               ),
               modelRows.length > 3 ? h('span', { className: 'aup-model-more' }, t('tokens.moreModels', { count: String(modelRows.length - 3) })) : null
@@ -1573,7 +1598,10 @@ window.__ModuleLoader__.load({
           );
         }
         const currencyOf = (entry) => (typeof entry.currency === 'string' ? entry.currency : 'USD');
+        const updatedAt = Number.isFinite(singleFetchedAt(rows)) ? new Date(singleFetchedAt(rows)) : undefined;
+        const updatedTime = updatedAt === undefined ? '' : new Intl.DateTimeFormat(locale || undefined, { hour: '2-digit', minute: '2-digit' }).format(updatedAt);
         const note = h('p', { className: 'aup-provider-note' }, t('account.providerNote', { provider: offAccountLabel }));
+        const updated = updatedTime === '' ? null : h('p', { className: 'aup-provider-updated' }, t('account.providerUpdated', { time: updatedTime }));
         if (rows.length > 1) {
           const items = [];
           for (const entry of rows) {
@@ -1582,7 +1610,7 @@ window.__ModuleLoader__.load({
             if (Number.isFinite(entry.remaining)) items.push(h('div', { key: entry.provider + '-remaining', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.recharge')), h('span', { className: 'aup-balance-value' }, formatMoney(String(entry.remaining), currency, locale))));
             if (Number.isFinite(entry.used)) items.push(h('div', { key: entry.provider + '-used', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.used')), h('span', { className: 'aup-balance-value aup-minor' }, formatMoney(String(entry.used), currency, locale))));
           }
-          return h('section', { className: 'aup-card aup-card-account aup-card-account-provider' }, providerHead, h('div', { className: 'aup-provider-body' }, h('div', { className: 'aup-balance' }, items), note));
+          return h('section', { className: 'aup-card aup-card-account aup-card-account-provider' }, providerHead, h('div', { className: 'aup-provider-body' }, h('div', { className: 'aup-balance' }, items), updated, note));
         }
 
         const single = rows[0];
@@ -1631,6 +1659,7 @@ window.__ModuleLoader__.load({
                   ),
                   h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: usedPercent + '%' } }))
                 ),
+            updated,
             meta.length === 0
               ? null
               : h(
@@ -1934,10 +1963,10 @@ window.__ModuleLoader__.load({
 
       const composeSegments = usage
         ? [
-            { key: 'input', value: usage.uncachedInputTokens || 0, color: 'var(--dsw-static-blue-450, #4d93f8)' },
-            { key: 'output', value: usage.outputTokens || 0, color: 'var(--dsw-static-violet-400, #a78bfa)' },
-            { key: 'cacheRead', value: usage.cacheReadTokens || 0, color: 'var(--dsw-static-amber-500, #f59e0b)' },
-            { key: 'cacheWrite', value: usage.cacheWriteTokens || 0, color: 'var(--dsw-static-neutral-bluish-400, #adb2b8)' }
+            { key: 'input', value: usage.uncachedInputTokens || 0, color: TOKEN_COLORS.input },
+            { key: 'output', value: usage.outputTokens || 0, color: TOKEN_COLORS.output },
+            { key: 'cacheRead', value: usage.cacheReadTokens || 0, color: TOKEN_COLORS.cacheRead },
+            { key: 'cacheWrite', value: usage.cacheWriteTokens || 0, color: TOKEN_COLORS.cacheWrite }
           ].filter((segment) => segment.value > 0)
         : [];
       const composeTotal = composeSegments.reduce((sum, segment) => sum + segment.value, 0);
@@ -2035,7 +2064,12 @@ window.__ModuleLoader__.load({
                 h(
                   'div',
                   { key: row.key, className: 'aup-session-cell' },
-                  h('dt', { className: 'aup-session-label' }, row.label),
+                  h(
+                    'dt',
+                    { className: 'aup-session-label' },
+                    TOKEN_COLORS[row.key] === undefined ? null : h('span', { className: 'aup-token-dot', style: { background: TOKEN_COLORS[row.key] }, 'aria-hidden': true }),
+                    row.label
+                  ),
                   h('dd', { className: 'aup-session-value' }, formatTokens(row.value))
                 )
               )
