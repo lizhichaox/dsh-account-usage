@@ -496,7 +496,9 @@ window.__ModuleLoader__.load({
       '.aup-series-cost{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}',
       '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-value{color:var(--dsw-alias-label-primary);font-weight:500}',
       '.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary)}',
-      '.aup-tab-title{display:inline-flex;align-items:center;justify-content:center;min-width:0;flex:none}',
+      '.aup-tab-title{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:0;flex:none}',
+      '.aup-tab-glyph{flex:none;display:inline-flex;width:14px;height:14px;color:var(--dsw-alias-label-secondary)}',
+      '.aup-tab-glyph svg{width:100%;height:100%;flex:none}',
       '.aup-tab-title-text{min-width:0;white-space:nowrap}',
       // ---- one shared type scale: every Chinese text is 13px, only numbers vary by role ----
       '.aup-card{gap:6px;padding:10px}',
@@ -2860,7 +2862,12 @@ window.__ModuleLoader__.load({
     function AccountUsageTitle({ useTabInfo, t }) {
       const info = useTabInfo();
       const label = typeof t === 'function' ? t('tab.title') : info.tab.title;
-      return h('span', { className: 'aup-tab-title' }, h('span', { className: 'aup-tab-title-text' }, label));
+      return h(
+        'span',
+        { className: 'aup-tab-title' },
+        h('span', { className: 'aup-tab-glyph' }, h(WalletGlyph, { size: 14 })),
+        h('span', { className: 'aup-tab-title-text' }, label)
+      );
     }
 
     // ----------------------------------------------------------------- apply --

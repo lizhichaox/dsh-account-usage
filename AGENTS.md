@@ -14,8 +14,9 @@
 
 - DeepSeek Harness 右侧边栏插件，名称固定为 **「账号用量」**（四个中文）。
 - 面板固定三张卡片，顺序：**会话消耗 → 用量统计 → 账户余额**。
-- 右侧栏 tab 用短标题「用量」（英文 `Usage`），**只渲染文字、不要图标**：tab 里有图标时，
-  多 tab 挤在一起会变形/被压扁。
+- 右侧栏 tab 用短标题「用量」（英文 `Usage`），**保留钱包图标**；图标必须固定尺寸、`flex:none`
+  （`.aup-tab-glyph` 14×14），文字 `white-space:nowrap`，容器不参与收缩（`flex:none`），
+  这样多 tab 并排时也不会被压扁变形。
 - 面板头部是一条横条，**它的下边线必须是「中间会话区 header 下边线的延长线」**：
   - 线样式要与宿主一致：`.5px solid var(--dsw-alias-border-l3)`（宿主会话 header 用的就是它）
   - 横条高度**运行时测量**：`conversation.header` 的 `bottom` 减去本面板 root 的 `top`，

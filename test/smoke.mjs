@@ -386,6 +386,12 @@ function text(node) {
   return text(node.children);
 }
 const flat = (node) => text(node).replace(/\s+/g, ' ').trim();
+{
+  const titleRegistration = first.registrations.find((r) => r.definition.name === 'sidebar.right.pane.tab.title');
+  const titleTree = titleRegistration.component({ useTabInfo: () => ({ tab: { title: '账号用量' } }), t: (key) => first.t(key) });
+  assert.equal(walk(titleTree, (n) => hasClass(n, 'aup-tab-glyph')).length, 1, 'the tab chip keeps its wallet glyph');
+  assert.equal(flat(titleTree), '用量', 'the tab chip label stays short');
+}
 
 const accountState = {
   phase: 'ready',
