@@ -496,7 +496,7 @@ window.__ModuleLoader__.load({
       '.aup-series-cost{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}',
       '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-value{color:var(--dsw-alias-label-primary);font-weight:500}',
       '.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary)}',
-      '.aup-tab-icon{flex:none;width:14px;height:14px;margin-right:5px;vertical-align:-2px;color:var(--dsw-alias-label-secondary)}',
+      '.aup-tab-icon{flex:none;width:14px;height:14px;vertical-align:-2px;color:var(--dsw-alias-label-secondary)}',
       // ---- one shared type scale: every Chinese text is 13px, only numbers vary by role ----
       '.aup-card{gap:6px;padding:10px}',
       '.aup-card-title{font-size:13px;line-height:16px;font-weight:500}',
@@ -2697,7 +2697,6 @@ window.__ModuleLoader__.load({
       return h(
         'div',
         { className: 'aup-root' + (offAccountAll === true ? ' aup-provider-mode' : ''), ref: rootRef },
-        h('style', null, CSS),
         h(
           'header',
           { className: 'aup-head', 'aria-label': t('panel.title') },
@@ -2981,6 +2980,27 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       const dictionaries = { zh, en, ja: en, es: en, fr: en, de: en, ru: en, pt: en };
       ctx.effect(() => ctx.locale.register(NS, dictionaries), 'account-usage: dictionaries');
+
+      ctx.effect(
+        () => {
+          if (typeof document === 'undefined' || typeof document.createElement !== 'function' || document.head === undefined || document.head === null) {
+            return undefined;
+          }
+          const tagId = 'dsh-account-usage';
+          let tag = document.querySelector('style[data-plugin-css="' + tagId + '"]');
+          if (tag === null || tag === undefined) {
+            tag = document.createElement('style');
+            tag.dataset.plugin = 'dsh-account-usage';
+            tag.dataset.pluginCss = tagId;
+            document.head.appendChild(tag);
+          }
+          if (tag.textContent !== CSS) tag.textContent = CSS;
+          return () => {
+            if (tag !== null && tag !== undefined && tag.parentElement !== null) tag.parentElement.removeChild(tag);
+          };
+        },
+        'account-usage: stylesheet'
+      );
 
       ctx.effect(
         () => {

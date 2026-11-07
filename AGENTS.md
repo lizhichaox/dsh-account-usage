@@ -17,7 +17,10 @@
 - 右侧栏 tab 用短标题「用量」（英文 `Usage`），**保留钱包图标**，且必须**照抄宿主的写法**：
   tab title 组件返回 **Fragment（裸 SVG + 纯文本）**，不要包一层 `span` 容器——
   宿主的 `GuideTitle` 就是 `<CompassGlyph/> + tab.title` 这种结构，包容器会让 tab 宽度测量错乱、
-  切 tab 时文字被压扁变形。图标用 `.aup-tab-icon`（14px、`margin-right:5px`、`vertical-align:-2px`）。
+  切 tab 时文字被压扁变形。图标用 `.aup-tab-icon`（14px、`vertical-align:-2px`），
+  **不要自己加 margin**：图标与文字的间距由宿主 chip 的 gap 负责，否则选中/未选中两种状态下间距会不一致。
+- **样式表必须注入 `document.head`**（apply 时用 `<style data-plugin-css="dsh-account-usage">`），
+  不能只写在面板 body 里：tab chip 在面板 body 之外，面板切走后 body 卸载、样式随之消失，tab 会「变形」。
 - 面板头部是一条横条，**它的下边线必须是「中间会话区 header 下边线的延长线」**：
   - 线样式要与宿主一致：`.5px solid var(--dsw-alias-border-l3)`（宿主会话 header 用的就是它）
   - 横条高度**运行时测量**：`conversation.header` 的 `bottom` 减去本面板 root 的 `top`，
