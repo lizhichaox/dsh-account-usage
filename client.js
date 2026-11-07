@@ -311,7 +311,7 @@ window.__ModuleLoader__.load({
       'html[data-account-usage-hide-stats] [data-composer-stat]{display:none!important}',
       '.aup-root{position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;height:100%;min-height:0;overflow:hidden;padding:16px;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px}',
       '.aup-root *{box-sizing:border-box}',
-      '.aup-head{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;margin:0 0 2px;padding:0 10px 8px;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      '.aup-head{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;margin:0 0 2px;padding:0 0 8px;border-bottom:1px solid var(--dsw-alias-border-l2)}',
       '.aup-head-greeting{min-width:0;text-align:center;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:clip}',
       '.aup-glyph{flex:none;color:var(--dsw-alias-label-secondary);display:inline-flex}',
       '.aup-title{flex:1;min-width:0;margin:0;font-size:14px;font-weight:500;line-height:20px;white-space:nowrap}',
@@ -321,7 +321,7 @@ window.__ModuleLoader__.load({
       '.aup-head-actions{display:inline-flex;align-items:center;gap:2px;flex:none}',
       '.aup-icon-button[data-active]{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       '.aup-pop-backdrop{position:absolute;inset:0;z-index:20}',
-      '.aup-pop{position:absolute;top:44px;left:22px;z-index:21;width:258px;max-width:calc(100% - 24px);max-height:calc(100% - 56px);overflow:auto;display:flex;flex-direction:column;gap:6px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 10px 28px color-mix(in srgb,var(--dsw-alias-label-primary) 16%,transparent)}',
+      '.aup-pop{position:absolute;top:44px;left:12px;z-index:21;width:258px;max-width:calc(100% - 24px);max-height:calc(100% - 56px);overflow:auto;display:flex;flex-direction:column;gap:6px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 10px 28px color-mix(in srgb,var(--dsw-alias-label-primary) 16%,transparent)}',
       '.aup-pop-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}',
       '.aup-pop-title{font-size:13px;line-height:18px;font-weight:600;color:var(--dsw-alias-label-primary)}',
       '.aup-pop-close{width:22px;height:22px;margin-right:-4px}',
@@ -2538,19 +2538,58 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         const node = rootRef.current;
         if (node === null || node === undefined || typeof ResizeObserver !== 'function') return undefined;
-        let cooling = false;
-        const observer = new ResizeObserver(() => {
+        let timer = null;
+        let pressed = false;
+        let correcting = false;
+        const tooNarrow = () => {
           const width = node.getBoundingClientRect().width;
-          if (!Number.isFinite(width) || width <= 0) return;
-          if (width >= PANEL_MIN_WIDTH - 2 || cooling) return;
-          cooling = true;
+          return Number.isFinite(width) && width > 0 && width < PANEL_MIN_WIDTH - 2;
+        };
+        const correct = () => {
+          if (correcting || pressed || !tooNarrow()) return;
+          correcting = true;
           resizeRightbarTo(PANEL_MIN_WIDTH);
           setTimeout(() => {
-            cooling = false;
-          }, 600);
+            correcting = false;
+          }, 800);
+        };
+        const schedule = () => {
+          if (timer !== null) clearTimeout(timer);
+          timer = setTimeout(() => {
+            timer = null;
+            correct();
+          }, 240);
+        };
+        const onPointerDown = () => {
+          pressed = true;
+          if (timer !== null) {
+            clearTimeout(timer);
+            timer = null;
+          }
+        };
+        const onPointerUp = () => {
+          pressed = false;
+          schedule();
+        };
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+          window.addEventListener('pointerdown', onPointerDown, true);
+          window.addEventListener('pointerup', onPointerUp, true);
+          window.addEventListener('pointercancel', onPointerUp, true);
+        }
+        const observer = new ResizeObserver(() => {
+          if (pressed) return;
+          if (tooNarrow()) schedule();
         });
         observer.observe(node);
-        return () => observer.disconnect();
+        return () => {
+          observer.disconnect();
+          if (timer !== null) clearTimeout(timer);
+          if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+            window.removeEventListener('pointerdown', onPointerDown, true);
+            window.removeEventListener('pointerup', onPointerUp, true);
+            window.removeEventListener('pointercancel', onPointerUp, true);
+          }
+        };
       }, []);
 
       React.useEffect(() => {
@@ -2735,12 +2774,15 @@ window.__ModuleLoader__.load({
                 pointerType: 'mouse'
               })
             );
-          fire('pointerdown', startX);
-          fire('pointermove', startX + delta);
-          fire('pointerup', startX + delta);
-          handle.setPointerCapture = setCapture;
-          handle.hasPointerCapture = hasCapture;
-          handle.releasePointerCapture = releaseCapture;
+          try {
+            fire('pointerdown', startX);
+            fire('pointermove', startX + delta);
+            fire('pointerup', startX + delta);
+          } finally {
+            handle.setPointerCapture = setCapture;
+            handle.hasPointerCapture = hasCapture;
+            handle.releasePointerCapture = releaseCapture;
+          }
           applied = true;
         } catch (error) {
           /* host-internal detail: leave the current width */
