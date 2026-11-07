@@ -161,8 +161,7 @@ window.__ModuleLoader__.load({
       'tokens.stat.requests': '请求次数',
       'tokens.stat.cacheHit': '缓存命中',
       'tokens.stat.avg': '平均 / 请求',
-      'tokens.stat.turns': '轮数',
-      'tokens.stat.steps': '步数',
+      'tokens.stat.turnsSteps': '轮 / 步',
       'tokens.stat.speed': '输出速度',
       'tokens.stat.llm': '模型用时',
       'tokens.stat.tool': '工具用时',
@@ -255,11 +254,10 @@ window.__ModuleLoader__.load({
       'tokens.stat.requests': 'Requests',
       'tokens.stat.cacheHit': 'Cache hit',
       'tokens.stat.avg': 'Avg',
-      'tokens.stat.turns': 'Turns',
-      'tokens.stat.steps': 'Steps',
+      'tokens.stat.turnsSteps': 'Turn/Step',
       'tokens.stat.speed': 'Speed',
-      'tokens.stat.llm': 'LLM time',
-      'tokens.stat.tool': 'Tool time',
+      'tokens.stat.llm': 'Model',
+      'tokens.stat.tool': 'Tools',
       'tokens.stat.ttft': 'TTFT',
       'tokens.duration.compactMinutes': '{minutes}m{seconds}s',
       'tokens.duration.compactSeconds': '{seconds}s',
@@ -315,6 +313,7 @@ window.__ModuleLoader__.load({
       '.aup-empty{padding:12px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:18px;font-weight:500;text-align:center}',      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
+      '.aup-cards{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px}',
       '.aup-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}',
       '.aup-card-session{flex:4 1 0;justify-content:flex-start}',
       '.aup-card-stats{flex:1 1 0;justify-content:space-between}',
@@ -355,11 +354,11 @@ window.__ModuleLoader__.load({
       '.aup-model-name.aup-model-name-long{font-size:11px}',
       '.aup-model-tokens{flex:none;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
       '.aup-model-more{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
-      '.aup-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 10px}',
+      '.aup-stat-list{display:grid;grid-template-columns:1fr 1fr;gap:1px 18px}',
       '.aup-session-sep{flex:none;height:1px;background:var(--dsw-alias-border-l2)}',
-      '.aup-stat-cell{display:flex;flex-direction:column;gap:2px;min-width:0}',
-      '.aup-stat-label{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:visible}',
-      '.aup-stat-value{font-size:15px;line-height:20px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
+      '.aup-stat-row{display:flex;align-items:baseline;justify-content:space-between;gap:6px;min-width:0;font-size:13px;line-height:18px}',
+      '.aup-stat-label{min-width:0;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
+      '.aup-stat-value{flex:none;color:var(--dsw-alias-label-primary);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.aup-context-breakdown{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
       '.aup-context-compose{display:flex;height:5px;gap:1px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-skeleton)}',
       '.aup-context-seg{flex:1 1 0;min-width:2px;height:100%}',
@@ -371,7 +370,7 @@ window.__ModuleLoader__.load({
       '.aup-provider-mode .aup-card-session-fixed{flex:2 1 0}',
       '.aup-provider-mode .aup-session-body{justify-content:space-between}',
       '.aup-provider-mode .aup-card-account-provider{flex:1 1 0}',
-      '.aup-provider-mode .aup-provider-body{justify-content:space-between}',
+      '.aup-provider-mode .aup-provider-body{flex:1 1 auto;justify-content:space-between}',
       '.aup-card-account-provider .aup-balance{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;align-content:center}',
       '.aup-card-account-provider .aup-balance-value{font-size:20px;line-height:26px}',
       '.aup-card-account-provider .aup-balance-value.aup-minor{font-size:17px;line-height:22px}',
@@ -417,7 +416,7 @@ window.__ModuleLoader__.load({
       '.aup-stats-summary>span{min-width:0;white-space:normal;overflow-wrap:anywhere}',
       '.aup-stats-total{flex:none;font-size:17px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
       '.aup-card-stats .aup-series{flex:1 1 auto;display:flex;flex-direction:column;justify-content:space-between;gap:4px}',
-      '.aup-card-stats .aup-series-row{flex:1 1 0;min-height:0;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
+      '.aup-card-stats .aup-series-row{flex:1 1 0;min-height:17px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
       '.aup-card-stats .aup-series-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
       '.aup-card-stats .aup-series-row[data-current]{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent)}',
       '.aup-card-stats .aup-series-row[data-current]:hover{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 16%, transparent)}',
@@ -428,7 +427,7 @@ window.__ModuleLoader__.load({
       '.aup-series-cost{white-space:nowrap}',
       '.aup-series-track{height:6px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
       '.aup-series-fill{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--dsw-alias-brand-primary),color-mix(in srgb,var(--dsw-alias-brand-primary) 55%,var(--dsw-alias-bg-layer-1)))}',
-      '.aup-series-value{display:flex;flex-direction:column;align-items:flex-end;line-height:16px;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-secondary)}',
+      '.aup-series-value{display:flex;flex-direction:row;align-items:baseline;justify-content:flex-end;gap:6px;line-height:16px;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-secondary)}',
       '.aup-series-tokens{font-size:12px;line-height:16px}',
       '.aup-series-cost{font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
       '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-value{color:var(--dsw-alias-label-primary);font-weight:500}',
@@ -465,7 +464,7 @@ window.__ModuleLoader__.load({
       '.aup-hint{font-size:13px;line-height:16px}',
       // ---- content shedding at short card heights (no scrolling) ----
       '@container aup-card (max-height:380px){.aup-card-session .aup-compose{display:none}}',
-      '@container aup-card (max-height:330px){.aup-card-session .aup-stat-grid{display:none}}',
+      '@container aup-card (max-height:330px){.aup-card-session .aup-stat-list{display:none}}',
       '@container aup-card (max-height:260px){.aup-card-session .aup-models{display:none}}',
       '@container aup-card (max-height:250px){.aup-card-session .aup-context{display:none}}',
       '@container aup-card (max-height:150px){.aup-card-session .aup-session-grid{display:none}}',
@@ -1724,8 +1723,7 @@ window.__ModuleLoader__.load({
           ? duration(sessionStats.ttftMs / sessionStats.ttftSteps)
           : undefined;
       const detailItems = [
-        { key: 'turns', label: t('tokens.stat.turns'), value: turns === undefined ? undefined : String(turns) },
-        { key: 'steps', label: t('tokens.stat.steps'), value: steps === undefined ? undefined : String(steps) },
+        { key: 'turnsSteps', label: t('tokens.stat.turnsSteps'), value: turns === undefined && steps === undefined ? undefined : (turns === undefined ? '—' : String(turns)) + ' / ' + (steps === undefined ? '—' : String(steps)) },
         { key: 'requests', label: t('tokens.stat.requests'), value: requestCount > 0 ? String(requestCount) : undefined },
         { key: 'cacheHit', label: t('tokens.stat.cacheHit'), value: cacheHit === undefined ? undefined : cacheHit + '%' },
         { key: 'average', label: t('tokens.stat.avg'), value: average === undefined || average <= 0 ? undefined : formatTokens(average) },
@@ -1848,9 +1846,9 @@ window.__ModuleLoader__.load({
           ? null
           : h(
               'div',
-              { className: 'aup-stat-grid' },
+              { className: 'aup-stat-list' },
               detailItems.map((item) =>
-                h('div', { key: item.key, className: 'aup-stat-cell' }, h('span', { className: 'aup-stat-label' }, item.label), h('span', { className: 'aup-stat-value' }, item.value))
+                h('div', { key: item.key, className: 'aup-stat-row' }, h('span', { className: 'aup-stat-label' }, item.label), h('span', { className: 'aup-stat-value' }, item.value))
               )
             ),
         modelBlock === null ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
@@ -2262,8 +2260,11 @@ window.__ModuleLoader__.load({
         settingsOpen === true
           ? h(SettingsPanel, { settings, onChange: applySettings, onReset: resetSettings, onClose: closeSettings, t })
           : null,
-        settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels }) : null,
-        settings.cards.stats === true && offAccountAll !== true
+        h(
+          'div',
+          { className: 'aup-cards' },
+          settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels }) : null,
+          settings.cards.stats === true && offAccountAll !== true
           ? h(UsageSection, {
               state: displayedUsage,
               dimension,
@@ -2276,7 +2277,7 @@ window.__ModuleLoader__.load({
               thirdPartyLabel: offAccountLabel
             })
           : null,
-        settings.cards.account === true
+          settings.cards.account === true
           ? h(AccountSection, {
               state: account,
               t,
@@ -2287,9 +2288,10 @@ window.__ModuleLoader__.load({
               locale: displayLocale
             })
           : null,
-        settings.cards.session !== true && settings.cards.stats !== true && settings.cards.account !== true
+          settings.cards.session !== true && settings.cards.stats !== true && settings.cards.account !== true
           ? h('div', { className: 'aup-empty' }, t('settings.allHidden'))
           : null
+        )
       );
     }
 
