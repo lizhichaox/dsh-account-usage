@@ -10,32 +10,47 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const registry = 'https://registry.npmjs.org/' + encodeURIComponent(manifest.name).replace('%40', '@');
 
-const response = await fetch(registry, { headers: { accept: 'application/json' } });
-if (response.status === 404) {
-  console.error('finalize-release: ' + manifest.name + ' is not published yet. Run `npm publish --access public` first.');
-  process.exit(1);
+const useGit = process.argv.includes('--git');
+const repositoryUrl = String(manifest.repository?.url ?? '').replace(/^git\+/, '').replace(/\.git$/, '');
+let publishTimestamp;
+let source;
+if (useGit) {
+  const commit = execSync('git rev-parse HEAD', { cwd: root }).toString().trim();
+  if (!/^[0-9a-f]{40}$/u.test(commit)) {
+    console.error('finalize-release: HEAD is not a commit');
+    process.exit(1);
+  }
+  publishTimestamp = Number(execSync('git log -1 --format=%ct', { cwd: root }).toString().trim());
+  source = { type: 'git', url: repositoryUrl, commit };
+} else {
+  const response = await fetch(registry, { headers: { accept: 'application/json' } });
+  if (response.status === 404) {
+    console.error('finalize-release: ' + manifest.name + ' is not published yet. Run `npm publish` first, or use --git.');
+    process.exit(1);
+  }
+  if (!response.ok) {
+    console.error('finalize-release: npm registry returned HTTP ' + String(response.status));
+    process.exit(1);
+  }
+  const metadata = await response.json();
+  const publishedAt = metadata.time?.[manifest.version];
+  if (typeof publishedAt !== 'string') {
+    console.error('finalize-release: the registry has no publish time for ' + manifest.name + '@' + manifest.version);
+    process.exit(1);
+  }
+  publishTimestamp = Math.floor(Date.parse(publishedAt) / 1000);
+  source = { type: 'npm' };
 }
-if (!response.ok) {
-  console.error('finalize-release: npm registry returned HTTP ' + String(response.status));
-  process.exit(1);
-}
-const metadata = await response.json();
-const publishedAt = metadata.time?.[manifest.version];
-if (typeof publishedAt !== 'string') {
-  console.error('finalize-release: the registry has no publish time for ' + manifest.name + '@' + manifest.version);
-  process.exit(1);
-}
-const publishTimestamp = Math.floor(Date.parse(publishedAt) / 1000);
 
 const icon = 'data:image/svg+xml;base64,' + fs.readFileSync(path.join(root, 'icon.svg')).toString('base64');
 const dshRange = manifest.engines?.dsh ?? '^0.2.2-rc.1';
-const repositoryUrl = String(manifest.repository?.url ?? '').replace(/^git\+/, '').replace(/\.git$/, '');
 
 const index = {
   format: 1,
@@ -65,7 +80,7 @@ const index = {
         {
           version: manifest.version,
           publishTimestamp,
-          source: { type: 'npm' },
+          source,
           engines: { dsh: dshRange }
         }
       ]
@@ -76,4 +91,5 @@ const index = {
 const output = path.join(root, 'market/index.json');
 fs.writeFileSync(output, JSON.stringify(index, null, 2) + '\n');
 console.log('finalize-release: wrote ' + path.relative(root, output));
-console.log('finalize-release: index URL (after push + Pages) https://lizhichaox.github.io/' + manifest.name + '/market/index.json');
+console.log('finalize-release: index URL https://lizhichaox.github.io/' + manifest.name + '/market/index.json');
+console.log('finalize-release: source ' + source.type + (useGit ? ' @ ' + source.commit.slice(0, 10) : '') + ', timestamp ' + String(publishTimestamp));

@@ -166,16 +166,26 @@
 本插件按 Harness 插件市场（Discover 索引）要求准备了发布元数据、无头测试与索引模板：
 
 - `npm run verify`：语法检查 + 依赖为零的冒烟测试
-- `market/index-entry.example.json`：format 1 的索引条目模板（包名 `dsh-account-usage`、图标已内联）
+- `market/index.json`：已上线的 format 1 市场索引（Git commit pin，图标已内联）
 - `PUBLISHING.md`：从改包名、npm 发布、索引校验到上架的完整步骤与自查清单
 
 ## 安装
 
-从插件市场安装：在 DSH 的 **Plugins → Discover** 里配置市场索引 URL，点「安装」即可
-（零配置，装完直接可用）。也可以命令行安装发布版：
+从插件市场安装（推荐）：
+
+1. 在 DSH 的 Plugin Manager 里启用实验性 bundle **plugin-market**（Discover 标签页）
+2. **Plugins → Discover** 添加索引 URL：
+
+```
+https://lizhichaox.github.io/dsh-account-usage/market/index.json
+```
+
+3. 找到「账号用量」点安装即可（零配置，装完直接可用）。
+
+也可以命令行直接安装（对应索引里的 Git commit pin）：
 
 ```sh
-dsh plugin --profile desktop add dsh-account-usage
+dsh plugin --profile desktop add github:lizhichaox/dsh-account-usage
 ```
 
 本地开发时，本目录已以 link 方式安装到 `desktop` profile（bundle `dsh-account-usage`）。

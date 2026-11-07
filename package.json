@@ -46,10 +46,12 @@
   ],
   "scripts": {
     "test": "node test/smoke.mjs",
-    "market:check": "node market/check.mjs market/index-entry.example.json",
+    "market:check": "node market/check.mjs market/index.json",
+    "market:index": "node scripts/finalize-release.mjs --git",
+    "market:index:npm": "node scripts/finalize-release.mjs",
     "secret:scan": "node scripts/secret-scan.mjs",
     "prepack": "node scripts/secret-scan.mjs",
-    "verify": "node --check index.js && node --check client.js && node test/smoke.mjs && node scripts/secret-scan.mjs && node market/check.mjs market/index-entry.example.json"
+    "verify": "node --check index.js && node --check client.js && node test/smoke.mjs && node scripts/secret-scan.mjs && node market/check.mjs market/index.json"
   },
   "dsh": {
     "bundle": {
