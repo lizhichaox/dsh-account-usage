@@ -792,6 +792,9 @@ window.__ModuleLoader__.load({
       vertex: 'Vertex AI'
     };
 
+    /** Shortcut id shared by the registered command and the guide card's key hint. */
+    const SHORTCUT_ID = 'accountUsage.open';
+
     /** Minimum usable panel width: below this the no-wrap rows would collide. */
     const PANEL_MIN_WIDTH = 340;
 
@@ -3014,6 +3017,7 @@ window.__ModuleLoader__.load({
               {
                 id: 'account-usage',
                 order: 40,
+                commandId: SHORTCUT_ID,
                 title: () => t('guide.title'),
                 description: () => t('guide.description'),
                 icon: WalletGlyph
@@ -3058,7 +3062,7 @@ window.__ModuleLoader__.load({
         shortcutCtx.effect(() => {
           try {
             return shortcutCtx.shortcuts.register({
-              id: 'accountUsage.open',
+              id: SHORTCUT_ID,
               label: () => t('shortcut.open'),
               aliases: ['account usage', 'usage', '用量'],
               defaults: {

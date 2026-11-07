@@ -243,6 +243,7 @@ assert.equal(first.tabTypes.length, 1, 'one tab type registered');
   assert.equal(type.title('x'), '用量', 'short tab title avoids truncation');
   assert.equal(type.guide.length, 1);
   assert.equal(type.guide[0].title(), '账号用量');
+  assert.equal(type.guide[0].commandId, 'accountUsage.open', 'guide card links to the shortcut for its key hint');
   assert.equal(typeof type.guide[0].icon, 'function');
 }
 assert.equal(first.registrations.filter((r) => r.definition.name === 'sidebar.footer.action').length, 0, 'left sidebar action removed');
