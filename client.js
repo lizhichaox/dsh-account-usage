@@ -396,14 +396,14 @@ window.__ModuleLoader__.load({
       '.aup-card-session .aup-session-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}',
       '.aup-card-session .aup-session-cell:nth-child(even){align-items:flex-end;text-align:right}',
       '.aup-models{display:flex;flex-direction:column;gap:2px;flex:none;min-height:0}',
-      '.aup-models-caption{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-item{display:flex;flex-direction:column;gap:2px;min-width:0}',
       '.aup-model-track{height:4px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
       '.aup-model-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary)}',
       '.aup-model-meta{display:flex;justify-content:space-between;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:16px}',
       '.aup-model-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0;font-size:13px;line-height:17px;font-variant-numeric:tabular-nums}',
-      '.aup-model-name{min-width:0;font-size:12px;line-height:16px;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
-      '.aup-model-name.aup-model-name-long{font-size:11px}',
+      '.aup-model-name{min-width:0;font-size:13px;line-height:18px;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
+      '.aup-model-name.aup-model-name-long{font-size:12px}',
+      '.aup-model-name.aup-model-name-longer{font-size:11px}',
       '.aup-model-tokens{flex:none;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
       '.aup-model-more{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
       '.aup-token-dot{flex:none;width:6px;height:6px;border-radius:2px}',
@@ -419,9 +419,6 @@ window.__ModuleLoader__.load({
       '.aup-context-used{display:flex;height:100%;gap:1px;border-radius:inherit;overflow:hidden}',
       '.aup-context-seg{flex:1 1 0;min-width:2px;height:100%}',
       '.aup-context-legend{display:flex;flex-wrap:nowrap;justify-content:space-between;gap:2px 8px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
-      '.aup-models-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}',
-      '.aup-models-provider{min-width:0;white-space:nowrap;font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
-      '.aup-model-provider{display:block;margin-top:2px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
       '.aup-src-tabs{flex:none;display:flex;gap:2px;padding:2px;border-radius:8px;background:var(--dsw-alias-bg-skeleton)}',
       '.aup-src-tab{flex:1 1 0;min-width:0;height:22px;padding:0 6px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:13px;font-weight:500;line-height:16px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;transition:background-color .12s,color .12s}',
       '.aup-src-tab[data-active]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 .5px var(--dsw-alias-border-l2)}',
@@ -823,6 +820,19 @@ window.__ModuleLoader__.load({
       if (source.isAccount === true) return t('stats.platformBadge');
       const label = providerLabel(source.id, t);
       return label === source.id && typeof source.fallback === 'string' && source.fallback !== '' ? source.fallback : label;
+    }
+
+    /** "Provider - model" label for one model row (no separate provider caption). */
+    function modelRowLabel(item, t) {
+      const model = shortModelName(item.model);
+      const provider = typeof item.provider === 'string' && item.provider !== '' ? providerLabel(item.provider, t) : '';
+      return provider === '' ? model : provider + ' - ' + model;
+    }
+
+    /** Size class for the merged "Provider - model" label. */
+    function modelRowLabelClass(text) {
+      if (typeof text !== 'string') return '';
+      return text.length >= 34 ? ' aup-model-name-longer' : text.length >= 27 ? ' aup-model-name-long' : '';
     }
 
     /** Short display name for a model id: the last path segment without routing prefixes. */
@@ -1500,7 +1510,7 @@ window.__ModuleLoader__.load({
       const detailItems = buildDetailStats({ t, usage, sessionStats, requestCount, total });
       const sessionTokens = modelRows.reduce((sum, item) => sum + (Number.isFinite(item.tokens) ? item.tokens : 0), 0);
       const renderModel = (item) => {
-        const text = shortModelName(item.model);
+        const text = modelRowLabel(item, t);
         const share = sessionTokens > 0 && Number.isFinite(item.tokens) ? Math.round((item.tokens / sessionTokens) * 100) : 0;
         return h(
           'div',
@@ -1508,7 +1518,7 @@ window.__ModuleLoader__.load({
           h(
             'div',
             { className: 'aup-model-row' },
-            h('span', { className: 'aup-model-name' + (text.length > 22 ? ' aup-model-name-long' : ''), title: item.model }, text),
+            h('span', { className: 'aup-model-name' + modelRowLabelClass(text), title: (item.provider === undefined ? '' : item.provider + ' / ') + item.model }, text),
             h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
           ),
           h(
@@ -1522,32 +1532,13 @@ window.__ModuleLoader__.load({
         );
       };
 
-      const groups = new Map();
-      for (const item of modelRows.slice(0, 3)) {
-        const key = typeof item.provider === 'string' ? item.provider : '';
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(item);
-      }
       const modelBlock =
         modelRows.length === 0
           ? h(Hint, null, t('tokens.empty'))
           : h(
               'div',
-              { className: 'aup-models', 'aria-label': t('tokens.byModel') },
-              h(
-                'div',
-                { className: 'aup-models-head' },
-                h('span', { className: 'aup-models-caption' }, t('tokens.byModel')),
-                groups.size === 1 && [...groups.keys()][0] !== '' ? h('span', { className: 'aup-models-provider' }, providerLabel([...groups.keys()][0], t)) : null
-              ),
-              [...groups.entries()].flatMap(([provider, items]) =>
-                provider === '' || groups.size === 1
-                  ? items.map((item) => renderModel(item))
-                  : [
-                      h('span', { key: 'provider-' + provider, className: 'aup-model-provider' }, providerLabel(provider, t)),
-                      ...items.map((item) => renderModel(item))
-                    ]
-              ),
+              { className: 'aup-models' },
+              modelRows.slice(0, 3).map((item) => renderModel(item)),
               modelRows.length > 3 ? h('span', { className: 'aup-model-more' }, t('tokens.moreModels', { count: String(modelRows.length - 3) })) : null
             );
 
@@ -2247,52 +2238,21 @@ window.__ModuleLoader__.load({
               )
             );
 
-      const groups = new Map();
-      for (const item of modelRows.slice(0, 3)) {
-        const key = typeof item.provider === 'string' ? item.provider : '';
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key).push(item);
-      }
       const modelBlock =
         providerMode === true || modelRows.length === 0
           ? null
           : h(
               'div',
-              { className: 'aup-models', 'aria-label': t('tokens.byModel') },
-              h(
-                'div',
-                { className: 'aup-models-head' },
-                h('span', { className: 'aup-models-caption' }, t('tokens.byModel')),
-                groups.size === 1 && [...groups.keys()][0] !== '' ? h('span', { className: 'aup-models-provider' }, providerLabel([...groups.keys()][0], t)) : null
-              ),
-              [...groups.entries()].flatMap(([provider, items]) =>
-                provider === '' || groups.size === 1
-                  ? items.map((item) =>
-                      h(
-                        'div',
-                        { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
-                        (() => {
-                        const text = shortModelName(item.model);
-                        return h('span', { className: 'aup-model-name' + (text.length > 22 ? ' aup-model-name-long' : ''), title: item.model }, text);
-                      })(),
-                        h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
-                      )
-                    )
-                  : [
-                      h('span', { key: 'provider-' + provider, className: 'aup-model-provider' }, providerLabel(provider, t)),
-                      ...items.map((item) =>
-                        h(
-                          'div',
-                          { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
-                          (() => {
-                        const text = shortModelName(item.model);
-                        return h('span', { className: 'aup-model-name' + (text.length > 22 ? ' aup-model-name-long' : ''), title: item.model }, text);
-                      })(),
-                          h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
-                        )
-                      )
-                    ]
-              ),
+              { className: 'aup-models' },
+              modelRows.slice(0, 3).map((item) => {
+                const text = modelRowLabel(item, t);
+                return h(
+                  'div',
+                  { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row', title: (item.provider === undefined ? '' : item.provider + ' / ') + item.model },
+                  h('span', { className: 'aup-model-name' + modelRowLabelClass(text) }, text),
+                  h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
+                );
+              }),
               modelRows.length > 3 ? h('span', { className: 'aup-model-more' }, t('tokens.moreModels', { count: String(modelRows.length - 3) })) : null
             );
 

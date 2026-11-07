@@ -485,10 +485,11 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   );
   const tree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
   stateQueue.length = 0;
-  assert.equal(flat(walk(tree, (node) => hasClass(node, 'aup-models-caption'))[0]), '按模型', 'model block caption');
+  assert.equal(walk(tree, (node) => hasClass(node, 'aup-models-caption')).length, 0, 'no redundant 按模型 caption');
   const modelNames = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat);
+  assert.ok(modelNames[0].includes('DeepSeek API - deepseek-chat'), 'provider and model share one line: ' + modelNames[0]);
   const modelTokens = walk(tree, (node) => hasClass(node, 'aup-model-tokens')).map(flat);
-  assert.deepEqual(modelNames, ['deepseek-chat', 'deepseek-reasoner'], 'model rows show names');
+  assert.deepEqual(modelNames, ['DeepSeek API - deepseek-chat', 'DeepSeek API - deepseek-reasoner'], 'model rows merge provider and model');
   assert.deepEqual(modelTokens, ['5K', '3K'], 'model rows show compact token totals');
 }
 
@@ -513,8 +514,8 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(accountText.includes('OpenRouter'), 'balance card names the provider');
   assert.equal(walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 0, 'DeepSeek platform stats are hidden for an off-account session');
   const modelName = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat)[0];
-  assert.equal(modelName, 'deepseek-flash', 'model rows keep the full model name');
-  assert.equal(flat(walk(tree, (node) => hasClass(node, 'aup-models-provider'))[0]), 'OpenRouter', 'model caption names the provider');
+  assert.equal(modelName, 'OpenRouter - deepseek-flash', 'model row merges provider and model name');
+  assert.equal(walk(tree, (node) => hasClass(node, 'aup-models-provider')).length, 0, 'provider caption rows are gone');
 
   // Provider balance mode renders the provider amounts instead of the DeepSeek wallet.
   stateQueue.push(
@@ -702,7 +703,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   stateQueue.length = 0;
   const titles = walk(tree, (n) => hasClass(n, 'aup-card-title')).map((n) => flat(n));
   assert.deepEqual(titles, ['Session usage', 'Usage statistics', 'Account balance'], 'non-Chinese locales render English titles');
-  assert.equal(flat(walk(tree, (node) => hasClass(node, 'aup-models-provider'))[0]), 'DeepSeek API', 'provider names localize to English');
+  assert.ok(walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat).some((text) => text.startsWith('DeepSeek API - ')), 'provider names localize to English');
 }
 
 // --------------------------------------------------------------- settings --
