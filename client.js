@@ -357,7 +357,16 @@ window.__ModuleLoader__.load({
       '.aup-cards{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px}',
       '.aup-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}',
       '.aup-card-session{flex:4 1 0;justify-content:flex-start}',
-      '.aup-card-stats{flex:1 1 0;justify-content:flex-start}',
+      '.aup-card-stats{flex:1 1 0;justify-content:center}',
+      '.aup-stats-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:10px}',
+      '.aup-srcs{flex:none;display:flex;flex-direction:column;gap:10px}',
+      '.aup-src{display:flex;flex-direction:column;gap:4px;min-width:0}',
+      '.aup-src-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:baseline;gap:8px;font-size:13px;line-height:18px;font-variant-numeric:tabular-nums}',
+      '.aup-src-label{min-width:0;color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
+      '.aup-src-tokens{color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
+      '.aup-src-side{color:var(--dsw-alias-label-secondary);white-space:nowrap;min-width:44px;text-align:right}',
+      '.aup-src-track{height:4px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
+      '.aup-src-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary);opacity:.75}',
       '.aup-stats-head{flex:none;display:flex;flex-direction:column;gap:6px}',
       '.aup-card-account{flex:0 0 auto;min-height:0;justify-content:flex-start}',
       '.aup-account-body{flex:1 1 auto;min-height:132px;display:flex;flex-direction:column;justify-content:center;gap:6px}',
@@ -475,12 +484,6 @@ window.__ModuleLoader__.load({
       '.aup-dim:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-stats-summary{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-variant-numeric:tabular-nums;font-size:12px;line-height:18px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-stats-summary>span{min-width:0;white-space:normal;overflow-wrap:anywhere}',
-      '.aup-sources{display:flex;flex-direction:column;gap:2px;flex:none}',
-      '.aup-source-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:baseline;gap:10px;font-size:13px;line-height:18px;font-variant-numeric:tabular-nums}',
-      '.aup-source-row-account .aup-source-tokens,.aup-source-row-account .aup-source-cost{font-size:16px;line-height:22px;font-weight:500;color:var(--dsw-alias-label-primary)}',
-      '.aup-source-label{min-width:0;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
-      '.aup-source-tokens{color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap;text-align:right}',
-      '.aup-source-cost{min-width:52px;color:var(--dsw-alias-label-secondary);white-space:nowrap;text-align:right}',
       '.aup-stats-total{flex:none;font-size:20px;line-height:26px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
       '.aup-card-stats .aup-series{flex:1 1 auto;display:flex;flex-direction:column;justify-content:space-between;gap:4px}',
       '.aup-card-stats .aup-series-row{flex:1 1 0;min-height:17px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
@@ -1851,52 +1854,6 @@ window.__ModuleLoader__.load({
       ];
       const head = h('div', { className: 'aup-stats-head' }, sessionOnly === true ? headCore : [...headCore, dimensions]);
 
-      // Third-party-only sessions have no platform account data: the card shows the
-      // session's own per-source totals instead of a period series.
-      if (sessionOnly === true) {
-        const sources = (Array.isArray(categories) ? categories : []).filter(
-          (row) => row !== null && row !== undefined && Number.isFinite(row.tokens) && row.tokens > 0
-        );
-        const totalTokens = sources.reduce((sum, row) => sum + row.tokens, 0);
-        const maxTokens = Math.max(...sources.map((row) => row.tokens), 1);
-        return h(
-          'section',
-          { className: 'aup-card aup-card-stats' },
-          head,
-          sources.length === 0
-            ? h(Hint, null, t('stats.empty'))
-            : h(
-                'div',
-                { className: 'aup-series' },
-                sources.map((row) =>
-                  h(
-                    'div',
-                    { key: row.provider, className: 'aup-series-row', 'data-current': true, title: row.label + ' · ' + formatTokens(row.tokens) },
-                    h('span', { className: 'aup-series-label' }, row.label),
-                    h(
-                      'span',
-                      { className: 'aup-series-track' },
-                      h('span', { className: 'aup-series-fill', style: { width: Math.max(4, Math.round((row.tokens / maxTokens) * 100)) + '%' } })
-                    ),
-                    h(
-                      'span',
-                      { className: 'aup-series-value' },
-                      h('span', { className: 'aup-series-tokens' }, formatTokens(row.tokens)),
-                      h('span', { className: 'aup-series-cost' }, t('tokens.requestsCount', { count: String(Number.isFinite(row.requests) ? row.requests : 0) }))
-                    )
-                  )
-                )
-              ),
-          sources.length === 0
-            ? null
-            : h(
-                'div',
-                { className: 'aup-stats-summary' },
-                h('span', null, t('stats.summary.sources', { total: formatTokens(totalTokens), count: String(sources.length) }))
-              )
-        );
-      }
-
       if (state.phase === 'loading') {
         const skeletonRows = [];
         for (let index = 0; index < 7; index += 1) {
@@ -1946,11 +1903,7 @@ window.__ModuleLoader__.load({
       const shownTotal = visibleCells.reduce((sum, cell) => sum + cell.total, 0);
       const shownCost = visibleCells.reduce((sum, cell) => sum + cell.cost, 0);
       const shownCount = visibleCells.reduce((sum, cell) => sum + (Number.isFinite(cell.count) ? cell.count : 0), 0);
-      const summary = t(source === 'platform' ? 'stats.summary.requests' : 'stats.summary.sessions', {
-        total: formatTokens(shownTotal),
-        count: String(shownCount)
-      });
-      const rows = visibleCells.map((cell) => {
+      const periodRows = visibleCells.map((cell) => {
         const detail =
           showCost !== false && cell.cost > 0
             ? cell.label + ' · ' + formatTokens(cell.total) + ' tokens · ' + formatCost(cell.cost, currency, locale, estimate)
@@ -1989,79 +1942,78 @@ window.__ModuleLoader__.load({
         );
       });
 
-      const extraSources = (Array.isArray(categories) ? categories : []).filter(
+      // One row per source, identical in every session shape.
+      const providerRows = (Array.isArray(categories) ? categories : []).filter(
         (row) => row !== null && row !== undefined && Number.isFinite(row.tokens) && row.tokens > 0
       );
-      const sourceBlock =
-        extraSources.length === 0
-          ? null
-          : h(
+      const sources = [];
+      if (sessionOnly !== true) {
+        sources.push({
+          key: 'account',
+          label: t('stats.platformBadge'),
+          tokens: shownTotal,
+          side: showCost === false ? '' : formatCost(shownCost, currency, locale, estimate),
+          note: t('tokens.requestsCount', { count: String(shownCount) })
+        });
+      }
+      for (const row of providerRows) {
+        sources.push({
+          key: row.provider,
+          label: row.label,
+          tokens: row.tokens,
+          side: t('stats.sessionScope'),
+          note: t('tokens.requestsCount', { count: String(Number.isFinite(row.requests) ? row.requests : 0) })
+        });
+      }
+      const sourceTotal = sources.reduce((sum, row) => sum + row.tokens, 0);
+      const sourceMax = Math.max(...sources.map((row) => row.tokens), 1);
+      const sourceList = h(
+        'div',
+        { className: 'aup-srcs' },
+        sources.map((row) =>
+          h(
+            'div',
+            { key: row.key, className: 'aup-src', title: row.label + ' · ' + formatTokens(row.tokens) + ' · ' + row.note },
+            h(
               'div',
-              { className: 'aup-sources' },
-              h(
-                'div',
-                { key: 'account', className: 'aup-source-row aup-source-row-account' },
-                h('span', { className: 'aup-source-label' }, t('stats.platformBadge')),
-                h('span', { className: 'aup-source-tokens' }, formatTokens(shownTotal)),
-                showCost === false
-                  ? null
-                  : h('span', { className: 'aup-source-cost' }, formatCost(shownCost, currency, locale, estimate))
-              ),
-              extraSources.map((row) =>
-                h(
-                  'div',
-                  { key: row.provider, className: 'aup-source-row' },
-                  h('span', { className: 'aup-source-label' }, row.label),
-                  h('span', { className: 'aup-source-tokens' }, formatTokens(row.tokens)),
-                  h('span', { className: 'aup-source-cost' }, t('stats.sessionScope'))
-                )
-              )
-            );
+              { className: 'aup-src-head' },
+              h('span', { className: 'aup-src-label' }, row.label),
+              h('span', { className: 'aup-src-tokens' }, formatTokens(row.tokens)),
+              row.side === '' ? null : h('span', { className: 'aup-src-side' }, row.side)
+            ),
+            h('div', { className: 'aup-src-track' }, h('span', { className: 'aup-src-fill', style: { width: Math.max(4, Math.round((row.tokens / sourceMax) * 100)) + '%' } }))
+          )
+        )
+      );
 
       return h(
         'section',
         { className: 'aup-card aup-card-stats' },
         head,
-        sourceBlock === null
-          ? h(
-              'div',
-              { className: 'aup-stats-summary' },
-              h('span', null, summary),
-              showCost !== false
-                ? h('span', { className: 'aup-stats-total' }, formatCost(series.cost, currency, locale, estimate))
-                : null
-            )
-          : sourceBlock,
-        series.total === 0
+        series.total === 0 && providerRows.length === 0
           ? h(Hint, null, t('stats.empty'))
-          : listMode === true
-            ? h('div', { className: 'aup-series', ref: seriesRef }, rows)
-            : h(
+          : h(
+              'div',
+              { className: 'aup-stats-body' },
+              sourceList,
+              listMode === true && sessionOnly !== true && series.total > 0
+                ? h('div', { className: 'aup-series', ref: seriesRef }, periodRows)
+                : null,
+              h(
                 'div',
-                { className: 'aup-trend' },
+                { className: 'aup-stats-summary' },
                 h(
-                  'div',
-                  { className: 'aup-trend-bars' },
-                  visibleCells.map((cell) =>
-                    h(
-                      'div',
-                      {
-                        key: cell.key,
-                        className: 'aup-trend-col',
-                        title: showCost !== false && cell.cost > 0
-                          ? cell.label + ' · ' + formatTokens(cell.total) + ' tokens · ' + formatCost(cell.cost, currency, locale, estimate)
-                          : cell.label + ' · ' + formatTokens(cell.total) + ' tokens'
-                      },
-                      h('span', {
-                        className: 'aup-trend-bar',
-                        'data-current': cell.current ? true : undefined,
-                        'data-zero': cell.total === 0 ? true : undefined,
-                        style: { height: series.max === 0 || cell.total === 0 ? '2px' : Math.max(4, Math.round((cell.total / series.max) * 100)) + '%' }
-                      })
-                    )
-                  )
+                  'span',
+                  null,
+                  sessionOnly === true
+                    ? t('stats.summary.sources', { total: formatTokens(sourceTotal), count: String(sources.length) })
+                    : t('stats.summary.requests', { total: formatTokens(shownTotal), count: String(shownCount) })
                 ),
+                showCost !== false && sessionOnly !== true
+                  ? h('span', { className: 'aup-stats-total' }, formatCost(shownCost, currency, locale, estimate))
+                  : null
               )
+            )
       );
     }
 

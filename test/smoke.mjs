@@ -525,7 +525,8 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(accountText.includes('OpenRouter'), 'balance card names the provider');
   const offAccountStats = walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0];
   assert.ok(offAccountStats !== undefined, 'the 用量统计 card always exists');
-  assert.equal(walk(offAccountStats, (node) => hasClass(node, 'aup-dim')).length, 0, 'no period switch without platform data');
+  assert.equal(walk(offAccountStats, (node) => hasClass(node, 'aup-dim')).length, 0, 'period switch only appears when platform data exists');
+  assert.ok(walk(offAccountStats, (node) => hasClass(node, 'aup-src')).length > 0, 'same source-row layout as a mixed session');
   assert.ok(flat(offAccountStats).includes('OpenRouter'), 'off-account stats list the session sources');
   const modelName = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat)[0];
   assert.equal(modelName, 'OpenRouter - deepseek-flash', 'model row merges provider and model name');
@@ -609,7 +610,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   );
   const mixedTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
   stateQueue.length = 0;
-  const sourceRows = walk(mixedTree, (node) => hasClass(node, 'aup-source-row')).map(flat);
+  const sourceRows = walk(mixedTree, (node) => hasClass(node, 'aup-src')).map(flat);
   assert.equal(sourceRows.length, 2, 'one row per source in a mixed session: ' + JSON.stringify(sourceRows));
   assert.ok(sourceRows[0].includes('DeepSeek API'), 'platform row first');
   assert.ok(sourceRows[1].includes('OpenCode Go'), 'third-party row second');
@@ -648,9 +649,9 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   );
   const trendTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
   stateQueue.length = 0;
-  assert.ok(walk(trendTree, (node) => hasClass(node, 'aup-trend')).length === 1, 'compact trend renders by default');
-  assert.equal(walk(trendTree, (node) => hasClass(node, 'aup-series-row') && !hasClass(node, 'aup-skeleton-row')).length, 0, 'no per-period rows in trend mode');
-  assert.ok(walk(trendTree, (node) => hasClass(node, 'aup-trend-bar')).length > 0, 'trend bars render');
+  assert.ok(walk(trendTree, (node) => hasClass(node, 'aup-src')).length === 1, 'one source row per session source');
+  assert.ok(walk(trendTree, (node) => hasClass(node, 'aup-src-fill')).length === 1, 'the source row shows a share bar');
+  assert.equal(walk(trendTree, (node) => hasClass(node, 'aup-series-row') && !hasClass(node, 'aup-skeleton-row')).length, 0, 'no per-period rows unless the list is enabled');
 
   const mixedAccount = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   assert.equal(walk(mixedAccount, (node) => hasClass(node, 'aup-account-note')).length, 0, 'no bottom note line on the account card');
