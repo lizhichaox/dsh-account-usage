@@ -31,6 +31,10 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'ut
   const zh = JSON.parse(fs.readFileSync(path.join(root, 'locale/zh.json'), 'utf8'));
   assert.ok(en.meta.title && en.meta.description, 'English display metadata');
   assert.ok(zh.meta.title && zh.meta.description, 'Chinese display metadata');
+  for (const lang of ['ja', 'es', 'fr', 'de', 'ru', 'pt']) {
+    const fallback = JSON.parse(fs.readFileSync(path.join(root, 'locale/' + lang + '.json'), 'utf8'));
+    assert.ok(fallback.meta.title && fallback.meta.description, 'English metadata fallback for ' + lang);
+  }
   assert.ok(fs.statSync(path.join(root, 'icon.svg')).size > 0, 'icon present');
   assert.ok(fs.existsSync(path.join(root, 'cordis.patch.yml')), 'patch present');
   assert.ok(fs.existsSync(path.join(root, 'LICENSE')), 'license present');
@@ -143,7 +147,8 @@ function bootClient(config = {}) {
           return text;
         };
       },
-      getSnapshot: () => ({ active: 'zh' })
+      getSnapshot: () => ({ active: 'zh' }),
+      subscribe: () => () => {}
     },
     slots: {
       inject(name, callback) {
@@ -520,6 +525,39 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(!providerText.includes('542.52'), 'DeepSeek wallet never renders in provider mode');
   assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 0, 'platform stats stay hidden in provider mode');
   assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-session')).length, 1, 'session card still renders');
+}
+
+// --------------------------------------------------------------- english --
+{
+  const enDict = first.dictionary.accountUsage.en;
+  const enT = (key, params) => {
+    let text = enDict[key];
+    if (text === undefined) return key;
+    if (params) text = text.replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match));
+    return text;
+  };
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 5000, requests: 2 }], totalTokens: 5000 },
+    { phase: 'idle', items: [], error: undefined },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const tree = bodyRegistration.component({
+    ...bodyProps,
+    t: enT,
+    bindTranslation: () => enT,
+    readLocale: () => 'en',
+    useProjection: () => undefined
+  });
+  stateQueue.length = 0;
+  const titles = walk(tree, (n) => hasClass(n, 'aup-card-title')).map((n) => flat(n));
+  assert.deepEqual(titles, ['Session usage', 'Usage statistics', 'Account balance'], 'non-Chinese locales render English titles');
+  assert.equal(flat(walk(tree, (node) => hasClass(node, 'aup-models-provider'))[0]), 'DeepSeek account', 'provider names localize to English');
 }
 
 // --------------------------------------------------------------- settings --

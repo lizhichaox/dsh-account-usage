@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Account usage",
+    "description": "Shows account balances and token usage grouped by day, week, month, quarter, or year in the right sidebar."
+  }
+}

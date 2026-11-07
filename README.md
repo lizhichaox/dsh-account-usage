@@ -195,6 +195,15 @@ DSH 输入框底部原有一行会话统计（轮数/步数 · tok/s · Token ·
   轮数、步数、请求次数、缓存命中、平均每请求、输出速度、模型用时、工具用时、首 token 平均（TTFT）、
   输出 Tokens，以及 Token 合计/明细、上下文占用与系统/工具/消息构成
 
+## 语言
+
+- 跟随 DSH 的语言设置（Settings → General），中文环境显示中文，**其它所有语言一律显示英文**
+- 内置语言 `zh` 用中文词典；`en` 用英文；`ja / es / fr / de / ru / pt` 显式注册为英文词典，
+  语言包回退链最终到 `en`，因此非中文不会再出现中文文案
+- Provider 名称、金额/消费格式、错误原因、时长与单位都随语言切换；切换语言即时生效，无需刷新
+- 插件元数据（名称/描述）也提供 `ja/es/fr/de/ru/pt` 的英文回退文件
+- 界面文案全部走 `ctx.locale.register('accountUsage', { zh, en, ... })`，不再硬编码中文
+
 ## 第三方 Provider 识别与余额
 
 会话不一定走 DeepSeek 账号：DSH 可以配置 OpenRouter、Anthropic、OpenAI、DeepSeek API Key 等

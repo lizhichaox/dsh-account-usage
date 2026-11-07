@@ -115,6 +115,8 @@ window.__ModuleLoader__.load({
       'account.signedOut': '当前未登录 DeepSeek 账号',
       'account.signedOutHint': '设置 → 账号 登录后显示余额',
       'balance.recharge': '余额',
+      'provider.deepseekAccount': 'DeepSeek 账号',
+      'provider.deepseekApiKey': 'DeepSeek API Key',
       'balance.used': '已用',
       'account.providerUnavailable': '暂时读不到 {provider} 余额。',
       'account.providerUnsupported': '{provider} 不支持余额查询。',
@@ -205,6 +207,8 @@ window.__ModuleLoader__.load({
       'account.signedOut': 'No DeepSeek account is signed in',
       'account.signedOutHint': 'Sign in via Settings to see the balance',
       'balance.recharge': 'Balance',
+      'provider.deepseekAccount': 'DeepSeek account',
+      'provider.deepseekApiKey': 'DeepSeek API key',
       'balance.used': 'Used',
       'account.providerUnavailable': 'Cannot read the {provider} balance right now.',
       'account.providerUnsupported': '{provider} does not expose a balance API.',
@@ -684,10 +688,9 @@ window.__ModuleLoader__.load({
     // ------------------------------------------------------------- providers --
 
     /** Human labels for the model providers a session can record. */
-    const PROVIDER_LABELS = {
-      'deepseek-account': 'DeepSeek 账号',
-      'deepseek': 'DeepSeek API Key',
-      'openrouter': 'OpenRouter',
+    /** Proper names for non-DeepSeek providers; DeepSeek route names are localized. */
+    const PROVIDER_NAMES = {
+      openrouter: 'OpenRouter',
       anthropic: 'Anthropic',
       openai: 'OpenAI',
       google: 'Google',
@@ -703,8 +706,10 @@ window.__ModuleLoader__.load({
     /** Provider id that bills the signed-in DeepSeek account balance. */
     const ACCOUNT_PROVIDER = 'deepseek-account';
 
-    function providerLabel(provider) {
-      return PROVIDER_LABELS[provider] === undefined ? provider : PROVIDER_LABELS[provider];
+    function providerLabel(provider, t) {
+      if (provider === 'deepseek-account') return t('provider.deepseekAccount');
+      if (provider === 'deepseek' || (typeof provider === 'string' && provider.startsWith('deepseek-api'))) return t('provider.deepseekApiKey');
+      return PROVIDER_NAMES[provider] === undefined ? provider : PROVIDER_NAMES[provider];
     }
 
     /** Short display name for a model id: the last path segment without routing prefixes. */
@@ -1339,9 +1344,10 @@ window.__ModuleLoader__.load({
     }
 
     /** Signed-in identity and wallet balances. */
-    function AccountSection({ state, t, onRetry, offAccountLabel, offAccountAll, providerBalances }) {
+    function AccountSection({ state, t, onRetry, offAccountLabel, offAccountAll, providerBalances, locale: uiLocale }) {
       const result = state.result;
-      const locale = result === undefined ? undefined : result.locale;
+      const accountLocale = result === undefined ? undefined : result.locale;
+      const locale = uiLocale === undefined ? accountLocale : uiLocale;
       const head = [h(CardHead, { icon: WalletGlyph, title: t('account.title') }), h('span', { className: 'aup-divider', 'aria-hidden': true })];
 
       if (offAccountAll === true) {
@@ -1373,9 +1379,9 @@ window.__ModuleLoader__.load({
           const items = [];
           for (const entry of rows) {
             const currency = currencyOf(entry);
-            const prefix = providerLabel(entry.provider) + ' ';
-            if (Number.isFinite(entry.remaining)) items.push(h('div', { key: entry.provider + '-remaining', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.recharge')), h('span', { className: 'aup-balance-value' }, formatMoney(String(entry.remaining), currency, undefined))));
-            if (Number.isFinite(entry.used)) items.push(h('div', { key: entry.provider + '-used', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.used')), h('span', { className: 'aup-balance-value aup-minor' }, formatMoney(String(entry.used), currency, undefined))));
+            const prefix = providerLabel(entry.provider, t) + ' ';
+            if (Number.isFinite(entry.remaining)) items.push(h('div', { key: entry.provider + '-remaining', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.recharge')), h('span', { className: 'aup-balance-value' }, formatMoney(String(entry.remaining), currency, locale))));
+            if (Number.isFinite(entry.used)) items.push(h('div', { key: entry.provider + '-used', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.used')), h('span', { className: 'aup-balance-value aup-minor' }, formatMoney(String(entry.used), currency, locale))));
           }
           return h('section', { className: 'aup-card aup-card-account aup-card-account-provider' }, providerHead, h('div', { className: 'aup-provider-body' }, h('div', { className: 'aup-balance' }, items), note));
         }
@@ -1407,7 +1413,7 @@ window.__ModuleLoader__.load({
               { className: 'aup-provider-hero' },
               h('span', { className: 'aup-provider-hero-label' }, heroLabel),
               (() => {
-                const text = formatMoney(String(heroValue), currency, undefined);
+                const text = formatMoney(String(heroValue), currency, locale);
                 return h('span', { className: 'aup-provider-hero-value' + valueClass(text) }, text);
               })()
             ),
@@ -1416,7 +1422,7 @@ window.__ModuleLoader__.load({
               : h(
                   'div',
                   { className: 'aup-provider-progress' },
-                  h('div', { className: 'aup-provider-rate' }, h('span', null, t('account.providerUsedRate', { percent: String(usedPercent) })), h('span', null, totalKnown === undefined ? '' : formatMoney(String(totalKnown), currency, undefined))),
+                  h('div', { className: 'aup-provider-rate' }, h('span', null, t('account.providerUsedRate', { percent: String(usedPercent) })), h('span', null, totalKnown === undefined ? '' : formatMoney(String(totalKnown), currency, locale))),
                   h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: usedPercent + '%' } }))
                 ),
             meta.length === 0
@@ -1425,7 +1431,7 @@ window.__ModuleLoader__.load({
                   'div',
                   { className: 'aup-provider-meta' },
                   meta.map((item) => h('div', { key: item.key, className: 'aup-provider-meta-item' }, h('span', { className: 'aup-provider-meta-label' }, item.label), (() => {
-                    const text = formatMoney(String(item.value), currency, undefined);
+                    const text = formatMoney(String(item.value), currency, locale);
                     return h('span', { className: 'aup-provider-meta-value' + valueClass(text) }, text);
                   })()))
                 ),
@@ -1438,7 +1444,12 @@ window.__ModuleLoader__.load({
         return h('section', { className: 'aup-card aup-card-account' }, head, h(Hint, null, t('loading')));
       }
       if (state.phase === 'error' || !result || result.ok !== true) {
-        const detail = result && result.message ? result.message : '';
+        const code = result && typeof result.code === 'string' ? result.code : '';
+        const reasonKey = code === '' ? '' : 'stats.reason.' + code;
+        const reason = reasonKey !== '' && t(reasonKey) !== reasonKey ? t(reasonKey) : '';
+        const rawDetail = result && result.message ? String(result.message) : '';
+        const chinese = String(locale || '').toLowerCase().startsWith('zh');
+        const detail = reason !== '' ? reason : chinese ? rawDetail : '';
         return h(
           'section',
           { className: 'aup-card aup-card-account' },
@@ -1752,7 +1763,7 @@ window.__ModuleLoader__.load({
                 'div',
                 { className: 'aup-models-head' },
                 h('span', { className: 'aup-models-caption' }, t('tokens.byModel')),
-                groups.size === 1 && [...groups.keys()][0] !== '' ? h('span', { className: 'aup-models-provider' }, providerLabel([...groups.keys()][0])) : null
+                groups.size === 1 && [...groups.keys()][0] !== '' ? h('span', { className: 'aup-models-provider' }, providerLabel([...groups.keys()][0], t)) : null
               ),
               [...groups.entries()].flatMap(([provider, items]) =>
                 provider === '' || groups.size === 1
@@ -1768,7 +1779,7 @@ window.__ModuleLoader__.load({
                       )
                     )
                   : [
-                      h('span', { key: 'provider-' + provider, className: 'aup-model-provider' }, providerLabel(provider)),
+                      h('span', { key: 'provider-' + provider, className: 'aup-model-provider' }, providerLabel(provider, t)),
                       ...items.map((item) =>
                         h(
                           'div',
@@ -1877,7 +1888,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Right-sidebar tab body. */
-    function AccountUsageBody({ t, useProjection, readAccount, readUsage, readSessionModels, readProviderBalances, sessionId }) {
+    function AccountUsageBody({ t: initialT, useProjection, readAccount, readUsage, readSessionModels, readProviderBalances, readLocale, subscribeLocale, bindTranslation, sessionId }) {
       const [account, setAccount] = React.useState({ phase: 'loading', result: undefined, refreshing: false });
       const [usage, setUsage] = React.useState({ phase: 'loading', days: [], ok: undefined, refreshing: false, dimension: DIMENSIONS[0].id });
       const [sessionModels, setSessionModels] = React.useState({ phase: 'idle', items: [], totalTokens: 0 });
@@ -1888,10 +1899,19 @@ window.__ModuleLoader__.load({
       const [usageRequest, setUsageRequest] = React.useState({ count: 0, force: false });
       const [settingsOpen, setSettingsOpen] = React.useState(false);
       const gearRef = React.useRef(null);
+      const [localeId, setLocaleId] = React.useState(readLocale);
+      const t = React.useMemo(() => bindTranslation(), [bindTranslation, localeId]);
+      const displayLocale = String(localeId).toLowerCase().startsWith('zh') ? localeId : 'en';
+
+      React.useEffect(() => {
+        const update = () => setLocaleId(readLocale());
+        update();
+        return subscribeLocale(update);
+      }, [readLocale, subscribeLocale]);
       const busy = account.refreshing === true || usage.refreshing === true;
       const sessionProviders = [...new Set((sessionModels.items || []).map((item) => item.provider).filter((provider) => typeof provider === 'string' && provider !== ''))];
       const offAccountProviders = sessionProviders.filter((provider) => !isAccountProvider(provider));
-      const offAccountLabel = [...new Set(offAccountProviders.map(providerLabel))].join(' / ');
+      const offAccountLabel = [...new Set(offAccountProviders.map((provider) => providerLabel(provider, t)))].join(' / ');
       const offAccountAll = sessionProviders.length > 0 && offAccountProviders.length === sessionProviders.length;
       const cachedUsage = dimensionResults.get(dimension);
       /** Render the selected dimension's own data immediately; never bucket another dimension's days. */
@@ -2238,7 +2258,7 @@ window.__ModuleLoader__.load({
               onRetry: refresh,
               t,
               fallbackCurrency: currency,
-              locale: accountLocale,
+              locale: displayLocale,
               showCost: settings.showCost,
               thirdPartyLabel: offAccountLabel
             })
@@ -2250,7 +2270,8 @@ window.__ModuleLoader__.load({
               onRetry: refresh,
               offAccountLabel,
               offAccountAll,
-              providerBalances
+              providerBalances,
+              locale: displayLocale
             })
           : null,
         settings.cards.session !== true && settings.cards.stats !== true && settings.cards.account !== true
@@ -2332,7 +2353,8 @@ window.__ModuleLoader__.load({
 
     /** Client plugin body. */
     function apply(ctx) {
-      ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'account-usage: dictionaries');
+      const dictionaries = { zh, en, ja: en, es: en, fr: en, de: en, ru: en, pt: en };
+      ctx.effect(() => ctx.locale.register(NS, dictionaries), 'account-usage: dictionaries');
 
       ctx.effect(
         () => {
@@ -2346,6 +2368,9 @@ window.__ModuleLoader__.load({
       );
 
       const t = ctx.locale.bind(NS);
+      const readLocale = () => ctx.locale.getSnapshot().active;
+      const subscribeLocale = (listener) => ctx.locale.subscribe(listener);
+      const bindTranslation = () => ctx.locale.bind(NS);
       const readAccount = createAccountReader(ctx);
       const readUsage = createUsageReader(ctx);
       const readSessionModels = createSessionModelReader();
@@ -2389,7 +2414,7 @@ window.__ModuleLoader__.load({
                 name: 'sidebar.right.pane.tab',
                 key: ID,
                 locale: NS,
-                inject: () => ({ readAccount, readUsage, readSessionModels, readProviderBalances })
+                inject: () => ({ readAccount, readUsage, readSessionModels, readProviderBalances, readLocale, subscribeLocale, bindTranslation })
               },
               AccountUsageBody
             )
