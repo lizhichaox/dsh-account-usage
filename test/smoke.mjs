@@ -599,6 +599,26 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(sourceRows[0].includes('DeepSeek API'), 'platform row first');
   assert.ok(sourceRows[1].includes('OpenCode Go'), 'third-party row second');
   assert.ok(sourceRows[1].includes('2.5M'), 'third-party row shows its session tokens');
+  // Long stat values shrink a step so they never overlap the neighbouring column.
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [{ date: '2026-11-07', tokens: 1_000_000, cost: 1.5, count: 10 }], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 1149 }], totalTokens: 1_000_000 },
+    { phase: 'idle', items: [], error: undefined },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const wideProjection = (key) => (key === 'sessionStats' ? { turns: 106, steps: 1155, decodeTokens: 900000, decodeMs: 5000, llmMs: 9180000, toolMs: 2476000, ttftMs: 2300, ttftSteps: 1 } : undefined);
+  const wideTree = bodyRegistration.component({ t: first.t, useProjection: wideProjection, ...bodyProps });
+  stateQueue.length = 0;
+  const wideValues = walk(wideTree, (node) => hasClass(node, 'aup-stat-value')).map((node) => ({ text: flat(node), shrunk: hasClass(node, 'aup-stat-value-s') || hasClass(node, 'aup-stat-value-xs') }));
+  const turnsCell = wideValues.find((cell) => cell.text.includes('/'));
+  assert.ok(turnsCell !== undefined, 'turns / steps cell renders');
+  assert.equal(turnsCell.shrunk, true, 'long stat value shrinks instead of overlapping: ' + turnsCell.text);
+
   // The default usage view is a compact trend: no per-period text rows, only bars.
   stateQueue.push(
     accountState,

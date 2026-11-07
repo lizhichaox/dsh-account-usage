@@ -408,9 +408,11 @@ window.__ModuleLoader__.load({
       '.aup-provider-updated{margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-stat-list{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px}',
       '.aup-session-sep{flex:none;height:1px;background:var(--dsw-alias-border-l2)}',
-      '.aup-stat-row{display:grid;grid-template-columns:60px minmax(0,1fr);align-items:baseline;gap:4px;min-width:0;font-size:13px;line-height:20px}',
+      '.aup-stat-row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:baseline;gap:4px;min-width:0;font-size:13px;line-height:20px}',
       '.aup-stat-label{min-width:0;color:var(--dsw-alias-label-secondary);white-space:nowrap;line-height:20px}',
       '.aup-stat-value{min-width:0;justify-self:stretch;text-align:right;color:var(--dsw-alias-label-primary);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:13px;line-height:20px}',
+      '.aup-stat-value.aup-stat-value-s{font-size:12px;letter-spacing:-.01em}',
+      '.aup-stat-value.aup-stat-value-xs{font-size:11px;letter-spacing:-.02em}',
       '.aup-context-breakdown{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
       '.aup-context-used{display:flex;height:100%;gap:1px;border-radius:inherit;overflow:hidden}',
       '.aup-context-seg{flex:1 1 0;min-width:2px;height:100%}',
@@ -823,6 +825,13 @@ window.__ModuleLoader__.load({
       const index = model.lastIndexOf('/');
       const tail = index >= 0 ? model.slice(index + 1) : model;
       return tail.replace(/^~+/, '');
+    }
+
+    /** Size class for stat values: long numbers shrink a step instead of overlapping. */
+    function statValueClass(text) {
+      if (typeof text !== 'string') return '';
+      const length = text.length;
+      return length >= 12 ? ' aup-stat-value-xs' : length >= 9 ? ' aup-stat-value-s' : '';
     }
 
     /** Size class for amounts that would otherwise overflow their card. */
@@ -2334,7 +2343,12 @@ window.__ModuleLoader__.load({
               'div',
               { className: 'aup-stat-list' },
               detailItems.map((item) =>
-                h('div', { key: item.key, className: 'aup-stat-row' }, h('span', { className: 'aup-stat-label' }, item.label), h('span', { className: 'aup-stat-value' }, item.value))
+                h(
+                  'div',
+                  { key: item.key, className: 'aup-stat-row' },
+                  h('span', { className: 'aup-stat-label' }, item.label),
+                  h('span', { className: 'aup-stat-value' + statValueClass(item.value) }, item.value)
+                )
               )
             ),
         modelBlock === null ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
