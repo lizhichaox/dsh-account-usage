@@ -162,6 +162,12 @@ window.__ModuleLoader__.load({
       'tokens.stat.turns': '轮数',
       'tokens.stat.steps': '步数',
       'tokens.stat.speed': '输出速度',
+      'tokens.stat.llm': '模型用时',
+      'tokens.stat.tool': '工具用时',
+      'tokens.stat.ttft': '首 token 平均',
+      'tokens.duration.minutes': '{minutes} 分 {seconds} 秒',
+      'tokens.duration.seconds': '{seconds} 秒',
+      'tokens.duration.milliseconds': '{milliseconds} 毫秒',
       'tokens.breakdown.system': '系统',
       'tokens.breakdown.tools': '工具',
       'tokens.breakdown.messages': '消息',
@@ -247,6 +253,12 @@ window.__ModuleLoader__.load({
       'tokens.stat.turns': 'Turns',
       'tokens.stat.steps': 'Steps',
       'tokens.stat.speed': 'Output speed',
+      'tokens.stat.llm': 'LLM time',
+      'tokens.stat.tool': 'Tool time',
+      'tokens.stat.ttft': 'Avg TTFT',
+      'tokens.duration.minutes': '{minutes}m {seconds}s',
+      'tokens.duration.seconds': '{seconds}s',
+      'tokens.duration.milliseconds': '{milliseconds}ms',
       'tokens.breakdown.system': 'System',
       'tokens.breakdown.tools': 'Tools',
       'tokens.breakdown.messages': 'Messages',
@@ -299,7 +311,7 @@ window.__ModuleLoader__.load({
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
       '.aup-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden;container-type:size;container-name:aup-card}',
       '.aup-card-session{flex:4 1 0;justify-content:flex-start}',
-      '.aup-card-stats{flex:4 1 0;justify-content:space-between}',
+      '.aup-card-stats{flex:1 1 0;justify-content:space-between}',
       '.aup-card-account{flex:0 0 auto;min-height:96px;justify-content:flex-start}',
       '.aup-card-head{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex:none}',
       '.aup-divider{display:block;height:1px;flex:none;margin:0;background:var(--dsw-alias-border-l2)}',
@@ -336,10 +348,10 @@ window.__ModuleLoader__.load({
       '.aup-model-name{min-width:0;font-size:12px;line-height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-tokens{flex:none;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
       '.aup-model-more{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
-      '.aup-session-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px}',
-      '.aup-session-stat{display:flex;flex-direction:column;gap:2px;min-width:0}',
-      '.aup-session-stat-label{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
-      '.aup-session-stat-value{font-size:17px;line-height:22px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
+      '.aup-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 16px}',
+      '.aup-detail-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0;font-size:13px;line-height:18px}',
+      '.aup-detail-label{min-width:0;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.aup-detail-value{flex:none;color:var(--dsw-alias-label-primary);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.aup-context-breakdown{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
       '.aup-context-compose{display:flex;height:5px;gap:1px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-skeleton)}',
       '.aup-context-seg{flex:1 1 0;min-width:2px;height:100%}',
@@ -433,7 +445,7 @@ window.__ModuleLoader__.load({
       '.aup-hint{font-size:13px;line-height:16px}',
       // ---- content shedding at short card heights (no scrolling) ----
       '@container aup-card (max-height:380px){.aup-card-session .aup-compose{display:none}}',
-      '@container aup-card (max-height:350px){.aup-card-session .aup-session-stats{display:none}}',
+      '@container aup-card (max-height:330px){.aup-card-session .aup-detail-grid{display:none}}',
       '@container aup-card (max-height:260px){.aup-card-session .aup-models{display:none}}',
       '@container aup-card (max-height:250px){.aup-card-session .aup-context{display:none}}',
       '@container aup-card (max-height:150px){.aup-card-session .aup-session-grid{display:none}}',
@@ -1605,7 +1617,7 @@ window.__ModuleLoader__.load({
     }
 
     /** This session's durable token totals plus context occupancy. */
-    function TokenSection({ useProjection, t, sessionModels, providerMode }) {
+    function TokenSection({ useProjection, t, sessionModels }) {
       const usage = useProjection('tokenUsage');
       const pressure = useProjection('contextPressure');
       const contextBreakdown = useProjection('contextBreakdown');
@@ -1648,13 +1660,31 @@ window.__ModuleLoader__.load({
         sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.decodeTokens) && Number.isFinite(sessionStats.decodeMs) && sessionStats.decodeMs > 0
           ? Math.round(sessionStats.decodeTokens / (sessionStats.decodeMs / 1000))
           : undefined;
-      const statCells = [];
-      if (turns !== undefined) statCells.push({ key: 'turns', label: t('tokens.stat.turns'), value: String(turns) });
-      if (steps !== undefined) statCells.push({ key: 'steps', label: t('tokens.stat.steps'), value: String(steps) });
-      if (speed !== undefined && speed > 0) statCells.push({ key: 'speed', label: t('tokens.stat.speed'), value: speed + ' tok/s' });
-      if (requestCount > 0) statCells.push({ key: 'requests', label: t('tokens.stat.requests'), value: String(requestCount) });
-      if (cacheHit !== undefined) statCells.push({ key: 'cacheHit', label: t('tokens.stat.cacheHit'), value: cacheHit + '%' });
-      if (average !== undefined && average > 0) statCells.push({ key: 'average', label: t('tokens.stat.avg'), value: formatTokens(average) });
+      const duration = (ms) => {
+        if (!Number.isFinite(ms) || ms <= 0) return undefined;
+        if (ms < 1000) return t('tokens.duration.milliseconds', { milliseconds: String(Math.round(ms)) });
+        const seconds = ms / 1000;
+        if (seconds < 60) return t('tokens.duration.seconds', { seconds: String(Math.round(seconds * 10) / 10) });
+        return t('tokens.duration.minutes', { minutes: String(Math.floor(seconds / 60)), seconds: String(Math.round(seconds % 60)) });
+      };
+      const llmTime = sessionStats === null || sessionStats === undefined ? undefined : duration(sessionStats.llmMs);
+      const toolTime = sessionStats === null || sessionStats === undefined ? undefined : duration(sessionStats.toolMs);
+      const ttft =
+        sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.ttftMs) && Number.isFinite(sessionStats.ttftSteps) && sessionStats.ttftSteps > 0
+          ? duration(sessionStats.ttftMs / sessionStats.ttftSteps)
+          : undefined;
+      const detailItems = [
+        { key: 'turns', label: t('tokens.stat.turns'), value: turns === undefined ? undefined : String(turns) },
+        { key: 'steps', label: t('tokens.stat.steps'), value: steps === undefined ? undefined : String(steps) },
+        { key: 'requests', label: t('tokens.stat.requests'), value: requestCount > 0 ? String(requestCount) : undefined },
+        { key: 'cacheHit', label: t('tokens.stat.cacheHit'), value: cacheHit === undefined ? undefined : cacheHit + '%' },
+        { key: 'average', label: t('tokens.stat.avg'), value: average === undefined || average <= 0 ? undefined : formatTokens(average) },
+        { key: 'speed', label: t('tokens.stat.speed'), value: speed === undefined || speed <= 0 ? undefined : speed + ' tok/s' },
+        { key: 'llm', label: t('tokens.stat.llm'), value: llmTime },
+        { key: 'tool', label: t('tokens.stat.tool'), value: toolTime },
+        { key: 'ttft', label: t('tokens.stat.ttft'), value: ttft },
+        { key: 'output', label: t('tokens.output'), value: usage ? formatTokens(usage.outputTokens || 0) : undefined }
+      ].filter((item) => item.value !== undefined);
 
       const composeSegments = usage
         ? [
@@ -1758,13 +1788,13 @@ window.__ModuleLoader__.load({
                 )
               )
             ),
-        statCells.length === 0
+        detailItems.length === 0
           ? null
           : h(
               'div',
-              { className: 'aup-session-stats' },
-              statCells.map((cell) =>
-                h('div', { key: cell.key, className: 'aup-session-stat' }, h('span', { className: 'aup-session-stat-label' }, cell.label), h('span', { className: 'aup-session-stat-value' }, cell.value))
+              { className: 'aup-detail-grid' },
+              detailItems.map((item) =>
+                h('div', { key: item.key, className: 'aup-detail-row' }, h('span', { className: 'aup-detail-label' }, item.label), h('span', { className: 'aup-detail-value' }, item.value))
               )
             ),
         modelBlock,
@@ -1805,7 +1835,7 @@ window.__ModuleLoader__.load({
 
       return h(
         'section',
-        { className: 'aup-card aup-card-session' + (providerMode === true ? ' aup-card-session-fixed' : '') },
+        { className: 'aup-card aup-card-session aup-card-session-fixed' },
         h(CardHead, { icon: ChatGlyph, title: t('tokens.title') }),
         h('span', { className: 'aup-divider', 'aria-hidden': true }),
         sessionBody
@@ -2165,7 +2195,7 @@ window.__ModuleLoader__.load({
         settingsOpen === true
           ? h(SettingsPanel, { settings, onChange: applySettings, onReset: resetSettings, onClose: closeSettings, t })
           : null,
-        settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels, providerMode: offAccountAll === true }) : null,
+        settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels }) : null,
         settings.cards.stats === true && offAccountAll !== true
           ? h(UsageSection, {
               state: displayedUsage,
