@@ -420,11 +420,14 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const total = walk(readyTree, (n) => hasClass(n, 'aup-session-total-value'))[0];
   assert.equal(flat(total), '5.92B', 'session total uses B unit with two decimals');
   const header = walk(readyTree, (n) => hasClass(n, 'aup-head'))[0];
-  const headerActions = header.children.find((child) => child && hasClass(child, 'aup-head-actions'));
-  assert.ok(headerActions, 'header groups its actions on the right');
-  assert.equal(headerActions.children.length, 2, 'settings gear + refresh button');
-  assert.ok(headerActions.children[0].props['aria-haspopup'] === 'dialog', 'first action opens settings');
-  assert.ok(headerActions.children[1].props['aria-label'] !== undefined, 'second action refreshes');
+  const headerGroups = header.children.filter((child) => child && hasClass(child, 'aup-head-actions'));
+  assert.equal(headerGroups.length, 2, 'settings on the left, refresh on the right');
+  assert.ok(hasClass(headerGroups[0], 'aup-head-left'), 'settings group is the left one');
+  assert.equal(headerGroups[0].children.length, 1, 'settings button');
+  assert.equal(headerGroups[1].children.length, 1, 'refresh button');
+  assert.ok(headerGroups[0].children[0].props['aria-haspopup'] === 'dialog', 'left action opens settings');
+  assert.ok(headerGroups[1].children[0].props['aria-label'] !== undefined, 'right action refreshes');
+  assert.equal(walk(header, (n) => hasClass(n, 'aup-title')).length, 0, 'panel title is not repeated in the header');
   // Unit-compacted token counts stop at two decimal places (78.77M, not 78.770161M).
   const preciseTree = render(
     {
