@@ -356,6 +356,8 @@ window.__ModuleLoader__.load({
       '.aup-models{display:flex;flex-direction:column;gap:2px;flex:none;min-height:0}',
       '.aup-models-caption{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-item{display:flex;flex-direction:column;gap:2px;min-width:0}',
+      '.aup-model-track{height:4px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
+      '.aup-model-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary)}',
       '.aup-model-meta{display:flex;justify-content:space-between;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:16px}',
       '.aup-model-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0;font-size:13px;line-height:17px;font-variant-numeric:tabular-nums}',
       '.aup-model-name{min-width:0;font-size:12px;line-height:16px;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
@@ -434,6 +436,9 @@ window.__ModuleLoader__.load({
       '.aup-card-stats .aup-series-row{flex:1 1 0;min-height:17px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
       '.aup-card-stats .aup-series-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
       '.aup-card-stats .aup-series-row[data-current]{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent)}',
+      '.aup-card-stats .aup-series-row[data-zero]{opacity:.45}',
+      '.aup-card-stats .aup-series-row[data-zero]:hover{opacity:.8}',
+      '.aup-card-stats .aup-series-row[data-zero] .aup-series-track{opacity:.5}',
       '.aup-card-stats .aup-series-row[data-current]:hover{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 16%, transparent)}',
       '.aup-card-stats .aup-series-track{height:8px}',
       '.aup-series-row{display:grid;grid-template-columns:minmax(46px,max-content) minmax(0,1fr) minmax(52px,max-content);align-items:center;gap:8px;font-size:12px;line-height:18px}',
@@ -1428,7 +1433,10 @@ window.__ModuleLoader__.load({
             'div',
             { className: 'aup-model-meta' },
             h('span', null, t('tokens.modelMeta', { requests: String(Number.isFinite(item.requests) ? item.requests : 0), share: String(share) }))
-          )
+          ),
+          modelRows.length > 1
+            ? h('div', { className: 'aup-model-track' }, h('span', { className: 'aup-model-fill', style: { width: share + '%' } }))
+            : null
         );
       };
 
@@ -1844,7 +1852,8 @@ window.__ModuleLoader__.load({
             key: cell.key,
             className: 'aup-series-row',
             title: detail,
-            'data-current': cell.current ? true : undefined
+            'data-current': cell.current ? true : undefined,
+            'data-zero': cell.total === 0 ? true : undefined
           },
           h('span', { className: 'aup-series-label' }, cell.label),
           h(
