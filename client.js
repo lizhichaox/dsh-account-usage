@@ -45,6 +45,7 @@ window.__ModuleLoader__.load({
       dimension: 'day',
       autoRefresh: true,
       showCost: true,
+      hideComposerStats: true,
       cards: { session: true, stats: true, account: true }
     };
 
@@ -61,6 +62,7 @@ window.__ModuleLoader__.load({
           dimension,
           autoRefresh: typeof parsed.autoRefresh === 'boolean' ? parsed.autoRefresh : DEFAULT_SETTINGS.autoRefresh,
           showCost: typeof parsed.showCost === 'boolean' ? parsed.showCost : DEFAULT_SETTINGS.showCost,
+          hideComposerStats: typeof parsed.hideComposerStats === 'boolean' ? parsed.hideComposerStats : DEFAULT_SETTINGS.hideComposerStats,
           cards: {
             session: typeof cards.session === 'boolean' ? cards.session : DEFAULT_SETTINGS.cards.session,
             stats: typeof cards.stats === 'boolean' ? cards.stats : DEFAULT_SETTINGS.cards.stats,
@@ -105,6 +107,7 @@ window.__ModuleLoader__.load({
       'settings.autoRefresh': '自动刷新',
       'settings.autoRefreshHint': '用量 2 分钟 · 余额 5 分钟',
       'settings.showCost': '显示消费金额',
+      'settings.hideComposerStats': '隐藏底栏会话统计',
       'settings.reset': '恢复默认',
       'settings.close': '关闭',
       'settings.allHidden': '三张卡片都已隐藏，点右上角设置可重新开启。',
@@ -156,6 +159,9 @@ window.__ModuleLoader__.load({
       'tokens.stat.requests': '请求次数',
       'tokens.stat.cacheHit': '缓存命中',
       'tokens.stat.avg': '平均 / 请求',
+      'tokens.stat.turns': '轮数',
+      'tokens.stat.steps': '步数',
+      'tokens.stat.speed': '输出速度',
       'tokens.breakdown.system': '系统',
       'tokens.breakdown.tools': '工具',
       'tokens.breakdown.messages': '消息',
@@ -186,6 +192,7 @@ window.__ModuleLoader__.load({
       'settings.autoRefresh': 'Auto refresh',
       'settings.autoRefreshHint': 'Usage 2 min · Balance 5 min',
       'settings.showCost': 'Show spend',
+      'settings.hideComposerStats': 'Hide composer stats',
       'settings.reset': 'Reset to defaults',
       'settings.close': 'Close',
       'settings.allHidden': 'All three cards are hidden. Turn them back on in the display settings.',
@@ -237,6 +244,9 @@ window.__ModuleLoader__.load({
       'tokens.stat.requests': 'Requests',
       'tokens.stat.cacheHit': 'Cache hit',
       'tokens.stat.avg': 'Avg / request',
+      'tokens.stat.turns': 'Turns',
+      'tokens.stat.steps': 'Steps',
+      'tokens.stat.speed': 'Output speed',
       'tokens.breakdown.system': 'System',
       'tokens.breakdown.tools': 'Tools',
       'tokens.breakdown.messages': 'Messages',
@@ -248,6 +258,7 @@ window.__ModuleLoader__.load({
     // ----------------------------------------------------------------- styles --
 
     const CSS = [
+      'html[data-account-usage-hide-stats] [data-composer-stat="activity"]{display:none!important}',
       '.aup-root{position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;height:100%;min-height:0;overflow:hidden;padding:16px;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px}',
       '.aup-root *{box-sizing:border-box}',
       '.aup-head{display:flex;align-items:center;gap:8px;flex:none}',
@@ -285,7 +296,7 @@ window.__ModuleLoader__.load({
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
       '.aup-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden;container-type:size;container-name:aup-card}',
-      '.aup-card-session{flex:3 1 0;justify-content:flex-start}',
+      '.aup-card-session{flex:4 1 0;justify-content:flex-start}',
       '.aup-card-stats{flex:4 1 0;justify-content:space-between}',
       '.aup-card-account{flex:0 0 auto;min-height:96px;justify-content:flex-start}',
       '.aup-card-head{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex:none}',
@@ -419,9 +430,9 @@ window.__ModuleLoader__.load({
       '.aup-account-note{margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-hint{font-size:13px;line-height:16px}',
       // ---- content shedding at short card heights (no scrolling) ----
-      '@container aup-card (max-height:330px){.aup-card-session .aup-compose{display:none}}',
-      '@container aup-card (max-height:290px){.aup-card-session .aup-session-stats{display:none}}',
-      '@container aup-card (max-height:300px){.aup-card-session .aup-models{display:none}}',
+      '@container aup-card (max-height:380px){.aup-card-session .aup-compose{display:none}}',
+      '@container aup-card (max-height:350px){.aup-card-session .aup-session-stats{display:none}}',
+      '@container aup-card (max-height:260px){.aup-card-session .aup-models{display:none}}',
       '@container aup-card (max-height:250px){.aup-card-session .aup-context{display:none}}',
       '@container aup-card (max-height:150px){.aup-card-session .aup-session-grid{display:none}}',
       '@container aup-card (max-height:180px){.aup-card-stats .aup-stats-summary{display:none}}'
@@ -627,6 +638,7 @@ window.__ModuleLoader__.load({
         switchRow('stats', 'settings.card.stats', settings.cards.stats, (value) => ({ cards: { stats: value } })),
         switchRow('account', 'settings.card.account', settings.cards.account, (value) => ({ cards: { account: value } })),
         switchRow('showCost', 'settings.showCost', settings.showCost, (value) => ({ showCost: value })),
+        switchRow('hideComposerStats', 'settings.hideComposerStats', settings.hideComposerStats, (value) => ({ hideComposerStats: value })),
         h(
           'div',
           { className: 'aup-pop-row' },
@@ -1595,6 +1607,7 @@ window.__ModuleLoader__.load({
       const usage = useProjection('tokenUsage');
       const pressure = useProjection('contextPressure');
       const contextBreakdown = useProjection('contextBreakdown');
+      const sessionStats = useProjection('sessionStats');
 
       const total = usage
         ? (usage.uncachedInputTokens || 0) +
@@ -1627,7 +1640,16 @@ window.__ModuleLoader__.load({
       const promptTokens = usage ? (usage.uncachedInputTokens || 0) + (usage.cacheReadTokens || 0) + (usage.cacheWriteTokens || 0) : 0;
       const cacheHit = promptTokens > 0 ? Math.round(((usage.cacheReadTokens || 0) / promptTokens) * 1000) / 10 : undefined;
       const average = requestCount > 0 ? Math.round(total / requestCount) : undefined;
+      const turns = sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.turns) ? sessionStats.turns : undefined;
+      const steps = sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.steps) ? sessionStats.steps : undefined;
+      const speed =
+        sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.decodeTokens) && Number.isFinite(sessionStats.decodeMs) && sessionStats.decodeMs > 0
+          ? Math.round(sessionStats.decodeTokens / (sessionStats.decodeMs / 1000))
+          : undefined;
       const statCells = [];
+      if (turns !== undefined) statCells.push({ key: 'turns', label: t('tokens.stat.turns'), value: String(turns) });
+      if (steps !== undefined) statCells.push({ key: 'steps', label: t('tokens.stat.steps'), value: String(steps) });
+      if (speed !== undefined && speed > 0) statCells.push({ key: 'speed', label: t('tokens.stat.speed'), value: speed + ' tok/s' });
       if (requestCount > 0) statCells.push({ key: 'requests', label: t('tokens.stat.requests'), value: String(requestCount) });
       if (cacheHit !== undefined) statCells.push({ key: 'cacheHit', label: t('tokens.stat.cacheHit'), value: cacheHit + '%' });
       if (average !== undefined && average > 0) statCells.push({ key: 'average', label: t('tokens.stat.avg'), value: formatTokens(average) });
@@ -2055,6 +2077,15 @@ window.__ModuleLoader__.load({
         writeSettings(settings);
       }, [settings]);
 
+      React.useEffect(() => {
+        if (typeof document === 'undefined') return undefined;
+        const root = document.documentElement;
+        if (root === null || root === undefined) return undefined;
+        if (settings.hideComposerStats === true) root.setAttribute('data-account-usage-hide-stats', '');
+        else root.removeAttribute('data-account-usage-hide-stats');
+        return () => root.removeAttribute('data-account-usage-hide-stats');
+      }, [settings.hideComposerStats]);
+
       /** Close the dialog and hand focus back to the trigger. */
       const closeSettings = () => {
         setSettingsOpen(false);
@@ -2236,6 +2267,17 @@ window.__ModuleLoader__.load({
     /** Client plugin body. */
     function apply(ctx) {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'account-usage: dictionaries');
+
+      ctx.effect(
+        () => {
+          if (typeof document === 'undefined') return undefined;
+          const root = document.documentElement;
+          if (root === null || root === undefined) return undefined;
+          if (readSettings().hideComposerStats === true) root.setAttribute('data-account-usage-hide-stats', '');
+          return () => root.removeAttribute('data-account-usage-hide-stats');
+        },
+        'account-usage: composer stats visibility'
+      );
 
       const t = ctx.locale.bind(NS);
       const readAccount = createAccountReader(ctx);

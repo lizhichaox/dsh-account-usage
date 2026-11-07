@@ -364,6 +364,7 @@ const DEFAULT_SETTINGS = {
   dimension: 'day',
   autoRefresh: true,
   showCost: true,
+  hideComposerStats: true,
   cards: { session: true, stats: true, account: true }
 };
 function render(usageState, projection, dimensionValue, settingsValue, settingsOpen, sessionModelsValue, providerBalancesValue) {
@@ -554,7 +555,7 @@ function walkRoles(node, role, out = []) {
   );
   const dialog = walkRoles(open, 'dialog')[0];
   assert.ok(dialog, 'settings dialog opens');
-  assert.equal(walkRoles(dialog, 'switch').length, 5, 'three card switches + spend + auto refresh');
+  assert.equal(walkRoles(dialog, 'switch').length, 6, 'three card switches + spend + auto refresh + hide composer stats');
   const miniTabs = walk(dialog, (node) => node.props && String(node.props.className || '').includes('aup-dims-mini'))[0];
   assert.equal(walk(miniTabs, (node) => node.type === 'button').length, 5, 'five range options');
   assert.ok(walk(dialog, (node) => node.props && node.props.className === 'aup-pop-link').length === 1, 'reset action present');
