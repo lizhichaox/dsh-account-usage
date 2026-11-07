@@ -2605,14 +2605,15 @@ window.__ModuleLoader__.load({
       attempt(0);
     }
 
-    /** Tab chip: wallet glyph plus the title captured when the tab opened. */
-    function AccountUsageTitle({ useTabInfo }) {
+    /** Tab chip: wallet glyph plus the short tab title (never the cached long title). */
+    function AccountUsageTitle({ useTabInfo, t }) {
       const info = useTabInfo();
+      const label = typeof t === 'function' ? t('tab.title') : info.tab.title;
       return h(
         'span',
         { className: 'aup-tab-title' },
         h('span', { className: 'aup-glyph' }, h(WalletGlyph, { size: 15 })),
-        h('span', { className: 'aup-tab-title-text' }, info.tab.title)
+        h('span', { className: 'aup-tab-title-text' }, label)
       );
     }
 
@@ -2695,7 +2696,8 @@ window.__ModuleLoader__.load({
             ctx.slots.register(
               {
                 name: 'sidebar.right.pane.tab.title',
-                key: ID
+                key: ID,
+                inject: () => ({ t: bindTranslation() })
               },
               AccountUsageTitle
             )
