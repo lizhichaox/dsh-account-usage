@@ -362,7 +362,7 @@ window.__ModuleLoader__.load({
       '.aup-stat-label{min-width:0;color:var(--dsw-alias-label-secondary);white-space:nowrap;line-height:20px}',
       '.aup-stat-value{min-width:0;justify-self:stretch;text-align:right;color:var(--dsw-alias-label-primary);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:13px;line-height:20px}',
       '.aup-context-breakdown{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
-      '.aup-context-compose{display:flex;height:5px;gap:1px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-skeleton)}',
+      '.aup-context-used{display:flex;height:100%;gap:1px;border-radius:inherit;overflow:hidden}',
       '.aup-context-seg{flex:1 1 0;min-width:2px;height:100%}',
       '.aup-context-legend{display:flex;flex-wrap:nowrap;justify-content:space-between;gap:2px 8px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-models-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}',
@@ -1466,17 +1466,24 @@ window.__ModuleLoader__.load({
             hasContext ? t('tokens.contextValue', { used: formatTokens(usedTokens), window: formatTokens(contextWindow), percent: String(percent) }) : t('tokens.contextUnknown')
           )
         ),
-        hasContext ? h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } })) : null,
+        hasContext
+          ? h(
+              'div',
+              { className: 'aup-bar' },
+              contextTotal === 0
+                ? h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } })
+                : h(
+                    'span',
+                    { className: 'aup-context-used', style: { width: percent + '%' } },
+                    contextParts.map((part) => h('span', { key: part.key, className: 'aup-context-seg', style: { flexGrow: part.value, background: part.color } }))
+                  )
+            )
+          : null,
         contextTotal === 0
           ? null
           : h(
               'div',
               { className: 'aup-context-breakdown' },
-              h(
-                'div',
-                { className: 'aup-context-compose' },
-                contextParts.map((part) => h('span', { key: part.key, className: 'aup-context-seg', style: { flexGrow: part.value, background: part.color } }))
-              ),
               h(
                 'div',
                 { className: 'aup-context-legend' },
@@ -1589,9 +1596,11 @@ window.__ModuleLoader__.load({
         const totalKnown = total !== undefined ? total : remaining !== undefined && used !== undefined ? remaining + used : undefined;
         const usedPercent = used !== undefined && totalKnown !== undefined && totalKnown > 0 ? Math.min(100, Math.max(0, Math.round((used / totalKnown) * 1000) / 10)) : undefined;
         const meta = [];
-        if (remaining !== undefined && heroLabel !== t('balance.recharge')) meta.push({ key: 'remaining', label: t('balance.recharge'), value: remaining });
-        if (used !== undefined && heroLabel !== t('balance.used')) meta.push({ key: 'used', label: t('balance.used'), value: used });
-        if (total !== undefined && heroLabel !== t('balance.total')) meta.push({ key: 'total', label: t('balance.total'), value: total });
+        if (usedPercent === undefined) {
+          if (remaining !== undefined && heroLabel !== t('balance.recharge')) meta.push({ key: 'remaining', label: t('balance.recharge'), value: remaining });
+          if (used !== undefined && heroLabel !== t('balance.used')) meta.push({ key: 'used', label: t('balance.used'), value: used });
+          if (total !== undefined && heroLabel !== t('balance.total')) meta.push({ key: 'total', label: t('balance.total'), value: total });
+        }
         if (granted !== undefined) meta.push({ key: 'granted', label: t('balance.bonus'), value: granted });
         return h(
           'section',
@@ -1614,7 +1623,12 @@ window.__ModuleLoader__.load({
               : h(
                   'div',
                   { className: 'aup-provider-progress' },
-                  h('div', { className: 'aup-provider-rate' }, h('span', null, t('account.providerUsedRate', { percent: String(usedPercent) })), h('span', null, totalKnown === undefined ? '' : formatMoney(String(totalKnown), currency, locale))),
+                  h(
+                    'div',
+                    { className: 'aup-provider-rate' },
+                    h('span', null, t('account.providerUsedRate', { percent: String(usedPercent) }) + (used === undefined ? '' : ' · ' + formatMoney(String(used), currency, locale))),
+                    h('span', null, totalKnown === undefined ? '' : formatMoney(String(totalKnown), currency, locale))
+                  ),
                   h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: usedPercent + '%' } }))
                 ),
             meta.length === 0
@@ -2054,17 +2068,24 @@ window.__ModuleLoader__.load({
                 : t('tokens.contextUnknown')
             )
           ),
-          hasContext ? h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } })) : null,
+          hasContext
+            ? h(
+                'div',
+                { className: 'aup-bar' },
+                contextSegments.length === 0
+                  ? h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } })
+                  : h(
+                      'span',
+                      { className: 'aup-context-used', style: { width: percent + '%' } },
+                      contextSegments.map((segment) => h('span', { key: segment.key, className: 'aup-context-seg', style: { flexGrow: segment.value, background: segment.color } }))
+                    )
+              )
+            : null,
           contextSegments.length === 0
             ? null
             : h(
                 'div',
                 { className: 'aup-context-breakdown' },
-                h(
-                  'div',
-                  { className: 'aup-context-compose' },
-                  contextSegments.map((segment) => h('span', { key: segment.key, className: 'aup-context-seg', style: { flexGrow: segment.value, background: segment.color } }))
-                ),
                 h(
                   'div',
                   { className: 'aup-context-legend' },
