@@ -447,6 +447,10 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(headerGroups[0].children[0].props['aria-haspopup'] === 'dialog', 'left action opens settings');
   assert.ok(headerGroups[1].children[0].props['aria-label'] !== undefined, 'right action refreshes');
   assert.equal(walk(header, (n) => hasClass(n, 'aup-title')).length, 0, 'panel title is not repeated in the header');
+  const greeting = walk(header, (n) => hasClass(n, 'aup-head-greeting'))[0];
+  assert.ok(greeting !== undefined, 'the header has a greeting slot');
+  assert.ok(typeof flat(greeting) === 'string' && flat(greeting).length > 0, 'the greeting line is filled');
+  assert.ok(source.includes('border-bottom:1px solid var(--dsw-alias-border-l2)'), 'the header has a hairline rule');
   // Unit-compacted token counts stop at two decimal places (78.77M, not 78.770161M).
   const preciseTree = render(
     {

@@ -311,25 +311,17 @@ window.__ModuleLoader__.load({
       'html[data-account-usage-hide-stats] [data-composer-stat]{display:none!important}',
       '.aup-root{position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;height:100%;min-height:0;overflow:hidden;padding:16px;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px}',
       '.aup-root *{box-sizing:border-box}',
-      '.aup-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none}',
+      '.aup-head{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;margin:0 0 2px;padding:0 10px 8px;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      '.aup-head-greeting{min-width:0;text-align:center;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:clip}',
       '.aup-glyph{flex:none;color:var(--dsw-alias-label-secondary);display:inline-flex}',
       '.aup-title{flex:1;min-width:0;margin:0;font-size:14px;font-weight:500;line-height:20px;white-space:nowrap}',
       '.aup-icon-button{flex:none;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:background-color .12s,color .12s}',
       '.aup-icon-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       '.aup-icon-button:disabled{opacity:.4;cursor:default}',
       '.aup-head-actions{display:inline-flex;align-items:center;gap:2px;flex:none}',
-      '.aup-head-spark{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:16px;font-weight:500;white-space:nowrap;overflow:hidden}',
-      '.aup-head-spark-label{overflow:hidden;text-overflow:clip}',
-      '.aup-head-spark svg{flex:none;width:56px;height:18px;overflow:visible}',
-      '.aup-live-dot{flex:none;width:6px;height:6px;border-radius:999px;background:var(--dsw-alias-brand-primary)}',
-      '.aup-spark-line{fill:none;stroke:var(--dsw-alias-brand-primary);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}',
-      '.aup-spark-area{fill:color-mix(in srgb,var(--dsw-alias-brand-primary) 10%,transparent)}',
-      '.aup-spark-dot{fill:var(--dsw-alias-brand-primary);animation:aup-pulse 2.4s ease-in-out infinite}',
-      '@keyframes aup-pulse{0%,100%{opacity:1}50%{opacity:.35}}',
-      '@media (prefers-reduced-motion:reduce){.aup-spark-dot{animation:none}}',
       '.aup-icon-button[data-active]{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       '.aup-pop-backdrop{position:absolute;inset:0;z-index:20}',
-      '.aup-pop{position:absolute;top:44px;left:12px;z-index:21;width:258px;max-width:calc(100% - 24px);max-height:calc(100% - 56px);overflow:auto;display:flex;flex-direction:column;gap:6px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 10px 28px color-mix(in srgb,var(--dsw-alias-label-primary) 16%,transparent)}',
+      '.aup-pop{position:absolute;top:44px;left:22px;z-index:21;width:258px;max-width:calc(100% - 24px);max-height:calc(100% - 56px);overflow:auto;display:flex;flex-direction:column;gap:6px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 10px 28px color-mix(in srgb,var(--dsw-alias-label-primary) 16%,transparent)}',
       '.aup-pop-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}',
       '.aup-pop-title{font-size:13px;line-height:18px;font-weight:600;color:var(--dsw-alias-label-primary)}',
       '.aup-pop-close{width:22px;height:22px;margin-right:-4px}',
@@ -2255,8 +2247,10 @@ window.__ModuleLoader__.load({
       const [settingsOpen, setSettingsOpen] = React.useState(false);
       const gearRef = React.useRef(null);
       const [localeId, setLocaleId] = React.useState(readLocale);
+      const [greetingSeed] = React.useState(() => Math.floor(Math.random() * 4));
       const t = React.useMemo(() => bindTranslation(), [bindTranslation, localeId]);
       const displayLocale = String(localeId).toLowerCase().startsWith('zh') ? localeId : 'en';
+      const greeting = React.useMemo(() => greetingLine(new Date(), localeId, greetingSeed), [localeId, greetingSeed]);
 
       React.useEffect(() => {
         const update = () => setLocaleId(readLocale());
@@ -2623,12 +2617,7 @@ window.__ModuleLoader__.load({
               h(SettingsGlyph)
             )
           ),
-          h(HeaderDecor, {
-            t,
-            days: displayedUsage.days,
-            providerMode: offAccountAll === true,
-            providerLabel: offAccountAll === true ? offAccountLabel : ''
-          }),
+          h('span', { className: 'aup-head-greeting' }, greeting),
           h(
             'div',
             { className: 'aup-head-actions' },
@@ -2775,51 +2764,116 @@ window.__ModuleLoader__.load({
 
     // ----------------------------------------------------------------- apply --
 
-    /** Small header ornament: a 7-day token sparkline, or the provider badge in provider mode. */
-    function HeaderDecor({ t, days, providerMode, providerLabel }) {
-      if (providerMode === true) {
-        return h(
-          'span',
-          { className: 'aup-head-spark', title: providerLabel },
-          h('span', { className: 'aup-live-dot', 'aria-hidden': true }),
-          h('span', { className: 'aup-head-spark-label' }, providerLabel)
-        );
+    /** 24 solar terms: century C constants (21st century) with zh/en labels. */
+    const SOLAR_TERMS = [
+      { c: 5.4055, zh: '小寒', en: 'Minor Cold' },
+      { c: 20.12, zh: '大寒', en: 'Major Cold' },
+      { c: 3.87, zh: '立春', en: 'Start of Spring' },
+      { c: 18.73, zh: '雨水', en: 'Rain Water' },
+      { c: 5.63, zh: '惊蛰', en: 'Awakening of Insects' },
+      { c: 20.646, zh: '春分', en: 'Spring Equinox' },
+      { c: 4.81, zh: '清明', en: 'Pure Brightness' },
+      { c: 20.1, zh: '谷雨', en: 'Grain Rain' },
+      { c: 5.52, zh: '立夏', en: 'Start of Summer' },
+      { c: 21.04, zh: '小满', en: 'Grain Buds' },
+      { c: 5.678, zh: '芒种', en: 'Grain in Ear' },
+      { c: 21.37, zh: '夏至', en: 'Summer Solstice' },
+      { c: 7.108, zh: '小暑', en: 'Minor Heat' },
+      { c: 22.83, zh: '大暑', en: 'Major Heat' },
+      { c: 7.5, zh: '立秋', en: 'Start of Autumn' },
+      { c: 23.13, zh: '处暑', en: 'End of Heat' },
+      { c: 7.646, zh: '白露', en: 'White Dew' },
+      { c: 23.042, zh: '秋分', en: 'Autumn Equinox' },
+      { c: 8.318, zh: '寒露', en: 'Cold Dew' },
+      { c: 23.438, zh: '霜降', en: 'Frost Descent' },
+      { c: 7.438, zh: '立冬', en: 'Start of Winter' },
+      { c: 22.36, zh: '小雪', en: 'Minor Snow' },
+      { c: 7.18, zh: '大雪', en: 'Major Snow' },
+      { c: 21.94, zh: '冬至', en: 'Winter Solstice' }
+    ];
+
+    /** Solar term that falls on this date, if any. */
+    function solarTermOf(date) {
+      const short = date.getFullYear() % 100;
+      const month = date.getMonth();
+      const day = date.getDate();
+      for (let index = 0; index < SOLAR_TERMS.length; index += 1) {
+        if (Math.floor(index / 2) !== month) continue;
+        const term = SOLAR_TERMS[index];
+        const termDay = Math.floor(short * 0.2422 + term.c) - Math.floor(short / 4);
+        if (termDay === day) return term;
       }
-      const points = (Array.isArray(days) ? days : [])
-        .filter((day) => day !== null && day !== undefined && typeof day.date === 'string' && Number.isFinite(day.tokens))
-        .sort((left, right) => left.date.localeCompare(right.date))
-        .slice(-7);
-      if (points.length < 2) {
-        return h(
-          'span',
-          { className: 'aup-head-spark' },
-          h('span', { className: 'aup-live-dot', 'aria-hidden': true }),
-          h('span', { className: 'aup-head-spark-label' }, t('header.live'))
-        );
+      return undefined;
+    }
+
+    /** Lunar month/day of a Gregorian date, when the runtime ships a Chinese calendar. */
+    function lunarMonthDay(date) {
+      try {
+        const parts = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', { month: 'long', day: 'numeric' }).formatToParts(date);
+        let month = '';
+        let day = 0;
+        for (const part of parts) {
+          if (part.type === 'month') month = part.value.replace(/^闰/u, '');
+          if (part.type === 'day') day = Number.parseInt(part.value, 10);
+        }
+        if (month === '' || !Number.isFinite(day)) return undefined;
+        return { month, day };
+      } catch (error) {
+        return undefined;
       }
-      const max = Math.max(...points.map((day) => day.tokens), 1);
-      const width = 56;
-      const height = 18;
-      const coordinates = points.map((day, index) => {
-        const x = (index / (points.length - 1)) * width;
-        const y = height - (day.tokens / max) * (height - 2) - 1;
-        return { x, y };
-      });
-      const line = coordinates.map((p) => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
-      const area = '0,' + String(height) + ' ' + line + ' ' + String(width) + ',' + String(height);
-      const last = coordinates[coordinates.length - 1];
-      return h(
-        'span',
-        { className: 'aup-head-spark', title: t('header.trendTitle') },
-        h('span', { className: 'aup-head-spark-label' }, t('header.trend')),
-        h(
-          'svg',
-          { viewBox: '0 0 ' + String(width) + ' ' + String(height), width: String(width), height: String(height), 'aria-hidden': true },
-          h('polygon', { className: 'aup-spark-area', points: area }),
-          h('polyline', { className: 'aup-spark-line', points: line }),
-          h('circle', { className: 'aup-spark-dot', cx: last.x.toFixed(1), cy: last.y.toFixed(1), r: '2' })
-        )
-      );
+    }
+
+    /** Festivals: fixed-date holidays first, then the lunar ones. */
+    function festivalOf(date, zh) {
+      const month = date.getMonth() + 1;
+      const day = date.getDate();
+      if (month === 1 && day === 1) return zh ? '元旦' : "New Year's Day";
+      if (month === 5 && day >= 1 && day <= 5) return zh ? '劳动节' : 'Labour Day';
+      if (month === 10 && day >= 1 && day <= 7) return zh ? '国庆节' : 'National Day';
+      const lunar = lunarMonthDay(date);
+      if (lunar === undefined) return undefined;
+      if (lunar.month === '正月' && lunar.day === 1) return zh ? '春节' : 'Spring Festival';
+      if (lunar.month === '正月' && lunar.day === 15) return zh ? '元宵节' : 'Lantern Festival';
+      if (lunar.month === '五月' && lunar.day === 5) return zh ? '端午节' : 'Dragon Boat Festival';
+      if (lunar.month === '七月' && lunar.day === 7) return zh ? '七夕' : 'Qixi Festival';
+      if (lunar.month === '八月' && lunar.day === 15) return zh ? '中秋节' : 'Mid-Autumn Festival';
+      if (lunar.month === '九月' && lunar.day === 9) return zh ? '重阳节' : 'Double Ninth Festival';
+      const next = lunarMonthDay(new Date(date.getTime() + 86400000));
+      if (next !== undefined && next.month === '正月' && next.day === 1) return zh ? '除夕' : "Lunar New Year's Eve";
+      return undefined;
+    }
+
+    /** Time-of-day greeting words. */
+    function daypartGreeting(hour, zh) {
+      if (hour < 5) return zh ? '凌晨好' : 'Late night';
+      if (hour < 9) return zh ? '早上好' : 'Good morning';
+      if (hour < 11) return zh ? '上午好' : 'Good morning';
+      if (hour < 13) return zh ? '中午好' : 'Good midday';
+      if (hour < 17) return zh ? '下午好' : 'Good afternoon';
+      if (hour < 19) return zh ? '傍晚好' : 'Good evening';
+      if (hour < 22) return zh ? '晚上好' : 'Good evening';
+      return zh ? '夜深了' : 'Working late';
+    }
+
+    /** One short friendly header line: solar term > holiday > time of day. */
+    function greetingLine(date, locale, seed) {
+      const zh = String(locale || '').toLowerCase().startsWith('zh');
+      const wishes = zh ? ['', '愿你今天顺顺利利', '记得照顾好自己', '慢慢来，比较快'] : ['', 'Have a good one', 'Take it easy'];
+      const wish = wishes[Math.abs(seed) % wishes.length];
+      const term = solarTermOf(date);
+      if (term !== undefined) {
+        const name = zh ? term.zh : term.en;
+        if (wish === '') return zh ? '今日' + name : 'Today: ' + name;
+        return zh ? '今日' + name + ' · ' + wish : name + ' · ' + wish;
+      }
+      const festival = festivalOf(date, zh);
+      if (festival !== undefined) {
+        if (wish === '') return zh ? festival + '快乐' : festival + ' today';
+        return zh ? festival + '快乐 · ' + wish : festival + ' · ' + wish;
+      }
+      const greeting = daypartGreeting(date.getHours(), zh);
+      if (wish === '') return greeting;
+      return zh ? greeting + ' · ' + wish : greeting + ', ' + wish;
     }
 
     /** Client plugin body. */
