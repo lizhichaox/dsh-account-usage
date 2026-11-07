@@ -453,7 +453,7 @@ const PROVIDER_BALANCE_SPECS = {
   'deepseek-api': { kind: 'deepseek', currency: 'CNY', keyEnv: 'DEEPSEEK_API_KEY' },
   'deepseek-api-key': { kind: 'deepseek', currency: 'CNY', keyEnv: 'DEEPSEEK_API_KEY' },
   opencode: { kind: 'opencode-plan', keyEnv: 'OPENCODE_API_KEY' },
-  'opencode-go': { kind: 'opencode-plan', keyEnv: 'OPENCODE_API_KEY' },
+  'opencode-go': { kind: 'opencode-plan', keyEnv: 'OPENCODE_GO_API_KEY' },
   'opencode-zen': { kind: 'opencode-plan', keyEnv: 'OPENCODE_API_KEY' }
 };
 

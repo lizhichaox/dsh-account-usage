@@ -361,7 +361,8 @@ window.__ModuleLoader__.load({
       '.aup-cards{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:12px}',
       '.aup-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}',
       '.aup-card-session{flex:4 1 0;justify-content:flex-start}',
-      '.aup-card-stats{flex:1 1 0;justify-content:space-between}',
+      '.aup-card-stats{flex:1 1 0;justify-content:flex-start}',
+      '.aup-stats-head{flex:none;display:flex;flex-direction:column;gap:6px}',
       '.aup-card-account{flex:0 0 auto;min-height:0;justify-content:flex-start}',
       '.aup-card-head{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex:none}',
       '.aup-divider{display:block;height:1px;flex:none;margin:0;background:var(--dsw-alias-border-l2)}',
@@ -1968,7 +1969,9 @@ window.__ModuleLoader__.load({
         )
       );
 
-      const head = [
+      const head = h(
+        'div',
+        { className: 'aup-stats-head' },
         h(CardHead, {
           icon: ChartGlyph,
           title: t('stats.title'),
@@ -1976,7 +1979,7 @@ window.__ModuleLoader__.load({
         }),
         h('span', { className: 'aup-divider', 'aria-hidden': true }),
         dimensions
-      ];
+      );
 
       if (state.phase === 'loading') {
         const skeletonRows = [];

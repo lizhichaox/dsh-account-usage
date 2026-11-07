@@ -238,11 +238,14 @@ DSH 输入框底部原有一行会话统计（轮数/步数 · tok/s · Token ·
 | `openrouter` | `GET /api/v1/credits`（失败回退 `/api/v1/key`） | 剩余额度、已用（USD） |
 | `deepseek` / `deepseek-api`（API Key 路线） | `GET https://api.deepseek.com/user/balance` | 余额、赠送额度（响应币种） |
 | `opencode` / `opencode-go` / `opencode-zen` | `GET https://opencode.ai/zen/go/v1/usage`（Bearer Key） | 套餐剩余百分比 + 5 小时 / 本周 / 本月三档已用占比（不是金额） |
+
+> opencode 的 Key 从 DSH 凭据读取：`opencode-go` 用 `OPENCODE_GO_API_KEY`，`opencode` / `opencode-zen` 用 `OPENCODE_API_KEY`。
 | 其他 Provider | 无公开余额接口 | 说明「暂未开放余额接口」+ 本会话 Token 与请求数（不给无效重试） |
 
 - 凭据只在 **Host** 侧读取：`ctx.credentials.resolve('OPENROUTER_API_KEY')` 或 `llm-pi-ai/<provider>`
   的存储记录，**API Key 不会返回给浏览器**
 - opencode 走官方的 `/zen/go/v1/usage`，返回的是套餐用量百分比，卡片显示「套餐剩余 xx%」+ 进度条 + 三档窗口
+  （实测该端点可用：`rolling/weekly/monthly` 三档 `percent` + `resetsAt`）
 - Provider 余额缓存 60 秒；手动刷新会强制重新查询
 - 未配置 Key 时显示「未配置 … API Key」，接口失败显示「暂时读不到 … 余额」
 - 混合会话仍保留 DeepSeek API 余额，并显示「部分 …」徽标（悬浮提示该部分不消耗 DeepSeek API 余额）；
