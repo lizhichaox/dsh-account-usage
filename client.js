@@ -359,9 +359,8 @@ window.__ModuleLoader__.load({
       '.aup-card-session{flex:4 1 0;justify-content:flex-start}',
       '.aup-card-stats{flex:1 1 0;justify-content:center}',
       '.aup-stats-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:10px}',
-      '.aup-srcs{flex:none;display:flex;flex-direction:column;gap:10px}',
-      '.aup-src{display:flex;flex-direction:column;gap:4px;min-width:0}',
-      '.aup-src-head{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:baseline;gap:8px;font-size:13px;line-height:18px;font-variant-numeric:tabular-nums}',
+      '.aup-srcs{flex:none;display:flex;flex-direction:column;gap:8px}',
+      '.aup-src{display:grid;grid-template-columns:max-content minmax(0,1fr) auto auto;align-items:center;gap:8px;min-width:0;font-size:13px;line-height:18px;font-variant-numeric:tabular-nums}',
       '.aup-src-label{min-width:0;color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
       '.aup-src-tokens{color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
       '.aup-src-side{color:var(--dsw-alias-label-secondary);white-space:nowrap;min-width:44px;text-align:right}',
@@ -440,7 +439,7 @@ window.__ModuleLoader__.load({
       '.aup-card-account-provider .aup-balance-value.aup-value-long{font-size:14px}',
       '.aup-card-account-provider .aup-balance-value.aup-value-longer{font-size:12px}',
       '.aup-provider-body{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;gap:8px;justify-content:flex-start}',
-      '.aup-provider-hero{display:flex;flex-direction:column;gap:2px;min-width:0}',
+      '.aup-provider-hero{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}',
       '.aup-value-long{font-size:.82em}',
       '.aup-value-longer{font-size:.68em}',
       '.aup-balance-value.aup-value-long{font-size:14px}',
@@ -1974,14 +1973,14 @@ window.__ModuleLoader__.load({
           h(
             'div',
             { key: row.key, className: 'aup-src', title: row.label + ' · ' + formatTokens(row.tokens) + ' · ' + row.note },
+            h('span', { className: 'aup-src-label' }, row.label),
             h(
-              'div',
-              { className: 'aup-src-head' },
-              h('span', { className: 'aup-src-label' }, row.label),
-              h('span', { className: 'aup-src-tokens' }, formatTokens(row.tokens)),
-              row.side === '' ? null : h('span', { className: 'aup-src-side' }, row.side)
+              'span',
+              { className: 'aup-src-track' },
+              h('span', { className: 'aup-src-fill', style: { width: Math.max(4, Math.round((row.tokens / sourceMax) * 100)) + '%' } })
             ),
-            h('div', { className: 'aup-src-track' }, h('span', { className: 'aup-src-fill', style: { width: Math.max(4, Math.round((row.tokens / sourceMax) * 100)) + '%' } }))
+            h('span', { className: 'aup-src-tokens' }, formatTokens(row.tokens)),
+            row.side === '' ? null : h('span', { className: 'aup-src-side' }, row.side)
           )
         )
       );
