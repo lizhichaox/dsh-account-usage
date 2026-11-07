@@ -143,7 +143,7 @@
 - 视觉/交互改动要补冒烟测试；Host 折叠逻辑要有单元测试
 - 无法用浏览器验证时，如实说明「基于 CSS/契约测试，非真机像素比对」
 - 本地是 link 安装；改 `index.js` 需要 Plugin Manager 停用/启用一次，改 `client.js` 等 HMR
-- 不把内部文件（test/market/AGENTNS/README 等）打进 npm 包（`files` 白名单）
+- 不把内部文件（test/market/AGENTS/README 等）打进 npm 包（`files` 白名单）
 - 用户偏好：**主动做完、少提问、别让用户重复要求**；不确定时先按本文件默认执行
 
 ## 13. 已完成的关键决策（避免回退）
