@@ -344,6 +344,7 @@ window.__ModuleLoader__.load({
       '.aup-models-caption{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0;font-size:13px;line-height:17px}',
       '.aup-model-name{min-width:0;font-size:12px;line-height:16px;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
+      '.aup-model-name.aup-model-name-long{font-size:11px}',
       '.aup-model-tokens{flex:none;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
       '.aup-model-more{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
       '.aup-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 16px}',
@@ -1759,7 +1760,10 @@ window.__ModuleLoader__.load({
                       h(
                         'div',
                         { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
-                        h('span', { className: 'aup-model-name', title: item.model }, shortModelName(item.model)),
+                        (() => {
+                        const text = shortModelName(item.model);
+                        return h('span', { className: 'aup-model-name' + (text.length > 22 ? ' aup-model-name-long' : ''), title: item.model }, text);
+                      })(),
                         h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
                       )
                     )
@@ -1769,7 +1773,10 @@ window.__ModuleLoader__.load({
                         h(
                           'div',
                           { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
-                          h('span', { className: 'aup-model-name', title: item.model }, shortModelName(item.model)),
+                          (() => {
+                        const text = shortModelName(item.model);
+                        return h('span', { className: 'aup-model-name' + (text.length > 22 ? ' aup-model-name-long' : ''), title: item.model }, text);
+                      })(),
                           h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
                         )
                       )
