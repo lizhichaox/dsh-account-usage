@@ -456,7 +456,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   stateQueue.push(
     accountState,
     { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
-    { phase: 'ready', items: [{ provider: 'deepseek', model: 'deepseek-chat', tokens: 5000, requests: 2 }, { provider: '', model: 'deepseek-reasoner', tokens: 3000, requests: 1 }], totalTokens: 8000 },
+    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 5000, requests: 2 }, { provider: 'deepseek-account', model: 'deepseek-reasoner', tokens: 3000, requests: 1 }], totalTokens: 8000 },
     DEFAULT_SETTINGS,
     'day',
     { count: 0, force: false },
@@ -470,6 +470,30 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const modelTokens = walk(tree, (node) => hasClass(node, 'aup-model-tokens')).map(flat);
   assert.deepEqual(modelNames, ['deepseek-chat', 'deepseek-reasoner'], 'model rows show names');
   assert.deepEqual(modelTokens, ['5K', '3K'], 'model rows show compact token totals');
+}
+
+// ------------------------------------------------------- third-party provider --
+{
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [{ provider: 'openrouter', model: 'deepseek-flash', tokens: 5000, requests: 2 }], totalTokens: 5000 },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const tree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
+  stateQueue.length = 0;
+  const accountCard = walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
+  const accountText = flat(accountCard);
+  assert.ok(accountText.includes('本次会话由 OpenRouter 提供'), 'balance card explains a third-party session');
+  assert.ok(accountText.includes('不消耗 DeepSeek 余额'), 'balance card explains the balance is untouched');
+  const statsCard = walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0];
+  assert.ok(flat(statsCard).includes('DeepSeek 平台'), 'stats card marks platform-only usage');
+  const modelName = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat)[0];
+  assert.equal(modelName, 'OpenRouter · deepseek-flash', 'third-party model rows include the provider');
 }
 
 // --------------------------------------------------------------- settings --

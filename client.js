@@ -112,6 +112,10 @@ window.__ModuleLoader__.load({
       'account.signedOut': '当前未登录 DeepSeek 账号',
       'account.signedOutHint': '设置 → 账号 登录后显示余额',
       'balance.recharge': '余额',
+      'account.offAccountAll': '本次会话由 {provider} 提供，不消耗 DeepSeek 余额。',
+      'account.offAccountPartial': '本次会话部分使用 {provider}，该部分不消耗 DeepSeek 余额。',
+      'stats.platformBadge': 'DeepSeek 平台',
+      'stats.platformBadgeHint': '平台用量只统计 DeepSeek 账号，不含第三方 Provider。',
       'balance.bonus': '赠送额度',
       'balance.failed': '余额读取失败',
       'balance.empty': '暂无余额数据',
@@ -176,6 +180,10 @@ window.__ModuleLoader__.load({
       'account.signedOut': 'No DeepSeek account is signed in',
       'account.signedOutHint': 'Sign in via Settings to see the balance',
       'balance.recharge': 'Balance',
+      'account.offAccountAll': 'This session runs on {provider}; it does not use your DeepSeek balance.',
+      'account.offAccountPartial': 'Part of this session runs on {provider}; that part does not use your DeepSeek balance.',
+      'stats.platformBadge': 'DeepSeek platform',
+      'stats.platformBadgeHint': 'Platform usage covers the DeepSeek account only, not third-party providers.',
       'balance.bonus': 'Bonus credit',
       'balance.failed': 'Could not read the balance',
       'balance.empty': 'No balance data yet',
@@ -354,6 +362,7 @@ window.__ModuleLoader__.load({
       '.aup-card-account .aup-balance-value{font-size:24px;line-height:30px;letter-spacing:-.01em}',
       '.aup-card-account .aup-balance-value.aup-minor{font-size:18px;line-height:24px;font-weight:500;color:var(--dsw-alias-label-primary)}',
       '.aup-card-account .aup-balance-label{font-size:13px;line-height:16px;font-weight:500}',
+      '.aup-account-note{margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-hint{font-size:13px;line-height:16px}',
       // ---- content shedding at short card heights (no scrolling) ----
       '@container aup-card (max-height:260px){.aup-card-session .aup-compose{display:none}}',
@@ -582,6 +591,36 @@ window.__ModuleLoader__.load({
           h('button', { type: 'button', className: 'aup-pop-link', onClick: onReset }, t('settings.reset'))
         )
       );
+    }
+
+    // ------------------------------------------------------------- providers --
+
+    /** Human labels for the model providers a session can record. */
+    const PROVIDER_LABELS = {
+      'deepseek-account': 'DeepSeek 账号',
+      'deepseek': 'DeepSeek API Key',
+      'openrouter': 'OpenRouter',
+      anthropic: 'Anthropic',
+      openai: 'OpenAI',
+      google: 'Google',
+      xai: 'xAI',
+      groq: 'Groq',
+      mistral: 'Mistral',
+      ollama: 'Ollama',
+      azure: 'Azure',
+      bedrock: 'AWS Bedrock',
+      vertex: 'Vertex AI'
+    };
+
+    /** Provider id that bills the signed-in DeepSeek account balance. */
+    const ACCOUNT_PROVIDER = 'deepseek-account';
+
+    function providerLabel(provider) {
+      return PROVIDER_LABELS[provider] === undefined ? provider : PROVIDER_LABELS[provider];
+    }
+
+    function isAccountProvider(provider) {
+      return provider === ACCOUNT_PROVIDER;
     }
 
     // ------------------------------------------------------------- formatting --
@@ -1181,7 +1220,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Signed-in identity and wallet balances. */
-    function AccountSection({ state, t, onRetry }) {
+    function AccountSection({ state, t, onRetry, offAccountLabel, offAccountAll }) {
       const result = state.result;
       const locale = result === undefined ? undefined : result.locale;
       const head = [h(CardHead, { icon: WalletGlyph, title: t('account.title') }), h('span', { className: 'aup-divider', 'aria-hidden': true })];
@@ -1230,12 +1269,15 @@ window.__ModuleLoader__.load({
           ? h(Hint, null, t('balance.failed'))
           : walletItems.length === 0 && bonusItems.length === 0
             ? h(Hint, null, t('balance.empty'))
-            : h('div', { className: 'aup-balance' }, walletItems, bonusItems)
+            : h('div', { className: 'aup-balance' }, walletItems, bonusItems),
+        typeof offAccountLabel === 'string' && offAccountLabel !== ''
+          ? h('p', { className: 'aup-account-note' }, t(offAccountAll === true ? 'account.offAccountAll' : 'account.offAccountPartial', { provider: offAccountLabel }))
+          : null
       );
     }
 
     /** Date-dimension statistics over real platform usage (local estimates as fallback). */
-    function UsageSection({ state, dimension, onDimension, onRetry, t, fallbackCurrency, locale, showCost }) {
+    function UsageSection({ state, dimension, onDimension, onRetry, t, fallbackCurrency, locale, showCost, thirdPartyLabel }) {
       const moveDimension = (event) => {
         const index = DIMENSIONS.findIndex((entry) => entry.id === dimension);
         let next = null;
@@ -1275,11 +1317,15 @@ window.__ModuleLoader__.load({
         )
       );
 
+      const platformBadge =
+        state.source !== 'local' && typeof thirdPartyLabel === 'string' && thirdPartyLabel !== ''
+          ? h('span', { className: 'aup-badge', title: t('stats.platformBadgeHint') }, t('stats.platformBadge'))
+          : null;
       const head = [
         h(CardHead, {
           icon: ChartGlyph,
           title: t('stats.title'),
-          extra: state.source === 'local' ? h('span', { className: 'aup-badge' }, t('stats.localBadge')) : null
+          extra: state.source === 'local' ? h('span', { className: 'aup-badge' }, t('stats.localBadge')) : platformBadge
         }),
         h('span', { className: 'aup-divider', 'aria-hidden': true }),
         dimensions
@@ -1433,8 +1479,11 @@ window.__ModuleLoader__.load({
                   { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
                   h(
                     'span',
-                    { className: 'aup-model-name', title: item.provider === '' ? item.model : item.provider + ' / ' + item.model },
-                    item.model
+                    {
+                      className: 'aup-model-name',
+                      title: isAccountProvider(item.provider) || item.provider === '' ? item.model : providerLabel(item.provider) + ' / ' + item.model
+                    },
+                    isAccountProvider(item.provider) || item.provider === '' ? item.model : providerLabel(item.provider) + ' · ' + item.model
                   ),
                   h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
                 )
@@ -1531,6 +1580,10 @@ window.__ModuleLoader__.load({
       const [settingsOpen, setSettingsOpen] = React.useState(false);
       const gearRef = React.useRef(null);
       const busy = account.refreshing === true || usage.refreshing === true;
+      const sessionProviders = [...new Set((sessionModels.items || []).map((item) => item.provider).filter((provider) => typeof provider === 'string' && provider !== ''))];
+      const offAccountProviders = sessionProviders.filter((provider) => !isAccountProvider(provider));
+      const offAccountLabel = [...new Set(offAccountProviders.map(providerLabel))].join(' / ');
+      const offAccountAll = sessionProviders.length > 0 && offAccountProviders.length === sessionProviders.length;
       const cachedUsage = dimensionResults.get(dimension);
       /** Render the selected dimension's own data immediately; never bucket another dimension's days. */
       const displayedUsage =
@@ -1840,14 +1893,17 @@ window.__ModuleLoader__.load({
               t,
               fallbackCurrency: currency,
               locale: accountLocale,
-              showCost: settings.showCost
+              showCost: settings.showCost,
+              thirdPartyLabel: offAccountLabel
             })
           : null,
         settings.cards.account === true
           ? h(AccountSection, {
               state: account,
               t,
-              onRetry: refresh
+              onRetry: refresh,
+              offAccountLabel,
+              offAccountAll
             })
           : null,
         settings.cards.session !== true && settings.cards.stats !== true && settings.cards.account !== true

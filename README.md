@@ -170,6 +170,24 @@
 - `market/index.json`：已上线的 format 1 市场索引（Git commit pin，图标已内联）
 - `PUBLISHING.md`：从改包名、npm 发布、索引校验到上架的完整步骤与自查清单
 
+## 第三方 Provider 识别
+
+会话不一定走 DeepSeek 账号：DSH 可以配置 OpenRouter、Anthropic、OpenAI、DeepSeek API Key 等
+其他 Provider。插件从**当前会话的持久日志**读取每条模型响应的 route，自动区分：
+
+| 会话实际使用的 Provider | 展示 |
+|---|---|
+| `deepseek-account`（登录的 DeepSeek 账号） | 正常显示；会话卡模型行只写模型名 |
+| 其他 Provider（`openrouter`、`deepseek` API Key、Anthropic 等） | 会话卡模型行带 Provider 前缀；余额卡加一行说明；统计卡标题加 `DeepSeek 平台` 标记 |
+
+- **余额卡**：当会话完全不消耗账号余额时提示「本次会话由 OpenRouter 提供，不消耗 DeepSeek 余额。」；
+  混合会话提示「部分使用 …」；未登录时仍显示原有的登录提示，不重复加说明
+- **用量统计**：平台 `/api/v0/usage/*` 只统计 DeepSeek 账号侧用量，因此有第三方 Provider 时
+  标题旁显示「DeepSeek 平台」小标记（悬停说明不含第三方 Provider）
+- **会话卡**：按模型统计始终来自本会话真实日志，第三方模型显示为 `OpenRouter · 模型名`
+- 识别依据是 assistant message 的 `source.provider`；`deepseek-account` 视为账号计费，
+  其他一律视为不经过账号余额（包括 DeepSeek API Key 路线）
+
 ## 安装
 
 从插件市场安装（推荐）：
@@ -223,10 +241,10 @@ npm 页面：<https://www.npmjs.com/package/dsh-account-usage>（也可用 Git �
   78,770,161、消费 ¥3.808647、请求 446 次、币种 CNY），日期桶与金额解析正确；
   调试探针在验证后已移除
 - 账户余额卡只显示「余额 / 赠送额度」两项（无账号身份信息），两列紧凑布局，主金额 24px、赠送额度 18px；
-  会话卡按模型统计来自 Host 折叠日志（真实数据），已用活动会话验证：如 `deepseek-account / deepseek-flash` 的 Token 合计与请求数正确
+  会话卡按模型统计来自 Host 折叠日志（真实数据），已用活动会话验证：如 `deepseek-account / deepseek-flash` 与 `openrouter / ~deepseek/deepseek-flash-latest` 的 Token 合计与请求数均正确，Provider 识别生效
 - 无头冒烟测试覆盖了：面板顺序（会话消耗 → 用量统计 → 余额）、默认 `日`、本地估算标记、
   平台数据渲染（真实金额不带 `≈`、「次请求」合计）、平台失败时的本地估算回退（带 `≈` 与失败原因）、
   两者都失败时的错误态、五档维度的桶数量与标签格式、月缓存/强制刷新参数、切维度不闪屏（不串用其他维度的数据）、
-  K/M/B/T 单位进位、固定卡高与无滚动容器查询、骨架屏与 tablist 键盘切换、行悬停明细、**设置弹层**（默认维度、卡片开关、金额开关、自动刷新、持久化与恢复默认）、**主题 token 契约**（禁止 bg-layer-2 / 硬编码颜色，校验浅深两套 token 定义与对比度）、**按模型折叠**（同 turn/step 替换、不同模型归属、流式 usage 回退）、空数据
+  K/M/B/T 单位进位、固定卡高与无滚动容器查询、骨架屏与 tablist 键盘切换、行悬停明细、**设置弹层**（默认维度、卡片开关、金额开关、自动刷新、持久化与恢复默认）、**主题 token 契约**（禁止 bg-layer-2 / 硬编码颜色，校验浅深两套 token 定义与对比度）、**按模型折叠**（同 turn/step 替换、不同模型归属、流式 usage 回退）、**第三方 Provider 提示**（余额卡说明、平台标记、模型行 Provider 前缀）、空数据
 - 未验证：真实浏览器中的渲染外观（本环境无浏览器控制）。样式只使用
   `--dsw-alias-*` 主题 token
