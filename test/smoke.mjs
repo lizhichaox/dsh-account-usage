@@ -450,7 +450,8 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const greeting = walk(header, (n) => hasClass(n, 'aup-head-greeting'))[0];
   assert.ok(greeting !== undefined, 'the header has a greeting slot');
   assert.ok(typeof flat(greeting) === 'string' && flat(greeting).length > 0, 'the greeting line is filled');
-  assert.ok(source.includes('border-bottom:1px solid var(--dsw-alias-border-l2)'), 'the header has a hairline rule');
+  assert.ok(source.includes('border-bottom:.5px solid var(--dsw-alias-border-l3)'), 'the header rule matches the conversation rule');
+  assert.ok(source.includes('--aup-head-h') && source.includes('conversation.header'), 'the band height is measured from the conversation header');
   // Unit-compacted token counts stop at two decimal places (78.77M, not 78.770161M).
   const preciseTree = render(
     {

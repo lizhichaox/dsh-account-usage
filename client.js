@@ -309,9 +309,9 @@ window.__ModuleLoader__.load({
       'html[data-account-usage-hide-stats] [data-composer-dock]{display:none!important}',
       'html[data-account-usage-hide-stats] [data-slot="conversation.composer.dock"]{display:none!important}',
       'html[data-account-usage-hide-stats] [data-composer-stat]{display:none!important}',
-      '.aup-root{position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;height:100%;min-height:0;overflow:hidden;padding:16px;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px}',
+      '.aup-root{position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;height:100%;min-height:0;overflow:hidden;padding:0 16px 16px;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px}',
       '.aup-root *{box-sizing:border-box}',
-      '.aup-head{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;margin:0 0 2px;padding:0 0 8px;border-bottom:1px solid var(--dsw-alias-border-l2)}',
+      '.aup-head{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;height:var(--aup-head-h,44px);margin:0 0 4px;padding:0;border-bottom:.5px solid var(--dsw-alias-border-l3)}',
       '.aup-head-greeting{min-width:0;text-align:center;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:clip}',
       '.aup-glyph{flex:none;color:var(--dsw-alias-label-secondary);display:inline-flex}',
       '.aup-title{flex:1;min-width:0;margin:0;font-size:14px;font-weight:500;line-height:20px;white-space:nowrap}',
@@ -2589,6 +2589,39 @@ window.__ModuleLoader__.load({
             window.removeEventListener('pointerup', onPointerUp, true);
             window.removeEventListener('pointercancel', onPointerUp, true);
           }
+        };
+      }, []);
+
+      React.useEffect(() => {
+        if (typeof document === 'undefined') return undefined;
+        const node = rootRef.current;
+        if (node === null || node === undefined) return undefined;
+        // The panel rule continues the conversation header rule: measure where that
+        // header ends and match the band height so the two rules form one line.
+        const anchorOf = () => {
+          const slot = document.querySelector('[data-slot="conversation.header"]');
+          if (slot !== null && slot !== undefined) return slot.getBoundingClientRect().bottom;
+          const chat = document.querySelector('[data-phase="active"], [data-phase="hero"], [data-phase="settling"]');
+          const firstChild = chat === null || chat === undefined ? null : chat.firstElementChild;
+          if (firstChild !== null && firstChild !== undefined) return firstChild.getBoundingClientRect().bottom;
+          const content = document.querySelector('[data-slot="conversation.content"]');
+          if (content !== null && content !== undefined) return content.getBoundingClientRect().top;
+          return undefined;
+        };
+        const apply = () => {
+          const anchorY = anchorOf();
+          if (!Number.isFinite(anchorY)) return;
+          const top = node.getBoundingClientRect().top;
+          const height = Math.round(anchorY - top);
+          if (!Number.isFinite(height) || height < 24 || height > 160) return;
+          node.style.setProperty('--aup-head-h', height + 'px');
+        };
+        apply();
+        const timers = [setTimeout(apply, 240), setTimeout(apply, 900), setTimeout(apply, 1600)];
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('resize', apply);
+        return () => {
+          for (const timer of timers) clearTimeout(timer);
+          if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') window.removeEventListener('resize', apply);
         };
       }, []);
 
