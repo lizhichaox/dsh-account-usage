@@ -312,7 +312,6 @@ window.__ModuleLoader__.load({
       '.aup-root{position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;height:100%;min-height:0;overflow:hidden;padding:0 16px 16px;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px}',
       '.aup-root *{box-sizing:border-box}',
       '.aup-head{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;height:var(--aup-head-h,44px);margin:0 -16px 4px;padding:0 16px;border-bottom:.5px solid var(--dsw-alias-border-l3)}',
-      '.aup-head[data-flush]{border-bottom:none}',
       '.aup-head-greeting{min-width:0;text-align:center;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:clip}',
       '.aup-glyph{flex:none;color:var(--dsw-alias-label-secondary);display:inline-flex}',
       '.aup-title{flex:1;min-width:0;margin:0;font-size:14px;font-weight:500;line-height:20px;white-space:nowrap}',
@@ -2252,7 +2251,6 @@ window.__ModuleLoader__.load({
       const t = React.useMemo(() => bindTranslation(), [bindTranslation, localeId]);
       const displayLocale = String(localeId).toLowerCase().startsWith('zh') ? localeId : 'en';
       const greeting = React.useMemo(() => greetingLine(new Date(), localeId, greetingSeed), [localeId, greetingSeed]);
-      const [headFlush, setHeadFlush] = React.useState(false);
 
       React.useEffect(() => {
         const update = () => setLocaleId(readLocale());
@@ -2600,14 +2598,31 @@ window.__ModuleLoader__.load({
         if (node === null || node === undefined) return undefined;
         // The panel rule continues the conversation header rule: measure where that
         // header ends and match the band height so the two rules form one line.
+        // Find the conversation header rule: the first element near the top of the chat
+        // pane that actually paints a bottom border. Slot wrappers may be display:contents
+        // (zero rect), so relying on their geometry alone is unreliable.
         const anchorOf = () => {
-          const slot = document.querySelector('[data-slot="conversation.header"]');
-          if (slot !== null && slot !== undefined) return slot.getBoundingClientRect().bottom;
           const chat = document.querySelector('[data-phase="active"], [data-phase="hero"], [data-phase="settling"]');
-          const firstChild = chat === null || chat === undefined ? null : chat.firstElementChild;
-          if (firstChild !== null && firstChild !== undefined) return firstChild.getBoundingClientRect().bottom;
-          const content = document.querySelector('[data-slot="conversation.content"]');
-          if (content !== null && content !== undefined) return content.getBoundingClientRect().top;
+          if (chat === null || chat === undefined) return undefined;
+          const chatTop = chat.getBoundingClientRect().top;
+          const queue = [chat];
+          let inspected = 0;
+          while (queue.length > 0 && inspected < 80) {
+            const element = queue.shift();
+            inspected += 1;
+            const rect = element.getBoundingClientRect();
+            if (rect.width > 120 && rect.height > 0 && rect.bottom - chatTop < 160) {
+              const style = window.getComputedStyle(element);
+              const borderWidth = Number.parseFloat(style.borderBottomWidth || '0');
+              if (borderWidth > 0) return rect.bottom;
+            }
+            for (const child of element.children) queue.push(child);
+          }
+          const slot = document.querySelector('[data-slot="conversation.header"]');
+          if (slot !== null && slot !== undefined) {
+            const rect = slot.getBoundingClientRect();
+            if (rect.height > 0) return rect.bottom;
+          }
           return undefined;
         };
         const apply = () => {
@@ -2615,14 +2630,7 @@ window.__ModuleLoader__.load({
           if (!Number.isFinite(anchorY)) return;
           const top = node.getBoundingClientRect().top;
           const height = Math.round(anchorY - top);
-          if (!Number.isFinite(height) || height > 240) return;
-          if (height < 14) {
-            // The conversation rule sits above our pane: drawing one here would break the line.
-            node.style.setProperty('--aup-head-h', '44px');
-            setHeadFlush(true);
-            return;
-          }
-          setHeadFlush(false);
+          if (!Number.isFinite(height) || height < 14 || height > 240) return;
           node.style.setProperty('--aup-head-h', height + 'px');
         };
         apply();
@@ -2678,7 +2686,7 @@ window.__ModuleLoader__.load({
         h('style', null, CSS),
         h(
           'header',
-          { className: 'aup-head', 'aria-label': t('panel.title'), 'data-flush': headFlush === true ? true : undefined },
+          { className: 'aup-head', 'aria-label': t('panel.title') },
           h(
             'div',
             { className: 'aup-head-actions aup-head-left' },
