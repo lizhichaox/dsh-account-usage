@@ -11,6 +11,11 @@
  *     -> { ok: false, code: 'no_account' | 'auth_failed' | 'timeout'
  *                            | 'fetch_failed' | 'invalid_response' }
  *
+ *   GET /account-usage/session/models?sessionId=<id>
+ *     -> { ok: true, data: { models: [{provider, model, tokens, requests}],
+ *                            totalTokens, fetchedAt } }
+ *     -> { ok: false, code: 'no_session' }
+ *
  * Data comes from the same private Platform Web endpoints the platform usage
  * page loads, authenticated with the signed-in harness account's platform
  * session (with a DEEPSEEK_USER_TOKEN credential as fallback):
@@ -28,6 +33,8 @@ const AMOUNT_PATH = '/api/v0/usage/amount';
 const COST_PATH = '/api/v0/usage/cost';
 const DEFAULT_ORIGIN = 'https://platform.deepseek.com';
 const ROUTE_PATH = '/account-usage/platform/usage';
+const MODELS_ROUTE_PATH = '/account-usage/session/models';
+const SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const TIMEOUT_MS = 15000;
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -294,6 +301,147 @@ function createMonthReader(ctx) {
   };
 }
 
+/**
+ * Last provider usage sample embedded in one attempt's compact stream.
+ * The token-meter projection reads the same chunk shape.
+ */
+function usageSampleOf(event) {
+  if (event === null || typeof event !== 'object') return undefined;
+  const data = event.data !== null && typeof event.data === 'object' ? event.data : {};
+  if (event.type === 'assistant/message' && data.usage !== null && typeof data.usage === 'object') return data.usage;
+  const stream = data.stream;
+  if (!Array.isArray(stream)) return undefined;
+  for (let index = stream.length - 1; index >= 0; index -= 1) {
+    const chunk = stream[index];
+    if (chunk !== null && typeof chunk === 'object' && chunk.type === 'usage' && chunk.usage !== null && typeof chunk.usage === 'object') {
+      return chunk.usage;
+    }
+  }
+  return undefined;
+}
+
+/** Provider/model route recorded on an assistant message. */
+function routeOf(event) {
+  const data = event.data !== null && typeof event.data === 'object' ? event.data : {};
+  const message = data.message !== null && typeof data.message === 'object' ? data.message : undefined;
+  const source = message !== undefined && message.source !== null && typeof message.source === 'object' ? message.source : undefined;
+  if (source === undefined || typeof source.model !== 'string' || source.model === '') return undefined;
+  return { provider: typeof source.provider === 'string' ? source.provider : '', model: source.model };
+}
+
+function bucketsOf(usage) {
+  const count = (value) => (Number.isSafeInteger(value) && value > 0 ? value : 0);
+  return {
+    input: count(usage.inputTokens),
+    output: count(usage.outputTokens),
+    cacheRead: count(usage.cacheReadTokens),
+    cacheWrite: count(usage.cacheWriteTokens)
+  };
+}
+
+/** Token bucket sum for one model row. */
+function tokensOf(bucket) {
+  return bucket.input + bucket.output + bucket.cacheRead + bucket.cacheWrite;
+}
+
+/**
+ * Fold a session log into per-model provider-reported token totals.
+ * Each settled attempt replaces its own sample (same turn/step), mirrors the
+ * tokenUsage projection, and is attributed to the message route in force.
+ * @param events - Session events in log order.
+ * @returns Rows sorted by descending token total.
+ */
+export function foldSessionModels(events) {
+  const models = new Map();
+  let last = null;
+  let route;
+  const keyOf = (value) => (value.provider || '') + '\u0000' + value.model;
+  const entryOf = (value) => {
+    const key = keyOf(value);
+    let entry = models.get(key);
+    if (entry === undefined) {
+      entry = { provider: value.provider || '', model: value.model, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, requests: 0 };
+      models.set(key, entry);
+    }
+    return entry;
+  };
+  for (const event of events) {
+    if (event === null || typeof event !== 'object') continue;
+    if (event.type === 'llm/retry-started') {
+      last = null;
+      continue;
+    }
+    if (event.type !== 'assistant/message' && event.type !== 'assistant/attempt') continue;
+    const found = routeOf(event);
+    if (found !== undefined) route = found;
+    const usage = usageSampleOf(event);
+    if (usage === undefined || route === undefined) continue;
+    const data = event.data !== null && typeof event.data === 'object' ? event.data : {};
+    const turn = data.turn;
+    const step = data.step;
+    const key = keyOf(route);
+    const bucket = bucketsOf(usage);
+    if (last !== null && last.turn === turn && last.step === step) {
+      const previous = models.get(last.key);
+      if (previous !== undefined) {
+        previous.input -= last.bucket.input;
+        previous.output -= last.bucket.output;
+        previous.cacheRead -= last.bucket.cacheRead;
+        previous.cacheWrite -= last.bucket.cacheWrite;
+        previous.requests = Math.max(0, previous.requests - 1);
+      }
+    }
+    const entry = entryOf(route);
+    entry.input += bucket.input;
+    entry.output += bucket.output;
+    entry.cacheRead += bucket.cacheRead;
+    entry.cacheWrite += bucket.cacheWrite;
+    entry.requests += 1;
+    last = { turn, step, key, bucket };
+  }
+  return [...models.values()]
+    .map((entry) => ({
+      provider: entry.provider,
+      model: entry.model,
+      tokens: tokensOf(entry),
+      requests: entry.requests
+    }))
+    .filter((entry) => entry.tokens > 0)
+    .sort((left, right) => right.tokens - left.tokens);
+}
+
+/** One read of the on-screen session's per-model token totals, cached briefly. */
+function createSessionModelReader(ctx) {
+  const cache = new Map();
+  return async function readSessionModels(sessionId) {
+    const sessions = typeof ctx.get === 'function' ? ctx.get('sessions') : undefined;
+    if (sessions === undefined || sessions === null || typeof sessions.get !== 'function') {
+      return { ok: false, code: 'no_session' };
+    }
+    const session = sessions.get(sessionId);
+    if (session === undefined || session === null) return { ok: false, code: 'no_session' };
+    const seq = typeof session.seq === 'number' ? session.seq : -1;
+    const hit = cache.get(sessionId);
+    const now = Date.now();
+    if (hit !== undefined && hit.seq === seq && now - hit.at < 10000) {
+      return { ok: true, models: hit.models, totalTokens: hit.totalTokens, fetchedAt: hit.at };
+    }
+    let models;
+    try {
+      models = foldSessionModels(session.ownEvents());
+    } catch (error) {
+      return { ok: false, code: 'no_session' };
+    }
+    const totalTokens = models.reduce((sum, entry) => sum + entry.tokens, 0);
+    cache.set(sessionId, { at: now, seq, models, totalTokens });
+    if (cache.size > 20) {
+      const oldest = cache.keys().next().value;
+      if (oldest !== undefined) cache.delete(oldest);
+    }
+    return { ok: true, models, totalTokens, fetchedAt: now };
+  };
+}
+
 function writeJson(res, status, body) {
   if (res.headersSent === true) return;
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
@@ -302,6 +450,7 @@ function writeJson(res, status, body) {
 
 export function apply(ctx) {
   const readMonth = createMonthReader(ctx);
+  const readSessionModels = createSessionModelReader(ctx);
 
   const handler = async (req, res) => {
     if (!isTrustedRequest(req)) {
@@ -335,6 +484,51 @@ export function apply(ctx) {
       writeJson(res, status, { ok: false, code });
     }
   };
+
+
+  const modelsHandler = async (req, res) => {
+    if (!isTrustedRequest(req)) {
+      writeJson(res, 403, { ok: false, code: 'forbidden' });
+      return;
+    }
+    if (req.method !== 'GET') {
+      writeJson(res, 405, { ok: false, code: 'method_not_allowed' });
+      return;
+    }
+    let url;
+    try {
+      url = new URL(req.url, 'http://127.0.0.1');
+    } catch {
+      writeJson(res, 400, { ok: false, code: 'invalid_request' });
+      return;
+    }
+    const sessionId = url.searchParams.get('sessionId') || '';
+    if (!SESSION_ID_PATTERN.test(sessionId)) {
+      writeJson(res, 400, { ok: false, code: 'invalid_session' });
+      return;
+    }
+    try {
+      const data = await readSessionModels(sessionId);
+      if (data.ok !== true) {
+        writeJson(res, 404, { ok: false, code: data.code });
+        return;
+      }
+      writeJson(res, 200, { ok: true, data: { models: data.models, totalTokens: data.totalTokens, fetchedAt: data.fetchedAt } });
+    } catch (error) {
+      console.error('[account-usage] session models failed:', { code: 'fetch_failed' });
+      writeJson(res, 502, { ok: false, code: 'fetch_failed' });
+    }
+  };
+
+  ctx.effect(
+    () =>
+      ctx.webServer.register({
+        kind: 'exact',
+        path: MODELS_ROUTE_PATH,
+        handler: modelsHandler
+      }),
+    'account-usage: session models route'
+  );
 
   ctx.effect(
     () =>

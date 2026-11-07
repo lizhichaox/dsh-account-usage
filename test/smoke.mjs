@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import assert from 'node:assert';
 import { fileURLToPath } from 'node:url';
+import { foldSessionModels } from '../index.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -365,10 +366,11 @@ const DEFAULT_SETTINGS = {
   showCost: true,
   cards: { session: true, stats: true, account: true }
 };
-function render(usageState, projection, dimensionValue, settingsValue, settingsOpen) {
+function render(usageState, projection, dimensionValue, settingsValue, settingsOpen, sessionModelsValue) {
   stateQueue.push(
     accountState,
     usageState,
+    sessionModelsValue || { phase: 'idle', items: [], totalTokens: 0 },
     settingsValue || DEFAULT_SETTINGS,
     dimensionValue || 'day',
     { count: 0, force: false },
@@ -439,6 +441,35 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
     refreshing: false
   }, () => undefined);
   assert.equal(walk(fallbackTree, (n) => hasClass(n, 'aup-badge')).length, 1, 'local estimate badge');
+}
+
+// ------------------------------------------------------------ model stats --
+{
+  const events = [
+    { type: 'assistant/message', data: { turn: 1, step: 1, message: { source: { provider: 'deepseek', model: 'deepseek-chat' } }, usage: { inputTokens: 100, outputTokens: 20, cacheReadTokens: 5, cacheWriteTokens: 1 } } },
+    { type: 'assistant/message', data: { turn: 2, step: 2, message: { source: { provider: 'deepseek', model: 'deepseek-chat' } }, usage: { inputTokens: 50, outputTokens: 10 } } },
+    { type: 'assistant/message', data: { turn: 2, step: 2, message: { source: { provider: 'deepseek', model: 'deepseek-reasoner' } }, usage: { inputTokens: 70, outputTokens: 30 } } }
+  ];
+  const rows = foldSessionModels(events);
+  assert.deepEqual(rows.map((row) => [row.model, row.tokens]), [['deepseek-chat', 126], ['deepseek-reasoner', 100]], 'per-model fold replaces the same attempt and attributes the route');
+
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [{ provider: 'deepseek', model: 'deepseek-chat', tokens: 5000, requests: 2 }, { provider: '', model: 'deepseek-reasoner', tokens: 3000, requests: 1 }], totalTokens: 8000 },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const tree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
+  stateQueue.length = 0;
+  assert.equal(flat(walk(tree, (node) => hasClass(node, 'aup-models-caption'))[0]), '按模型', 'model block caption');
+  const modelNames = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat);
+  const modelTokens = walk(tree, (node) => hasClass(node, 'aup-model-tokens')).map(flat);
+  assert.deepEqual(modelNames, ['deepseek-chat', 'deepseek-reasoner'], 'model rows show names');
+  assert.deepEqual(modelTokens, ['5K', '3K'], 'model rows show compact token totals');
 }
 
 // --------------------------------------------------------------- settings --

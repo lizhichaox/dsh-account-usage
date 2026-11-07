@@ -143,6 +143,8 @@ window.__ModuleLoader__.load({
       'tokens.context': '上下文占用',
       'tokens.contextValue': '{used} / {window}（{percent}%）',
       'tokens.contextUnknown': '暂无上下文数据',
+      'tokens.byModel': '按模型',
+      'tokens.moreModels': '另有 {count} 个模型',
     };
 
     /** English dictionary, checked against the Chinese key set. */
@@ -205,6 +207,8 @@ window.__ModuleLoader__.load({
       'tokens.context': 'Context usage',
       'tokens.contextValue': '{used} / {window} ({percent}%)',
       'tokens.contextUnknown': 'No context data yet',
+      'tokens.byModel': 'By model',
+      'tokens.moreModels': '{count} more models',
     };
 
     // ----------------------------------------------------------------- styles --
@@ -247,10 +251,9 @@ window.__ModuleLoader__.load({
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
       '.aup-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden;container-type:size;container-name:aup-card}',
-      '.aup-card-session{justify-content:space-between}',
-      '.aup-card-stats{flex:2 1 0;justify-content:space-between}',
-      '.aup-card-account{justify-content:space-evenly}',
-      '.aup-card-account .aup-balance-value{font-size:26px;line-height:32px}',
+      '.aup-card-session{flex:3 1 0;justify-content:space-between}',
+      '.aup-card-stats{flex:4 1 0;justify-content:space-between}',
+      '.aup-card-account{flex:0 0 auto;min-height:96px;justify-content:flex-start}',
       '.aup-card-head{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex:none}',
       '.aup-divider{display:block;height:1px;flex:none;margin:0;background:var(--dsw-alias-border-l2)}',
       '.aup-card-icon{display:inline-flex;flex:none;color:var(--dsw-alias-label-secondary)}',
@@ -265,10 +268,10 @@ window.__ModuleLoader__.load({
       '.aup-badge{flex:none;padding:0 6px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:18px;font-weight:500;white-space:nowrap}',
       '.aup-card-title{margin:0;font-size:12px;font-weight:500;line-height:18px;color:var(--dsw-alias-label-secondary)}',
 
-      '.aup-balance{display:flex;flex-direction:column;gap:6px;margin:0;padding:0}',
-      '.aup-balance-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0}',
-      '.aup-balance-label{margin:0;font-size:12px;font-weight:500;color:var(--dsw-alias-label-secondary);flex:none;white-space:nowrap}',
-      '.aup-balance-value{margin:0;font-size:20px;font-weight:500;line-height:26px;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}',
+      '.aup-balance{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 16px;margin:0;padding:0}',
+      '.aup-balance-item{display:flex;flex-direction:column;gap:2px;min-width:0}',
+      '.aup-balance-label{margin:0;font-size:12px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.aup-balance-value{margin:0;font-size:20px;font-weight:500;line-height:26px;font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.aup-balance-value.aup-minor{font-size:13px;line-height:20px;font-weight:400;color:var(--dsw-alias-label-primary)}',
       '.aup-hint{margin:0;font-size:12px;line-height:18px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '.aup-error{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-state-error-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -278,6 +281,12 @@ window.__ModuleLoader__.load({
       '.aup-card-session .aup-session-grid{flex:1 1 auto;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;align-content:space-evenly;justify-items:stretch;margin:0;padding:0;width:100%}',
       '.aup-card-session .aup-session-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}',
       '.aup-card-session .aup-session-cell:nth-child(even){align-items:flex-end;text-align:right}',
+      '.aup-models{display:flex;flex-direction:column;gap:2px;flex:none;min-height:0}',
+      '.aup-models-caption{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
+      '.aup-model-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0;font-size:13px;line-height:17px}',
+      '.aup-model-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
+      '.aup-model-tokens{flex:none;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
+      '.aup-model-more{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
       '.aup-card-session .aup-session-label{margin:0;font-size:11px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '.aup-card-session .aup-session-value{margin:0;font-size:15px;line-height:20px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.aup-card-session .aup-bar{height:8px}',
@@ -341,17 +350,17 @@ window.__ModuleLoader__.load({
       '.aup-card-stats .aup-series-track{height:6px}',
       '.aup-card-stats .aup-series-label,.aup-card-stats .aup-series-tokens{font-size:inherit;line-height:15px}',
       '.aup-card-stats .aup-series-cost{font-size:12px;line-height:13px}',
-      '.aup-card-account .aup-balance{flex:1 1 auto;justify-content:center;gap:0;padding:2px 0}',
-      '.aup-card-account .aup-balance-row{align-items:center;min-height:38px;gap:14px}',
-      '.aup-card-account .aup-balance-row+.aup-balance-row{margin-top:8px;padding-top:10px;border-top:.5px solid var(--dsw-alias-border-l2)}',
-      '.aup-card-account .aup-balance-value{font-size:28px;line-height:32px;letter-spacing:-.01em}',
-      '.aup-card-account .aup-balance-value.aup-minor{font-size:20px;line-height:24px;font-weight:500;color:var(--dsw-alias-label-primary)}',
+      '.aup-card-account .aup-balance{grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 16px;align-content:center;padding:2px 0}',
+      '.aup-card-account .aup-balance-value{font-size:24px;line-height:30px;letter-spacing:-.01em}',
+      '.aup-card-account .aup-balance-value.aup-minor{font-size:18px;line-height:24px;font-weight:500;color:var(--dsw-alias-label-primary)}',
       '.aup-card-account .aup-balance-label{font-size:13px;line-height:16px;font-weight:500}',
       '.aup-hint{font-size:13px;line-height:16px}',
       // ---- content shedding at short card heights (no scrolling) ----
-      '@container aup-card (max-height:220px){.aup-card-session .aup-compose{display:none}}',
-      '@container aup-card (max-height:180px){.aup-card-session .aup-context{display:none}}',
-      '@container aup-card (max-height:145px){.aup-card-session .aup-session-grid{display:none}}',
+      '@container aup-card (max-height:260px){.aup-card-session .aup-compose{display:none}}',
+      '@container aup-card (max-height:210px){.aup-card-session .aup-models{display:none}}',
+      '@container aup-card (max-height:245px){.aup-card-session .aup-model-row:nth-child(4),.aup-card-session .aup-model-more{display:none}}',
+      '@container aup-card (max-height:230px){.aup-card-session .aup-context{display:none}}',
+      '@container aup-card (max-height:150px){.aup-card-session .aup-session-grid{display:none}}',
       '@container aup-card (max-height:180px){.aup-card-stats .aup-stats-summary{display:none}}'
     ].join('\n');
 
@@ -935,6 +944,7 @@ window.__ModuleLoader__.load({
 
     /** Host route that proxies one platform usage month (see the Host half). */
     const PLATFORM_USAGE_ROUTE = '/account-usage/platform/usage';
+    const SESSION_MODELS_ROUTE = '/account-usage/session/models';
     /** Cache lifetime for the month still being written (platform updates it live). */
     const MONTH_CACHE_TTL_MS = 2 * 60 * 1000;
     /** Cache lifetime for closed months; their daily totals no longer change. */
@@ -1072,6 +1082,36 @@ window.__ModuleLoader__.load({
       return true;
     }
 
+    /** Per-model token totals for one session, computed by the Host from its durable log. */
+    function createSessionModelReader() {
+      return async function readSessionModels(sessionId) {
+        if (typeof sessionId !== 'string' || sessionId === '') return { ok: false, code: 'no_session' };
+        try {
+          const response = await fetch(SESSION_MODELS_ROUTE + '?sessionId=' + encodeURIComponent(sessionId), {
+            credentials: 'same-origin'
+          });
+          const body = await response.json();
+          if (response.ok && body !== null && typeof body === 'object' && body.ok === true && Array.isArray(body.data?.models)) {
+            return {
+              ok: true,
+              models: body.data.models
+                .filter((entry) => entry !== null && typeof entry === 'object' && typeof entry.model === 'string' && Number.isFinite(entry.tokens))
+                .map((entry) => ({
+                  provider: typeof entry.provider === 'string' ? entry.provider : '',
+                  model: entry.model,
+                  tokens: Math.max(0, Math.round(entry.tokens)),
+                  requests: Number.isFinite(entry.requests) ? Math.max(0, Math.round(entry.requests)) : 0
+                })),
+              totalTokens: Number.isFinite(body.data.totalTokens) ? body.data.totalTokens : 0
+            };
+          }
+          return { ok: false, code: body !== null && typeof body === 'object' && typeof body.code === 'string' ? body.code : 'fetch_failed' };
+        } catch (error) {
+          return { ok: false, code: 'fetch_failed' };
+        }
+      };
+    }
+
     /** Local fallback: session token totals attributed to each session's last activity. */
     async function readLocalUsage(ctx, currency) {
       try {
@@ -1117,13 +1157,13 @@ window.__ModuleLoader__.load({
     }
 
     /** One labelled wallet row. */
-    function WalletRow({ label, wallet, locale, major }) {
+    function WalletItem({ label, wallet, locale, major }) {
       return h(
         'div',
-        { className: 'aup-balance-row' },
-        h('dt', { className: 'aup-balance-label' }, label),
+        { className: 'aup-balance-item' },
+        h('span', { className: 'aup-balance-label' }, label),
         h(
-          'dd',
+          'span',
           { className: 'aup-balance-value' + (major ? '' : ' aup-minor') },
           formatMoney(wallet.balance, wallet.currency, locale)
         )
@@ -1175,11 +1215,11 @@ window.__ModuleLoader__.load({
       const balance = result.balance;
       const wallets = balance && balance.status === 'ready' ? balance.value || [] : [];
       const bonusWallets = balance && balance.status === 'ready' ? balance.bonusWallets || [] : [];
-      const walletRows = wallets.map((wallet, index) =>
-        h(WalletRow, { key: 'w' + index, label: t('balance.recharge'), wallet, locale, major: index === 0 })
+      const walletItems = wallets.map((wallet, index) =>
+        h(WalletItem, { key: 'w' + index, label: t('balance.recharge'), wallet, locale, major: index === 0 })
       );
-      const bonusRows = bonusWallets.map((wallet, index) =>
-        h(WalletRow, { key: 'b' + index, label: t('balance.bonus'), wallet, locale, major: false })
+      const bonusItems = bonusWallets.map((wallet, index) =>
+        h(WalletItem, { key: 'b' + index, label: t('balance.bonus'), wallet, locale, major: false })
       );
 
       return h(
@@ -1188,9 +1228,9 @@ window.__ModuleLoader__.load({
         head,
         !balance || balance.status === 'failed'
           ? h(Hint, null, t('balance.failed'))
-          : walletRows.length === 0 && bonusRows.length === 0
+          : walletItems.length === 0 && bonusItems.length === 0
             ? h(Hint, null, t('balance.empty'))
-            : h('dl', { className: 'aup-balance' }, walletRows, bonusRows)
+            : h('div', { className: 'aup-balance' }, walletItems, bonusItems)
       );
     }
 
@@ -1349,7 +1389,7 @@ window.__ModuleLoader__.load({
     }
 
     /** This session's durable token totals plus context occupancy. */
-    function TokenSection({ useProjection, t }) {
+    function TokenSection({ useProjection, t, sessionModels }) {
       const usage = useProjection('tokenUsage');
       const pressure = useProjection('contextPressure');
 
@@ -1379,6 +1419,28 @@ window.__ModuleLoader__.load({
       const percent = hasContext ? Math.min(100, Math.round((usedTokens / contextWindow) * 100)) : 0;
 
       const detailRows = rows.filter((row) => row.total !== true);
+      const modelRows = sessionModels !== null && sessionModels !== undefined && Array.isArray(sessionModels.items) ? sessionModels.items : [];
+      const modelBlock =
+        modelRows.length === 0
+          ? null
+          : h(
+              'div',
+              { className: 'aup-models', 'aria-label': t('tokens.byModel') },
+              h('span', { className: 'aup-models-caption' }, t('tokens.byModel')),
+              modelRows.slice(0, 3).map((item) =>
+                h(
+                  'div',
+                  { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
+                  h(
+                    'span',
+                    { className: 'aup-model-name', title: item.provider === '' ? item.model : item.provider + ' / ' + item.model },
+                    item.model
+                  ),
+                  h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
+                )
+              ),
+              modelRows.length > 3 ? h('span', { className: 'aup-model-more' }, t('tokens.moreModels', { count: String(modelRows.length - 3) })) : null
+            );
       const composeSegments = usage
         ? [
             { key: 'input', value: usage.uncachedInputTokens || 0, color: 'var(--dsw-static-blue-450, #4d93f8)' },
@@ -1430,6 +1492,7 @@ window.__ModuleLoader__.load({
                 )
               )
             ),
+        modelBlock,
         h(
           'div',
           { className: 'aup-context' },
@@ -1457,9 +1520,10 @@ window.__ModuleLoader__.load({
     }
 
     /** Right-sidebar tab body. */
-    function AccountUsageBody({ t, useProjection, readAccount, readUsage }) {
+    function AccountUsageBody({ t, useProjection, readAccount, readUsage, readSessionModels, sessionId }) {
       const [account, setAccount] = React.useState({ phase: 'loading', result: undefined, refreshing: false });
       const [usage, setUsage] = React.useState({ phase: 'loading', days: [], ok: undefined, refreshing: false, dimension: DIMENSIONS[0].id });
+      const [sessionModels, setSessionModels] = React.useState({ phase: 'idle', items: [], totalTokens: 0 });
       const [settings, setSettings] = React.useState(readSettings);
       const [dimension, setDimension] = React.useState(settings.dimension);
       const [accountRequest, setAccountRequest] = React.useState({ count: 0, force: false });
@@ -1607,6 +1671,29 @@ window.__ModuleLoader__.load({
         };
       }, [usageRequest.count, usageRequest.force, dimension, readUsage]);
 
+      React.useEffect(() => {
+        let cancelled = false;
+        if (typeof sessionId !== 'string' || sessionId === '') {
+          setSessionModels({ phase: 'empty', items: [], totalTokens: 0 });
+          return undefined;
+        }
+        readSessionModels(sessionId)
+          .then((result) => {
+            if (cancelled) return;
+            setSessionModels(
+              result.ok === true
+                ? { phase: 'ready', items: result.models, totalTokens: result.totalTokens }
+                : { phase: 'empty', items: [], totalTokens: 0 }
+            );
+          })
+          .catch((error) => {
+            if (!cancelled) setSessionModels({ phase: 'empty', items: [], totalTokens: 0 });
+          });
+        return () => {
+          cancelled = true;
+        };
+      }, [sessionId, usageRequest.count, usageRequest.force, readSessionModels]);
+
       // Account balances move slowly; refresh them rarely and never while the page is hidden.
       React.useEffect(() => {
         if (settings.autoRefresh !== true) return undefined;
@@ -1743,7 +1830,7 @@ window.__ModuleLoader__.load({
         settingsOpen === true
           ? h(SettingsPanel, { settings, onChange: applySettings, onReset: resetSettings, onClose: closeSettings, t })
           : null,
-        settings.cards.session === true ? h(TokenSection, { useProjection, t }) : null,
+        settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels }) : null,
         settings.cards.stats === true
           ? h(UsageSection, {
               state: displayedUsage,
@@ -1847,6 +1934,7 @@ window.__ModuleLoader__.load({
       const t = ctx.locale.bind(NS);
       const readAccount = createAccountReader(ctx);
       const readUsage = createUsageReader(ctx);
+      const readSessionModels = createSessionModelReader();
 
       const openPanel = () => {
         try {
@@ -1886,7 +1974,7 @@ window.__ModuleLoader__.load({
                 name: 'sidebar.right.pane.tab',
                 key: ID,
                 locale: NS,
-                inject: () => ({ readAccount, readUsage })
+                inject: () => ({ readAccount, readUsage, readSessionModels })
               },
               AccountUsageBody
             )
