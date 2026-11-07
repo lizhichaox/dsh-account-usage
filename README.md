@@ -39,7 +39,8 @@ DeepSeek API 会话：**会话消耗 → 用量统计 → 账户余额**。
 4. **账户余额**：
    - DeepSeek API：充值余额 + 赠送额度，**标签与金额同一行**，金额 16px，紧凑布局
    - **来源 tab**：只要会话里出现第三方 Provider，账户卡就出现「DeepSeek API / OpenRouter / OpenCode Go …」标签栏
-     （单 Provider 会话也有，避免把供应商名塞进标题导致标题折行），
+     （单 Provider 会话也有，避免把供应商名塞进标题导致标题折行）；
+     **默认自动选中当前会话正在使用的 Provider**（Host 从会话日志最后一条带 route 的 assistant 消息得出），
      每个 tab 显示对应来源的余额（DeepSeek 钱包、OpenRouter 剩余额度、opencode 套餐剩余百分比）；
      不再显示「部分 xxx」这类说明文字
    - 切换 tab 时卡片高度**固定不变**：所有来源共用一个 132px 高的内容盒，内容垂直居中；

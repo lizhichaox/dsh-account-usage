@@ -426,22 +426,37 @@ function createSessionModelReader(ctx) {
     const hit = cache.get(sessionId);
     const now = Date.now();
     if (hit !== undefined && hit.seq === seq && now - hit.at < 10000) {
-      return { ok: true, models: hit.models, totalTokens: hit.totalTokens, fetchedAt: hit.at };
+      return { ok: true, models: hit.models, totalTokens: hit.totalTokens, lastRoute: hit.lastRoute, fetchedAt: hit.at };
     }
     let models;
+    let lastRoute;
     try {
-      models = foldSessionModels(session.ownEvents());
+      const events = session.ownEvents();
+      models = foldSessionModels(events);
+      lastRoute = lastRouteOf(events);
     } catch (error) {
       return { ok: false, code: 'no_session' };
     }
     const totalTokens = models.reduce((sum, entry) => sum + entry.tokens, 0);
-    cache.set(sessionId, { at: now, seq, models, totalTokens });
+    cache.set(sessionId, { at: now, seq, models, totalTokens, lastRoute });
     if (cache.size > 20) {
       const oldest = cache.keys().next().value;
       if (oldest !== undefined) cache.delete(oldest);
     }
-    return { ok: true, models, totalTokens, fetchedAt: now };
+    return { ok: true, models, totalTokens, lastRoute, fetchedAt: now };
   };
+}
+
+/** Provider/model of the newest routed assistant message in the session log. */
+function lastRouteOf(events) {
+  for (let index = events.length - 1; index >= 0; index -= 1) {
+    const event = events[index];
+    if (event === null || typeof event !== 'object') continue;
+    if (event.type !== 'assistant/message' && event.type !== 'assistant/attempt') continue;
+    const route = routeOf(event);
+    if (route !== undefined) return route;
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------- provider balances --
@@ -683,7 +698,10 @@ export function apply(ctx) {
         writeJson(res, 404, { ok: false, code: data.code });
         return;
       }
-      writeJson(res, 200, { ok: true, data: { models: data.models, totalTokens: data.totalTokens, fetchedAt: data.fetchedAt } });
+      writeJson(res, 200, {
+        ok: true,
+        data: { models: data.models, totalTokens: data.totalTokens, lastRoute: data.lastRoute, fetchedAt: data.fetchedAt }
+      });
     } catch (error) {
       console.error('[account-usage] session models failed:', { code: 'fetch_failed' });
       writeJson(res, 502, { ok: false, code: 'fetch_failed' });

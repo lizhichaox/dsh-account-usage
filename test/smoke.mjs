@@ -512,7 +512,10 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const accountText = flat(accountCard);
   assert.ok(!accountText.includes('542.52'), 'DeepSeek balance is hidden for an off-account session');
   assert.ok(accountText.includes('OpenRouter'), 'balance card names the provider');
-  assert.equal(walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 0, 'DeepSeek platform stats are hidden for an off-account session');
+  const offAccountStats = walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0];
+  assert.ok(offAccountStats !== undefined, 'the 用量统计 card always exists');
+  assert.equal(walk(offAccountStats, (node) => hasClass(node, 'aup-dim')).length, 0, 'no period switch without platform data');
+  assert.ok(flat(offAccountStats).includes('OpenRouter'), 'off-account stats list the session sources');
   const modelName = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat)[0];
   assert.equal(modelName, 'OpenRouter - deepseek-flash', 'model row merges provider and model name');
   assert.equal(walk(tree, (node) => hasClass(node, 'aup-models-provider')).length, 0, 'provider caption rows are gone');
@@ -536,7 +539,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(providerText.includes('42.50'), 'provider remaining balance');
   assert.ok(providerText.includes('7.50'), 'provider used amount');
   assert.ok(!providerText.includes('542.52'), 'DeepSeek wallet never renders in provider mode');
-  assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 0, 'platform stats stay hidden in provider mode');
+  assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 1, 'the 用量统计 card always exists');
   assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-session')).length, 1, 'session card still renders');
 
   // Providers without a balance API (for example OpenCode Go) fall back to the
@@ -663,6 +666,28 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const sourceTabs = walk(mixedWallet, (node) => hasClass(node, 'aup-src-tab')).map(flat);
   assert.deepEqual(sourceTabs, ['DeepSeek API', 'OpenRouter'], 'one tab per source: ' + JSON.stringify(sourceTabs));
   assert.equal(walk(mixedWallet, (node) => hasClass(node, 'aup-badge')).length, 0, 'no partial badge once tabs exist');
+  // The account card opens on the provider the session is currently using.
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', lastProvider: 'opencode-go', items: [
+      { provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 },
+      { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2_000_000, requests: 20 }
+    ], totalTokens: 3_000_000 },
+    { phase: 'ready', items: [{ provider: 'opencode-go', kind: 'opencode-plan', windows: [{ id: 'rolling', usedPercent: 1 }, { id: 'weekly', usedPercent: 2 }, { id: 'monthly', usedPercent: 3 }] }], error: undefined },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const autoTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
+  stateQueue.length = 0;
+  const autoCard = walk(autoTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
+  const activeTab = walk(autoCard, (node) => hasClass(node, 'aup-src-tab') && node.props['data-active'] === true).map(flat);
+  assert.deepEqual(activeTab, ['OpenCode Go'], 'the tab of the provider in use is preselected: ' + JSON.stringify(activeTab));
+  assert.ok(flat(autoCard).includes('套餐剩余'), 'preselected provider tab shows its balance');
+
   // Card titles stay clean: the provider name lives in the tab row, never next to the title.
   for (const node of walk(mixedWalletTree, (n) => n.type === 'section' && hasClass(n, 'aup-card'))) {
     const head = walk(node, (n) => hasClass(n, 'aup-card-head'))[0];

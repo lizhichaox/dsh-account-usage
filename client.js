@@ -142,6 +142,7 @@ window.__ModuleLoader__.load({
       'stats.dim.year': '年',
       'stats.summary.requests': '合计 {total} · {count} 次请求',
       'stats.summary.sessions': '合计 {total} · {count} 个会话',
+      'stats.summary.sources': '合计 {total} · {count} 个来源',
       'stats.empty': '暂无用量记录',
       'stats.failed': '用量记录读取失败',
       'stats.localBadge': '本地估算',
@@ -250,6 +251,7 @@ window.__ModuleLoader__.load({
       'stats.dim.year': 'Year',
       'stats.summary.requests': 'Total {total} · {count} requests',
       'stats.summary.sessions': 'Total {total} · {count} sessions',
+      'stats.summary.sources': 'Total {total} · {count} sources',
       'stats.empty': 'No usage records yet',
       'stats.failed': 'Could not read usage records',
       'stats.localBadge': 'local',
@@ -1396,7 +1398,11 @@ window.__ModuleLoader__.load({
                   tokens: Math.max(0, Math.round(entry.tokens)),
                   requests: Number.isFinite(entry.requests) ? Math.max(0, Math.round(entry.requests)) : 0
                 })),
-              totalTokens: Number.isFinite(body.data.totalTokens) ? body.data.totalTokens : 0
+              totalTokens: Number.isFinite(body.data.totalTokens) ? body.data.totalTokens : 0,
+              lastProvider:
+                body.data.lastRoute !== null && body.data.lastRoute !== undefined && typeof body.data.lastRoute.provider === 'string'
+                  ? body.data.lastRoute.provider
+                  : ''
             };
           }
           return { ok: false, code: body !== null && typeof body === 'object' && typeof body.code === 'string' ? body.code : 'fetch_failed' };
@@ -1498,129 +1504,6 @@ window.__ModuleLoader__.load({
       return undefined;
     }
 
-    /** Provider session detail: per-model totals plus context composition. */
-    function SessionDetailCard({ t, useProjection, sessionModels }) {
-      const usage = useProjection('tokenUsage');
-      const sessionStats = useProjection('sessionStats');
-      const pressure = useProjection('contextPressure');
-      const contextBreakdown = useProjection('contextBreakdown');
-      const modelRows = sessionModels !== null && sessionModels !== undefined && Array.isArray(sessionModels.items) ? sessionModels.items : [];
-      const total = usage ? (usage.uncachedInputTokens || 0) + (usage.outputTokens || 0) + (usage.cacheReadTokens || 0) + (usage.cacheWriteTokens || 0) : 0;
-      const requestCount = modelRows.reduce((sum, item) => sum + (Number.isFinite(item.requests) ? item.requests : 0), 0);
-      const detailItems = buildDetailStats({ t, usage, sessionStats, requestCount, total });
-      const sessionTokens = modelRows.reduce((sum, item) => sum + (Number.isFinite(item.tokens) ? item.tokens : 0), 0);
-      const renderModel = (item) => {
-        const text = modelRowLabel(item, t);
-        const share = sessionTokens > 0 && Number.isFinite(item.tokens) ? Math.round((item.tokens / sessionTokens) * 100) : 0;
-        return h(
-          'div',
-          { key: (item.provider || '') + '/' + item.model, className: 'aup-model-item' },
-          h(
-            'div',
-            { className: 'aup-model-row' },
-            h('span', { className: 'aup-model-name' + modelRowLabelClass(text), title: (item.provider === undefined ? '' : item.provider + ' / ') + item.model }, text),
-            h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
-          ),
-          h(
-            'div',
-            { className: 'aup-model-meta' },
-            h('span', null, t('tokens.modelMeta', { requests: String(Number.isFinite(item.requests) ? item.requests : 0), share: String(share) }))
-          ),
-          modelRows.length > 1
-            ? h('div', { className: 'aup-model-track' }, h('span', { className: 'aup-model-fill', style: { width: share + '%' } }))
-            : null
-        );
-      };
-
-      const modelBlock =
-        modelRows.length === 0
-          ? h(Hint, null, t('tokens.empty'))
-          : h(
-              'div',
-              { className: 'aup-models' },
-              modelRows.slice(0, 3).map((item) => renderModel(item)),
-              modelRows.length > 3 ? h('span', { className: 'aup-model-more' }, t('tokens.moreModels', { count: String(modelRows.length - 3) })) : null
-            );
-
-      const usedTokens =
-        pressure && Number.isFinite(pressure.projectedTokens)
-          ? pressure.projectedTokens
-          : pressure && Number.isFinite(pressure.pressureTokens)
-            ? pressure.pressureTokens
-            : undefined;
-      const contextWindow = pressure && Number.isFinite(pressure.contextWindow) ? pressure.contextWindow : undefined;
-      const hasContext = usedTokens !== undefined && contextWindow !== undefined && contextWindow > 0;
-      const percent = hasContext ? Math.min(100, Math.round((usedTokens / contextWindow) * 100)) : 0;
-      const contextParts = contextBreakdown === null || contextBreakdown === undefined
-        ? []
-        : [
-            { key: 'system', label: t('tokens.breakdown.system'), value: Number.isFinite(contextBreakdown.systemTokens) ? contextBreakdown.systemTokens : 0, color: 'var(--dsw-static-neutral-bluish-400, #adb2b8)' },
-            { key: 'tools', label: t('tokens.breakdown.tools'), value: Number.isFinite(contextBreakdown.toolsTokens) ? contextBreakdown.toolsTokens : 0, color: 'var(--dsw-static-violet-400, #a78bfa)' },
-            { key: 'messages', label: t('tokens.breakdown.messages'), value: Number.isFinite(contextBreakdown.messageTokens) ? contextBreakdown.messageTokens : 0, color: 'var(--dsw-static-blue-450, #4d93f8)' }
-          ].filter((part) => part.value > 0);
-      const contextTotal = contextParts.reduce((sum, part) => sum + part.value, 0);
-      const contextBlock = h(
-        'div',
-        { className: 'aup-context' },
-        h(
-          'div',
-          { className: 'aup-context-head' },
-          h('span', null, t('tokens.context')),
-          h(
-            'span',
-            { className: 'aup-context-figures' },
-            hasContext ? t('tokens.contextValue', { used: formatTokens(usedTokens), window: formatTokens(contextWindow), percent: String(percent) }) : t('tokens.contextUnknown')
-          )
-        ),
-        hasContext
-          ? h(
-              'div',
-              { className: 'aup-bar' },
-              contextTotal === 0
-                ? h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } })
-                : h(
-                    'span',
-                    { className: 'aup-context-used', style: { width: percent + '%' } },
-                    contextParts.map((part) => h('span', { key: part.key, className: 'aup-context-seg', style: { flexGrow: part.value, background: part.color } }))
-                  )
-            )
-          : null,
-        contextTotal === 0
-          ? null
-          : h(
-              'div',
-              { className: 'aup-context-breakdown' },
-              h(
-                'div',
-                { className: 'aup-context-legend' },
-                contextParts.map((part) => h('span', { key: part.key, className: 'aup-context-legend-item' }, part.label + ' ' + Math.round((part.value / contextTotal) * 100) + '%'))
-              )
-            )
-      );
-
-      return h(
-        'section',
-        { className: 'aup-card aup-card-detail' },
-        h(CardHead, { icon: ChartGlyph, title: t('tokens.detail') }),
-        h('span', { className: 'aup-divider', 'aria-hidden': true }),
-        h(
-          'div',
-          { className: 'aup-detail-body' },
-          detailItems.length === 0
-            ? null
-            : h(
-                'div',
-                { className: 'aup-stat-list' },
-                detailItems.map((item) => h('div', { key: item.key, className: 'aup-stat-row' }, h('span', { className: 'aup-stat-label' }, item.label), h('span', { className: 'aup-stat-value' }, item.value)))
-              ),
-          h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
-          modelBlock,
-          h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
-          contextBlock
-        )
-      );
-    }
-
     /** One labelled wallet row. */
     function WalletItem({ label, wallet, locale, major }) {
       return h(
@@ -1645,7 +1528,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Signed-in identity and wallet balances, with one tab per source in mixed sessions. */
-    function AccountSection({ state, t, onRetry, offAccountAll, providerBalances, sessionUsage, sources, locale: uiLocale }) {
+    function AccountSection({ state, t, onRetry, offAccountAll, providerBalances, sessionUsage, sources, preferredSource, locale: uiLocale }) {
       const [picked, setPicked] = React.useState(null);
       const result = state.result;
       const accountLocale = result === undefined ? undefined : result.locale;
@@ -1654,7 +1537,13 @@ window.__ModuleLoader__.load({
       const list = (Array.isArray(sources) ? sources : []).filter(
         (source) => source !== null && source !== undefined && typeof source.id === 'string' && source.id !== ''
       );
-      const activeId = picked !== null && list.some((source) => source.id === picked) ? picked : list.length > 0 ? list[0].id : 'account';
+      const fallbackId =
+        typeof preferredSource === 'string' && list.some((source) => source.id === preferredSource)
+          ? preferredSource
+          : list.length > 0
+            ? list[0].id
+            : 'account';
+      const activeId = picked !== null && list.some((source) => source.id === picked) ? picked : fallbackId;
       const active = list.find((source) => source.id === activeId);
       const isProviderCard = active !== undefined && active.isAccount !== true;
       const activeLabel = active === undefined ? '' : sourceLabel(active, t);
@@ -1897,7 +1786,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Date-dimension statistics over real platform usage (local estimates as fallback). */
-    function UsageSection({ state, dimension, onDimension, onRetry, t, fallbackCurrency, locale, showCost, listMode, categories }) {
+    function UsageSection({ state, dimension, onDimension, onRetry, t, fallbackCurrency, locale, showCost, listMode, categories, sessionOnly }) {
       const moveDimension = (event) => {
         const index = DIMENSIONS.findIndex((entry) => entry.id === dimension);
         let next = null;
@@ -1961,17 +1850,61 @@ window.__ModuleLoader__.load({
         )
       );
 
-      const head = h(
-        'div',
-        { className: 'aup-stats-head' },
+      const headCore = [
         h(CardHead, {
           icon: ChartGlyph,
           title: t('stats.title'),
           extra: state.source === 'local' ? h('span', { className: 'aup-badge' }, t('stats.localBadge')) : null
         }),
-        h('span', { className: 'aup-divider', 'aria-hidden': true }),
-        dimensions
-      );
+        h('span', { className: 'aup-divider', 'aria-hidden': true })
+      ];
+      const head = h('div', { className: 'aup-stats-head' }, sessionOnly === true ? headCore : [...headCore, dimensions]);
+
+      // Third-party-only sessions have no platform account data: the card shows the
+      // session's own per-source totals instead of a period series.
+      if (sessionOnly === true) {
+        const sources = (Array.isArray(categories) ? categories : []).filter(
+          (row) => row !== null && row !== undefined && Number.isFinite(row.tokens) && row.tokens > 0
+        );
+        const totalTokens = sources.reduce((sum, row) => sum + row.tokens, 0);
+        const maxTokens = Math.max(...sources.map((row) => row.tokens), 1);
+        return h(
+          'section',
+          { className: 'aup-card aup-card-stats' },
+          head,
+          sources.length === 0
+            ? h(Hint, null, t('stats.empty'))
+            : h(
+                'div',
+                { className: 'aup-series' },
+                sources.map((row) =>
+                  h(
+                    'div',
+                    { key: row.provider, className: 'aup-series-row', 'data-current': true, title: row.label + ' · ' + formatTokens(row.tokens) },
+                    h('span', { className: 'aup-series-label' }, row.label),
+                    h(
+                      'span',
+                      { className: 'aup-series-track' },
+                      h('span', { className: 'aup-series-fill', style: { width: Math.max(4, Math.round((row.tokens / maxTokens) * 100)) + '%' } })
+                    ),
+                    h(
+                      'span',
+                      { className: 'aup-series-value' },
+                      h('span', { className: 'aup-series-tokens' }, formatTokens(row.tokens)),
+                      h('span', { className: 'aup-series-cost' }, t('tokens.requestsCount', { count: String(Number.isFinite(row.requests) ? row.requests : 0) }))
+                    )
+                  )
+                )
+              ),
+          sources.length === 0
+            ? null
+            : h(
+                'div',
+                { className: 'aup-stats-summary' },
+                h('span', null, t('stats.summary.sources', { total: formatTokens(totalTokens), count: String(sources.length) }))
+              )
+        );
+      }
 
       if (state.phase === 'loading') {
         const skeletonRows = [];
@@ -2142,7 +2075,7 @@ window.__ModuleLoader__.load({
     }
 
     /** This session's durable token totals plus context occupancy. */
-    function TokenSection({ useProjection, t, sessionModels, providerMode }) {
+    function TokenSection({ useProjection, t, sessionModels }) {
       const usage = useProjection('tokenUsage');
       const pressure = useProjection('contextPressure');
       const contextBreakdown = useProjection('contextBreakdown');
@@ -2239,7 +2172,7 @@ window.__ModuleLoader__.load({
             );
 
       const modelBlock =
-        providerMode === true || modelRows.length === 0
+        modelRows.length === 0
           ? null
           : h(
               'div',
@@ -2295,8 +2228,8 @@ window.__ModuleLoader__.load({
                 )
               )
             ),
-        providerMode === true || detailItems.length === 0 ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
-        providerMode === true || detailItems.length === 0
+        detailItems.length === 0 ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
+        detailItems.length === 0
           ? null
           : h(
               'div',
@@ -2312,8 +2245,8 @@ window.__ModuleLoader__.load({
             ),
         modelBlock === null ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
         modelBlock,
-        providerMode === true ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
-        providerMode === true ? null : h(
+        h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
+        h(
           'div',
           { className: 'aup-context' },
           h(
@@ -2368,7 +2301,7 @@ window.__ModuleLoader__.load({
     function AccountUsageBody({ t: initialT, useProjection, readAccount, readUsage, readSessionModels, readProviderBalances, readLocale, subscribeLocale, bindTranslation, sessionId }) {
       const [account, setAccount] = React.useState({ phase: 'loading', result: undefined, refreshing: false });
       const [usage, setUsage] = React.useState({ phase: 'loading', days: [], ok: undefined, refreshing: false, dimension: DIMENSIONS[0].id });
-      const [sessionModels, setSessionModels] = React.useState({ phase: 'idle', items: [], totalTokens: 0 });
+      const [sessionModels, setSessionModels] = React.useState({ phase: 'idle', items: [], totalTokens: 0, lastProvider: '' });
       const [providerBalances, setProviderBalances] = React.useState({ phase: 'idle', items: [], error: undefined });
       const [settings, setSettings] = React.useState(readSettings);
       const [dimension, setDimension] = React.useState(settings.dimension);
@@ -2390,6 +2323,13 @@ window.__ModuleLoader__.load({
       const offAccountProviders = sessionProviders.filter((provider) => !isAccountProvider(provider));
       const offAccountLabel = [...new Set(offAccountProviders.map((provider) => providerLabel(provider, t)))].join(' / ');
       const offAccountAll = sessionProviders.length > 0 && offAccountProviders.length === sessionProviders.length;
+      const lastProvider = typeof sessionModels.lastProvider === 'string' ? sessionModels.lastProvider : '';
+      const preferredSource =
+        lastProvider === ''
+          ? undefined
+          : isAccountProvider(lastProvider)
+            ? 'account'
+            : lastProvider;
       const accountSources = [
         ...sessionProviders
           .filter((provider) => isAccountProvider(provider))
@@ -2558,8 +2498,8 @@ window.__ModuleLoader__.load({
             if (cancelled) return;
             setSessionModels(
               result.ok === true
-                ? { phase: 'ready', items: result.models, totalTokens: result.totalTokens }
-                : { phase: 'empty', items: [], totalTokens: 0 }
+                ? { phase: 'ready', items: result.models, totalTokens: result.totalTokens, lastProvider: typeof result.lastProvider === 'string' ? result.lastProvider : '' }
+                : { phase: 'empty', items: [], totalTokens: 0, lastProvider: '' }
             );
           })
           .catch((error) => {
@@ -2752,11 +2692,8 @@ window.__ModuleLoader__.load({
         h(
           'div',
           { className: 'aup-cards' },
-          settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels, providerMode: offAccountAll === true }) : null,
-          settings.cards.stats === true && offAccountAll === true
-            ? h(SessionDetailCard, { t, useProjection, sessionModels })
-            : null,
-          settings.cards.stats === true && offAccountAll !== true
+          settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels }) : null,
+          settings.cards.stats === true
           ? h(UsageSection, {
               state: displayedUsage,
               dimension,
@@ -2767,7 +2704,8 @@ window.__ModuleLoader__.load({
               locale: displayLocale,
               showCost: settings.showCost,
               listMode: settings.usageList === true,
-              categories: providerSessionUsage
+              categories: providerSessionUsage,
+              sessionOnly: offAccountAll === true
             })
           : null,
           settings.cards.account === true
@@ -2779,6 +2717,7 @@ window.__ModuleLoader__.load({
               providerBalances,
               sessionUsage: providerSessionUsage,
               sources: accountSources,
+              preferredSource,
               locale: displayLocale
             })
           : null,
