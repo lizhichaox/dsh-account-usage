@@ -89,6 +89,9 @@ window.__ModuleLoader__.load({
     const zh = {
       'tab.title': '用量',
       'panel.title': '账号用量',
+      'header.trend': '近 7 天',
+      'header.trendTitle': '最近 7 天 Token 趋势',
+      'header.live': '实时',
       'guide.title': '账号用量',
       'guide.description': '余额与按日、周、月、季、年统计的用量',
       'shortcut.open': '打开账号用量统计',
@@ -185,6 +188,9 @@ window.__ModuleLoader__.load({
     const en = {
       'tab.title': 'Usage',
       'panel.title': 'Account usage',
+      'header.trend': 'Last 7 days',
+      'header.trendTitle': 'Token trend over the last 7 days',
+      'header.live': 'Live',
       'guide.title': 'Account usage',
       'guide.description': 'Balance and usage grouped by day, week, month, quarter, or year',
       'shortcut.open': 'Open account usage',
@@ -292,6 +298,15 @@ window.__ModuleLoader__.load({
       '.aup-icon-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       '.aup-icon-button:disabled{opacity:.4;cursor:default}',
       '.aup-head-actions{display:inline-flex;align-items:center;gap:2px;flex:none}',
+      '.aup-head-spark{flex:1 1 auto;min-width:0;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:16px;font-weight:500;white-space:nowrap;overflow:hidden}',
+      '.aup-head-spark-label{overflow:hidden;text-overflow:clip}',
+      '.aup-head-spark svg{flex:none;width:56px;height:18px;overflow:visible}',
+      '.aup-live-dot{flex:none;width:6px;height:6px;border-radius:999px;background:var(--dsw-alias-brand-primary)}',
+      '.aup-spark-line{fill:none;stroke:var(--dsw-alias-brand-primary);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}',
+      '.aup-spark-area{fill:color-mix(in srgb,var(--dsw-alias-brand-primary) 10%,transparent)}',
+      '.aup-spark-dot{fill:var(--dsw-alias-brand-primary);animation:aup-pulse 2.4s ease-in-out infinite}',
+      '@keyframes aup-pulse{0%,100%{opacity:1}50%{opacity:.35}}',
+      '@media (prefers-reduced-motion:reduce){.aup-spark-dot{animation:none}}',
       '.aup-icon-button[data-active]{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       '.aup-pop-backdrop{position:absolute;inset:0;z-index:20}',
       '.aup-pop{position:absolute;top:44px;left:12px;z-index:21;width:258px;max-width:calc(100% - 24px);max-height:calc(100% - 56px);overflow:auto;display:flex;flex-direction:column;gap:6px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 10px 28px color-mix(in srgb,var(--dsw-alias-label-primary) 16%,transparent)}',
@@ -2487,6 +2502,12 @@ window.__ModuleLoader__.load({
               h(SettingsGlyph)
             )
           ),
+          h(HeaderDecor, {
+            t,
+            days: displayedUsage.days,
+            providerMode: offAccountAll === true,
+            providerLabel: offAccountAll === true ? offAccountLabel : ''
+          }),
           h(
             'div',
             { className: 'aup-head-actions' },
@@ -2620,6 +2641,53 @@ window.__ModuleLoader__.load({
     }
 
     // ----------------------------------------------------------------- apply --
+
+    /** Small header ornament: a 7-day token sparkline, or the provider badge in provider mode. */
+    function HeaderDecor({ t, days, providerMode, providerLabel }) {
+      if (providerMode === true) {
+        return h(
+          'span',
+          { className: 'aup-head-spark', title: providerLabel },
+          h('span', { className: 'aup-live-dot', 'aria-hidden': true }),
+          h('span', { className: 'aup-head-spark-label' }, providerLabel)
+        );
+      }
+      const points = (Array.isArray(days) ? days : [])
+        .filter((day) => day !== null && day !== undefined && typeof day.date === 'string' && Number.isFinite(day.tokens))
+        .sort((left, right) => left.date.localeCompare(right.date))
+        .slice(-7);
+      if (points.length < 2) {
+        return h(
+          'span',
+          { className: 'aup-head-spark' },
+          h('span', { className: 'aup-live-dot', 'aria-hidden': true }),
+          h('span', { className: 'aup-head-spark-label' }, t('header.live'))
+        );
+      }
+      const max = Math.max(...points.map((day) => day.tokens), 1);
+      const width = 56;
+      const height = 18;
+      const coordinates = points.map((day, index) => {
+        const x = (index / (points.length - 1)) * width;
+        const y = height - (day.tokens / max) * (height - 2) - 1;
+        return { x, y };
+      });
+      const line = coordinates.map((p) => p.x.toFixed(1) + ',' + p.y.toFixed(1)).join(' ');
+      const area = '0,' + String(height) + ' ' + line + ' ' + String(width) + ',' + String(height);
+      const last = coordinates[coordinates.length - 1];
+      return h(
+        'span',
+        { className: 'aup-head-spark', title: t('header.trendTitle') },
+        h('span', { className: 'aup-head-spark-label' }, t('header.trend')),
+        h(
+          'svg',
+          { viewBox: '0 0 ' + String(width) + ' ' + String(height), width: String(width), height: String(height), 'aria-hidden': true },
+          h('polygon', { className: 'aup-spark-area', points: area }),
+          h('polyline', { className: 'aup-spark-line', points: line }),
+          h('circle', { className: 'aup-spark-dot', cx: last.x.toFixed(1), cy: last.y.toFixed(1), r: '2' })
+        )
+      );
+    }
 
     /** Client plugin body. */
     function apply(ctx) {
