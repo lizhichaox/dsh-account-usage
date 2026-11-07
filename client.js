@@ -277,7 +277,7 @@ window.__ModuleLoader__.load({
       '.aup-root *{box-sizing:border-box}',
       '.aup-head{display:flex;align-items:center;gap:8px;flex:none}',
       '.aup-glyph{flex:none;color:var(--dsw-alias-label-secondary);display:inline-flex}',
-      '.aup-title{flex:1;min-width:0;margin:0;font-size:14px;font-weight:500;line-height:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.aup-title{flex:1;min-width:0;margin:0;font-size:14px;font-weight:500;line-height:20px;white-space:nowrap}',
       '.aup-icon-button{flex:none;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:background-color .12s,color .12s}',
       '.aup-icon-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       '.aup-icon-button:disabled{opacity:.4;cursor:default}',
@@ -422,7 +422,7 @@ window.__ModuleLoader__.load({
       '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-value{color:var(--dsw-alias-label-primary);font-weight:500}',
       '.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary)}',
       '.aup-tab-title{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow:hidden}',
-      '.aup-tab-title-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.aup-tab-title-text{min-width:0;white-space:nowrap}',
       // ---- one shared type scale: every Chinese text is 13px, only numbers vary by role ----
       '.aup-card{gap:6px;padding:10px}',
       '.aup-card-title{font-size:13px;line-height:16px;font-weight:500}',
