@@ -153,6 +153,15 @@ window.__ModuleLoader__.load({
       'tokens.contextUnknown': '暂无上下文数据',
       'tokens.byModel': '按模型',
       'tokens.moreModels': '另有 {count} 个模型',
+      'tokens.stat.requests': '请求次数',
+      'tokens.stat.cacheHit': '缓存命中',
+      'tokens.stat.avg': '平均 / 请求',
+      'tokens.breakdown.system': '系统',
+      'tokens.breakdown.tools': '工具',
+      'tokens.breakdown.messages': '消息',
+      'balance.total': '总额',
+      'account.providerNote': '余额由 {provider} 提供，不消耗 DeepSeek 账号。',
+      'account.providerUsedRate': '已用 {percent}%',
     };
 
     /** English dictionary, checked against the Chinese key set. */
@@ -225,6 +234,15 @@ window.__ModuleLoader__.load({
       'tokens.contextUnknown': 'No context data yet',
       'tokens.byModel': 'By model',
       'tokens.moreModels': '{count} more models',
+      'tokens.stat.requests': 'Requests',
+      'tokens.stat.cacheHit': 'Cache hit',
+      'tokens.stat.avg': 'Avg / request',
+      'tokens.breakdown.system': 'System',
+      'tokens.breakdown.tools': 'Tools',
+      'tokens.breakdown.messages': 'Messages',
+      'balance.total': 'Total',
+      'account.providerNote': 'Balance is provided by {provider}; the DeepSeek account is not used.',
+      'account.providerUsedRate': '{percent}% used',
     };
 
     // ----------------------------------------------------------------- styles --
@@ -267,7 +285,7 @@ window.__ModuleLoader__.load({
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
       '.aup-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden;container-type:size;container-name:aup-card}',
-      '.aup-card-session{flex:3 1 0;justify-content:space-between}',
+      '.aup-card-session{flex:3 1 0;justify-content:flex-start}',
       '.aup-card-stats{flex:4 1 0;justify-content:space-between}',
       '.aup-card-account{flex:0 0 auto;min-height:96px;justify-content:flex-start}',
       '.aup-card-head{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex:none}',
@@ -294,7 +312,8 @@ window.__ModuleLoader__.load({
       '.aup-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
       '.aup-retry{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;line-height:18px;cursor:pointer}',
       '.aup-retry:hover{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.aup-card-session .aup-session-grid{flex:1 1 auto;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;align-content:space-evenly;justify-items:stretch;margin:0;padding:0;width:100%}',
+      '.aup-card-session .aup-session-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px;justify-content:flex-start}',
+      '.aup-card-session .aup-session-grid{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;align-content:space-evenly;justify-items:stretch;margin:0;padding:0;width:100%}',
       '.aup-card-session .aup-session-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}',
       '.aup-card-session .aup-session-cell:nth-child(even){align-items:flex-end;text-align:right}',
       '.aup-models{display:flex;flex-direction:column;gap:2px;flex:none;min-height:0}',
@@ -303,6 +322,32 @@ window.__ModuleLoader__.load({
       '.aup-model-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-tokens{flex:none;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
       '.aup-model-more{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
+      '.aup-session-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px}',
+      '.aup-session-stat{display:flex;flex-direction:column;gap:2px;min-width:0}',
+      '.aup-session-stat-label{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.aup-session-stat-value{font-size:17px;line-height:22px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
+      '.aup-context-breakdown{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
+      '.aup-context-compose{display:flex;height:5px;gap:1px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-skeleton)}',
+      '.aup-context-seg{flex:1 1 0;min-width:2px;height:100%}',
+      '.aup-context-legend{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
+      '.aup-models-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}',
+      '.aup-models-provider{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
+      '.aup-model-provider{display:block;margin-top:2px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.aup-card-account-provider{flex:2 1 0;min-height:0;justify-content:flex-start}',
+      '.aup-card-account-provider .aup-balance{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;align-content:center}',
+      '.aup-card-account-provider .aup-balance-value{font-size:20px;line-height:26px}',
+      '.aup-card-account-provider .aup-balance-value.aup-minor{font-size:17px;line-height:22px}',
+      '.aup-provider-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:10px;justify-content:center}',
+      '.aup-provider-hero{display:flex;flex-direction:column;gap:2px;min-width:0}',
+      '.aup-provider-hero-label{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
+      '.aup-provider-hero-value{font-size:30px;line-height:36px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.aup-provider-progress{display:flex;flex-direction:column;gap:6px}',
+      '.aup-provider-meta{display:flex;flex-wrap:wrap;gap:8px 18px}',
+      '.aup-provider-meta-item{display:flex;flex-direction:column;gap:2px;min-width:0}',
+      '.aup-provider-meta-label{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
+      '.aup-provider-meta-value{font-size:17px;line-height:22px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
+      '.aup-provider-rate{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
+      '.aup-provider-note{margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-card-session .aup-session-label{margin:0;font-size:11px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '.aup-card-session .aup-session-value{margin:0;font-size:15px;line-height:20px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.aup-card-session .aup-bar{height:8px}',
@@ -373,10 +418,10 @@ window.__ModuleLoader__.load({
       '.aup-account-note{margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-hint{font-size:13px;line-height:16px}',
       // ---- content shedding at short card heights (no scrolling) ----
-      '@container aup-card (max-height:260px){.aup-card-session .aup-compose{display:none}}',
-      '@container aup-card (max-height:210px){.aup-card-session .aup-models{display:none}}',
-      '@container aup-card (max-height:245px){.aup-card-session .aup-model-row:nth-child(4),.aup-card-session .aup-model-more{display:none}}',
-      '@container aup-card (max-height:230px){.aup-card-session .aup-context{display:none}}',
+      '@container aup-card (max-height:330px){.aup-card-session .aup-compose{display:none}}',
+      '@container aup-card (max-height:290px){.aup-card-session .aup-session-stats{display:none}}',
+      '@container aup-card (max-height:300px){.aup-card-session .aup-models{display:none}}',
+      '@container aup-card (max-height:250px){.aup-card-session .aup-context{display:none}}',
       '@container aup-card (max-height:150px){.aup-card-session .aup-session-grid{display:none}}',
       '@container aup-card (max-height:180px){.aup-card-stats .aup-stats-summary{display:none}}'
     ].join('\n');
@@ -1262,27 +1307,77 @@ window.__ModuleLoader__.load({
         ];
         const phase = providerBalances === null || providerBalances === undefined ? 'loading' : providerBalances.phase;
         const rows = phase === 'ready' && Array.isArray(providerBalances.items) ? providerBalances.items : [];
-        if (phase !== 'ready') return h('section', { className: 'aup-card aup-card-account' }, providerHead, h(Hint, null, t('loading')));
+        if (phase !== 'ready') return h('section', { className: 'aup-card aup-card-account aup-card-account-provider' }, providerHead, h(Hint, null, t('loading')));
         if (rows.length === 0) {
           const code = providerBalances.error;
           const messageKey = code === 'unsupported_provider' ? 'account.providerUnsupported' : code === 'no_credential' ? 'account.providerNoKey' : 'account.providerUnavailable';
           return h(
             'section',
-            { className: 'aup-card aup-card-account' },
+            { className: 'aup-card aup-card-account aup-card-account-provider' },
             providerHead,
             h(Hint, null, t(messageKey, { provider: offAccountLabel })),
             h('div', { className: 'aup-actions' }, h('button', { type: 'button', className: 'aup-retry', onClick: onRetry }, t('retry')))
           );
         }
-        const items = [];
-        for (const entry of rows) {
-          const currency = typeof entry.currency === 'string' ? entry.currency : 'USD';
-          const prefix = rows.length > 1 ? providerLabel(entry.provider) + ' ' : '';
-          if (Number.isFinite(entry.remaining)) items.push(h('div', { key: entry.provider + '-remaining', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.recharge')), h('span', { className: 'aup-balance-value' }, formatMoney(String(entry.remaining), currency, undefined))));
-          if (Number.isFinite(entry.used)) items.push(h('div', { key: entry.provider + '-used', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.used')), h('span', { className: 'aup-balance-value aup-minor' }, formatMoney(String(entry.used), currency, undefined))));
-          if (Number.isFinite(entry.granted)) items.push(h('div', { key: entry.provider + '-granted', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.bonus')), h('span', { className: 'aup-balance-value aup-minor' }, formatMoney(String(entry.granted), currency, undefined))));
+        const currencyOf = (entry) => (typeof entry.currency === 'string' ? entry.currency : 'USD');
+        const note = h('p', { className: 'aup-provider-note' }, t('account.providerNote', { provider: offAccountLabel }));
+        if (rows.length > 1) {
+          const items = [];
+          for (const entry of rows) {
+            const currency = currencyOf(entry);
+            const prefix = providerLabel(entry.provider) + ' ';
+            if (Number.isFinite(entry.remaining)) items.push(h('div', { key: entry.provider + '-remaining', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.recharge')), h('span', { className: 'aup-balance-value' }, formatMoney(String(entry.remaining), currency, undefined))));
+            if (Number.isFinite(entry.used)) items.push(h('div', { key: entry.provider + '-used', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.used')), h('span', { className: 'aup-balance-value aup-minor' }, formatMoney(String(entry.used), currency, undefined))));
+          }
+          return h('section', { className: 'aup-card aup-card-account aup-card-account-provider' }, providerHead, h('div', { className: 'aup-provider-body' }, h('div', { className: 'aup-balance' }, items), note));
         }
-        return h('section', { className: 'aup-card aup-card-account' }, providerHead, h('div', { className: 'aup-balance' }, items));
+
+        const single = rows[0];
+        const currency = currencyOf(single);
+        const remaining = Number.isFinite(single.remaining) ? single.remaining : undefined;
+        const used = Number.isFinite(single.used) ? single.used : undefined;
+        const total = Number.isFinite(single.total) ? single.total : undefined;
+        const granted = Number.isFinite(single.granted) ? single.granted : undefined;
+        const heroLabel = remaining !== undefined ? t('balance.recharge') : used !== undefined ? t('balance.used') : total !== undefined ? t('balance.total') : t('balance.recharge');
+        const heroValue = remaining !== undefined ? remaining : used !== undefined ? used : total !== undefined ? total : 0;
+        const totalKnown = total !== undefined ? total : remaining !== undefined && used !== undefined ? remaining + used : undefined;
+        const usedPercent = used !== undefined && totalKnown !== undefined && totalKnown > 0 ? Math.min(100, Math.max(0, Math.round((used / totalKnown) * 1000) / 10)) : undefined;
+        const meta = [];
+        if (remaining !== undefined && heroLabel !== t('balance.recharge')) meta.push({ key: 'remaining', label: t('balance.recharge'), value: remaining });
+        if (used !== undefined && heroLabel !== t('balance.used')) meta.push({ key: 'used', label: t('balance.used'), value: used });
+        if (total !== undefined && heroLabel !== t('balance.total')) meta.push({ key: 'total', label: t('balance.total'), value: total });
+        if (granted !== undefined) meta.push({ key: 'granted', label: t('balance.bonus'), value: granted });
+        return h(
+          'section',
+          { className: 'aup-card aup-card-account aup-card-account-provider' },
+          providerHead,
+          h(
+            'div',
+            { className: 'aup-provider-body' },
+            h(
+              'div',
+              { className: 'aup-provider-hero' },
+              h('span', { className: 'aup-provider-hero-label' }, heroLabel),
+              h('span', { className: 'aup-provider-hero-value' }, formatMoney(String(heroValue), currency, undefined))
+            ),
+            usedPercent === undefined
+              ? null
+              : h(
+                  'div',
+                  { className: 'aup-provider-progress' },
+                  h('div', { className: 'aup-provider-rate' }, h('span', null, t('account.providerUsedRate', { percent: String(usedPercent) })), h('span', null, totalKnown === undefined ? '' : formatMoney(String(totalKnown), currency, undefined))),
+                  h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: usedPercent + '%' } }))
+                ),
+            meta.length === 0
+              ? null
+              : h(
+                  'div',
+                  { className: 'aup-provider-meta' },
+                  meta.map((item) => h('div', { key: item.key, className: 'aup-provider-meta-item' }, h('span', { className: 'aup-provider-meta-label' }, item.label), h('span', { className: 'aup-provider-meta-value' }, formatMoney(String(item.value), currency, undefined))))
+                ),
+            note
+          )
+        );
       }
 
       if (state.phase === 'loading') {
@@ -1498,6 +1593,7 @@ window.__ModuleLoader__.load({
     function TokenSection({ useProjection, t, sessionModels }) {
       const usage = useProjection('tokenUsage');
       const pressure = useProjection('contextPressure');
+      const contextBreakdown = useProjection('contextBreakdown');
 
       const total = usage
         ? (usage.uncachedInputTokens || 0) +
@@ -1526,30 +1622,15 @@ window.__ModuleLoader__.load({
 
       const detailRows = rows.filter((row) => row.total !== true);
       const modelRows = sessionModels !== null && sessionModels !== undefined && Array.isArray(sessionModels.items) ? sessionModels.items : [];
-      const modelBlock =
-        modelRows.length === 0
-          ? null
-          : h(
-              'div',
-              { className: 'aup-models', 'aria-label': t('tokens.byModel') },
-              h('span', { className: 'aup-models-caption' }, t('tokens.byModel')),
-              modelRows.slice(0, 3).map((item) =>
-                h(
-                  'div',
-                  { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
-                  h(
-                    'span',
-                    {
-                      className: 'aup-model-name',
-                      title: isAccountProvider(item.provider) || item.provider === '' ? item.model : providerLabel(item.provider) + ' / ' + item.model
-                    },
-                    isAccountProvider(item.provider) || item.provider === '' ? item.model : providerLabel(item.provider) + ' · ' + item.model
-                  ),
-                  h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
-                )
-              ),
-              modelRows.length > 3 ? h('span', { className: 'aup-model-more' }, t('tokens.moreModels', { count: String(modelRows.length - 3) })) : null
-            );
+      const requestCount = modelRows.reduce((sum, item) => sum + (Number.isFinite(item.requests) ? item.requests : 0), 0);
+      const promptTokens = usage ? (usage.uncachedInputTokens || 0) + (usage.cacheReadTokens || 0) + (usage.cacheWriteTokens || 0) : 0;
+      const cacheHit = promptTokens > 0 ? Math.round(((usage.cacheReadTokens || 0) / promptTokens) * 1000) / 10 : undefined;
+      const average = requestCount > 0 ? Math.round(total / requestCount) : undefined;
+      const statCells = [];
+      if (requestCount > 0) statCells.push({ key: 'requests', label: t('tokens.stat.requests'), value: String(requestCount) });
+      if (cacheHit !== undefined) statCells.push({ key: 'cacheHit', label: t('tokens.stat.cacheHit'), value: cacheHit + '%' });
+      if (average !== undefined && average > 0) statCells.push({ key: 'average', label: t('tokens.stat.avg'), value: formatTokens(average) });
+
       const composeSegments = usage
         ? [
             { key: 'input', value: usage.uncachedInputTokens || 0, color: 'var(--dsw-static-blue-450, #4d93f8)' },
@@ -1575,11 +1656,62 @@ window.__ModuleLoader__.load({
               )
             );
 
-      return h(
-        'section',
-        { className: 'aup-card aup-card-session' },
-        h(CardHead, { icon: ChatGlyph, title: t('tokens.title') }),
-        h('span', { className: 'aup-divider', 'aria-hidden': true }),
+      const groups = new Map();
+      for (const item of modelRows.slice(0, 3)) {
+        const key = typeof item.provider === 'string' ? item.provider : '';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+      }
+      const modelBlock =
+        modelRows.length === 0
+          ? null
+          : h(
+              'div',
+              { className: 'aup-models', 'aria-label': t('tokens.byModel') },
+              h(
+                'div',
+                { className: 'aup-models-head' },
+                h('span', { className: 'aup-models-caption' }, t('tokens.byModel')),
+                groups.size === 1 && [...groups.keys()][0] !== '' ? h('span', { className: 'aup-models-provider' }, providerLabel([...groups.keys()][0])) : null
+              ),
+              [...groups.entries()].flatMap(([provider, items]) =>
+                provider === '' || groups.size === 1
+                  ? items.map((item) =>
+                      h(
+                        'div',
+                        { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
+                        h('span', { className: 'aup-model-name', title: item.model }, item.model),
+                        h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
+                      )
+                    )
+                  : [
+                      h('span', { key: 'provider-' + provider, className: 'aup-model-provider' }, providerLabel(provider)),
+                      ...items.map((item) =>
+                        h(
+                          'div',
+                          { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
+                          h('span', { className: 'aup-model-name', title: item.model }, item.model),
+                          h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
+                        )
+                      )
+                    ]
+              ),
+              modelRows.length > 3 ? h('span', { className: 'aup-model-more' }, t('tokens.moreModels', { count: String(modelRows.length - 3) })) : null
+            );
+
+      const contextParts = contextBreakdown === null || contextBreakdown === undefined
+        ? []
+        : [
+            { key: 'system', label: t('tokens.breakdown.system'), value: Number.isFinite(contextBreakdown.systemTokens) ? contextBreakdown.systemTokens : 0, color: 'var(--dsw-static-neutral-bluish-400, #adb2b8)' },
+            { key: 'tools', label: t('tokens.breakdown.tools'), value: Number.isFinite(contextBreakdown.toolsTokens) ? contextBreakdown.toolsTokens : 0, color: 'var(--dsw-static-violet-400, #a78bfa)' },
+            { key: 'messages', label: t('tokens.breakdown.messages'), value: Number.isFinite(contextBreakdown.messageTokens) ? contextBreakdown.messageTokens : 0, color: 'var(--dsw-static-blue-450, #4d93f8)' }
+          ].filter((part) => part.value > 0);
+      const contextTotal = contextParts.reduce((sum, part) => sum + part.value, 0);
+      const contextSegments = contextTotal > 0 ? contextParts : [];
+
+      const sessionBody = h(
+        'div',
+        { className: 'aup-session-body' },
         h(
           'div',
           { className: 'aup-session-total' },
@@ -1601,6 +1733,15 @@ window.__ModuleLoader__.load({
                 )
               )
             ),
+        statCells.length === 0
+          ? null
+          : h(
+              'div',
+              { className: 'aup-session-stats' },
+              statCells.map((cell) =>
+                h('div', { key: cell.key, className: 'aup-session-stat' }, h('span', { className: 'aup-session-stat-label' }, cell.label), h('span', { className: 'aup-session-stat-value' }, cell.value))
+              )
+            ),
         modelBlock,
         h(
           'div',
@@ -1613,18 +1754,36 @@ window.__ModuleLoader__.load({
               'span',
               { className: 'aup-context-figures' },
               hasContext
-                ? t('tokens.contextValue', {
-                    used: formatTokens(usedTokens),
-                    window: formatTokens(contextWindow),
-                    percent: String(percent)
-                  })
+                ? t('tokens.contextValue', { used: formatTokens(usedTokens), window: formatTokens(contextWindow), percent: String(percent) })
                 : t('tokens.contextUnknown')
             )
           ),
-          hasContext
-            ? h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } }))
-            : null
+          hasContext ? h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } })) : null,
+          contextSegments.length === 0
+            ? null
+            : h(
+                'div',
+                { className: 'aup-context-breakdown' },
+                h(
+                  'div',
+                  { className: 'aup-context-compose' },
+                  contextSegments.map((segment) => h('span', { key: segment.key, className: 'aup-context-seg', style: { flexGrow: segment.value, background: segment.color } }))
+                ),
+                h(
+                  'div',
+                  { className: 'aup-context-legend' },
+                  contextSegments.map((segment) => h('span', { key: segment.key, className: 'aup-context-legend-item' }, segment.label + ' ' + Math.round((segment.value / contextTotal) * 100) + '%'))
+                )
+              )
         )
+      );
+
+      return h(
+        'section',
+        { className: 'aup-card aup-card-session' },
+        h(CardHead, { icon: ChatGlyph, title: t('tokens.title') }),
+        h('span', { className: 'aup-divider', 'aria-hidden': true }),
+        sessionBody
       );
     }
 

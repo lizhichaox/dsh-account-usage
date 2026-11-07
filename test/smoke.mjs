@@ -495,7 +495,8 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(accountText.includes('OpenRouter'), 'balance card names the provider');
   assert.equal(walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 0, 'DeepSeek platform stats are hidden for an off-account session');
   const modelName = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat)[0];
-  assert.equal(modelName, 'OpenRouter · deepseek-flash', 'third-party model rows include the provider');
+  assert.equal(modelName, 'deepseek-flash', 'model rows keep the full model name');
+  assert.equal(flat(walk(tree, (node) => hasClass(node, 'aup-models-provider'))[0]), 'OpenRouter', 'model caption names the provider');
 
   // Provider balance mode renders the provider amounts instead of the DeepSeek wallet.
   stateQueue.push(
