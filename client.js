@@ -159,8 +159,7 @@ window.__ModuleLoader__.load({
       'tokens.stat.requests': '请求次数',
       'tokens.stat.cacheHit': '缓存命中',
       'tokens.stat.avg': '平均 / 请求',
-      'tokens.stat.turns': '轮数',
-      'tokens.stat.steps': '步数',
+      'tokens.stat.turnsSteps': '轮 / 步',
       'tokens.stat.speed': '输出速度',
       'tokens.stat.llm': '模型用时',
       'tokens.stat.tool': '工具用时',
@@ -249,10 +248,9 @@ window.__ModuleLoader__.load({
       'tokens.moreModels': '{count} more models',
       'tokens.stat.requests': 'Requests',
       'tokens.stat.cacheHit': 'Cache hit',
-      'tokens.stat.avg': 'Avg / request',
-      'tokens.stat.turns': 'Turns',
-      'tokens.stat.steps': 'Steps',
-      'tokens.stat.speed': 'Output speed',
+      'tokens.stat.avg': 'Avg',
+      'tokens.stat.turnsSteps': 'Turns/Steps',
+      'tokens.stat.speed': 'Speed',
       'tokens.stat.llm': 'LLM time',
       'tokens.stat.tool': 'Tool time',
       'tokens.stat.ttft': 'Avg TTFT',
@@ -345,20 +343,21 @@ window.__ModuleLoader__.load({
       '.aup-models{display:flex;flex-direction:column;gap:2px;flex:none;min-height:0}',
       '.aup-models-caption{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0;font-size:13px;line-height:17px}',
-      '.aup-model-name{min-width:0;font-size:12px;line-height:16px;white-space:normal;overflow-wrap:anywhere;color:var(--dsw-alias-label-secondary)}',
+      '.aup-model-name{min-width:0;font-size:12px;line-height:16px;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-tokens{flex:none;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
       '.aup-model-more{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
       '.aup-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px 16px}',
-      '.aup-detail-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0;font-size:13px;line-height:18px}',
-      '.aup-detail-label{min-width:0;color:var(--dsw-alias-label-secondary);white-space:normal;overflow-wrap:anywhere}',
+      '.aup-session-sep{flex:none;height:1px;background:var(--dsw-alias-border-l2)}',
+      '.aup-detail-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;min-width:0;font-size:13px;line-height:18px;flex-wrap:nowrap}',
+      '.aup-detail-label{min-width:0;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
       '.aup-detail-value{flex:none;color:var(--dsw-alias-label-primary);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.aup-context-breakdown{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
       '.aup-context-compose{display:flex;height:5px;gap:1px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-skeleton)}',
       '.aup-context-seg{flex:1 1 0;min-width:2px;height:100%}',
-      '.aup-context-legend{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
+      '.aup-context-legend{display:flex;flex-wrap:nowrap;gap:2px 10px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-models-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}',
-      '.aup-models-provider{min-width:0;white-space:normal;overflow-wrap:anywhere;font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
-      '.aup-model-provider{display:block;margin-top:2px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:normal;overflow-wrap:anywhere}',
+      '.aup-models-provider{min-width:0;white-space:nowrap;font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
+      '.aup-model-provider{display:block;margin-top:2px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
       '.aup-card-account-provider{flex:0 1 auto;min-height:0;justify-content:flex-start}',
       '.aup-card-account-provider .aup-balance{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;align-content:center}',
       '.aup-card-account-provider .aup-balance-value{font-size:20px;line-height:26px}',
@@ -392,7 +391,7 @@ window.__ModuleLoader__.load({
       '.aup-compose-seg{flex:1 1 0;min-width:2px;height:100%}',
       '.aup-context{display:flex;flex-direction:column;gap:6px;margin-top:2px}',
       '.aup-context-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-size:12px;line-height:18px;font-weight:500;color:var(--dsw-alias-label-secondary);min-width:0}',
-      '.aup-context-head>span{min-width:0;white-space:normal;overflow-wrap:anywhere}',
+      '.aup-context-head>span{min-width:0;white-space:nowrap}',
       '.aup-context-figures{flex:none;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary);text-align:right}',
       '.aup-bar{height:4px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
       '.aup-bar-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary)}',
@@ -705,6 +704,14 @@ window.__ModuleLoader__.load({
 
     function providerLabel(provider) {
       return PROVIDER_LABELS[provider] === undefined ? provider : PROVIDER_LABELS[provider];
+    }
+
+    /** Short display name for a model id: the last path segment without routing prefixes. */
+    function shortModelName(model) {
+      if (typeof model !== 'string' || model === '') return '—';
+      const index = model.lastIndexOf('/');
+      const tail = index >= 0 ? model.slice(index + 1) : model;
+      return tail.replace(/^~+/, '');
     }
 
     /** Size class for amounts that would otherwise overflow their card. */
@@ -1693,16 +1700,14 @@ window.__ModuleLoader__.load({
           ? duration(sessionStats.ttftMs / sessionStats.ttftSteps)
           : undefined;
       const detailItems = [
-        { key: 'turns', label: t('tokens.stat.turns'), value: turns === undefined ? undefined : String(turns) },
-        { key: 'steps', label: t('tokens.stat.steps'), value: steps === undefined ? undefined : String(steps) },
+        { key: 'turnsSteps', label: t('tokens.stat.turnsSteps'), value: turns === undefined && steps === undefined ? undefined : (turns === undefined ? '—' : String(turns)) + ' / ' + (steps === undefined ? '—' : String(steps)) },
         { key: 'requests', label: t('tokens.stat.requests'), value: requestCount > 0 ? String(requestCount) : undefined },
         { key: 'cacheHit', label: t('tokens.stat.cacheHit'), value: cacheHit === undefined ? undefined : cacheHit + '%' },
         { key: 'average', label: t('tokens.stat.avg'), value: average === undefined || average <= 0 ? undefined : formatTokens(average) },
         { key: 'speed', label: t('tokens.stat.speed'), value: speed === undefined || speed <= 0 ? undefined : speed + ' tok/s' },
         { key: 'llm', label: t('tokens.stat.llm'), value: llmTime },
         { key: 'tool', label: t('tokens.stat.tool'), value: toolTime },
-        { key: 'ttft', label: t('tokens.stat.ttft'), value: ttft },
-        { key: 'output', label: t('tokens.output'), value: usage ? formatTokens(usage.outputTokens || 0) : undefined }
+        { key: 'ttft', label: t('tokens.stat.ttft'), value: ttft }
       ].filter((item) => item.value !== undefined);
 
       const composeSegments = usage
@@ -1754,7 +1759,7 @@ window.__ModuleLoader__.load({
                       h(
                         'div',
                         { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
-                        h('span', { className: 'aup-model-name', title: item.model }, item.model),
+                        h('span', { className: 'aup-model-name', title: item.model }, shortModelName(item.model)),
                         h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
                       )
                     )
@@ -1764,7 +1769,7 @@ window.__ModuleLoader__.load({
                         h(
                           'div',
                           { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
-                          h('span', { className: 'aup-model-name', title: item.model }, item.model),
+                          h('span', { className: 'aup-model-name', title: item.model }, shortModelName(item.model)),
                           h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
                         )
                       )
@@ -1807,6 +1812,7 @@ window.__ModuleLoader__.load({
                 )
               )
             ),
+        detailItems.length === 0 ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
         detailItems.length === 0
           ? null
           : h(
@@ -1816,7 +1822,9 @@ window.__ModuleLoader__.load({
                 h('div', { key: item.key, className: 'aup-detail-row' }, h('span', { className: 'aup-detail-label' }, item.label), h('span', { className: 'aup-detail-value' }, item.value))
               )
             ),
+        modelBlock === null ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
         modelBlock,
+        h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
         h(
           'div',
           { className: 'aup-context' },
