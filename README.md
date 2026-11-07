@@ -5,6 +5,8 @@
 
 作者：[chaox](https://github.com/lizhichaox) · 仓库：<https://github.com/lizhichaox/dsh-account-usage>
 
+[![verify](https://github.com/lizhichaox/dsh-account-usage/actions/workflows/verify.yml/badge.svg)](https://github.com/lizhichaox/dsh-account-usage/actions/workflows/verify.yml)
+
 ## 打开方式
 
 - 快捷键 **⌘U**（macOS 桌面）/ **Ctrl+U**（Windows、Linux 桌面）直接打开面板；
