@@ -61,11 +61,11 @@
       "versions": [
         {
           "version": "1.0.0",
-          "publishTimestamp": 1794019536,
+          "publishTimestamp": 1794019772,
           "source": {
             "type": "git",
             "url": "https://github.com/lizhichaox/dsh-account-usage",
-            "commit": "b135c96ef9ea2b90d5481407495f875672a4ba76"
+            "commit": "801073413dd712b4ac19009c3bb0382bb170418d"
           },
           "engines": {
             "dsh": "^0.2.2-rc.1"
