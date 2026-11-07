@@ -27,6 +27,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'ut
   assert.ok(Array.isArray(manifest.files) && manifest.files.includes('client.js'), 'runtime files listed');
   assert.notEqual(manifest.private, true, 'package is publishable');
   assert.ok(manifest.engines?.dsh, 'dsh compatibility declared');
+  assert.match(manifest.version, /^\d+\.\d+\.\d+$/, 'semver package version');
   const en = JSON.parse(fs.readFileSync(path.join(root, 'locale/en.json'), 'utf8'));
   const zh = JSON.parse(fs.readFileSync(path.join(root, 'locale/zh.json'), 'utf8'));
   assert.ok(en.meta.title && en.meta.description, 'English display metadata');
@@ -46,6 +47,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'ut
 
 // ------------------------------------------------------------- client boot --
 const source = fs.readFileSync(path.join(root, 'client.js'), 'utf8');
+assert.equal((source.match(/text-overflow:ellipsis/g) || []).length, 0, 'card text never uses ellipsis');
 
 // Theme contract: only tokens the installed UI theme defines in both light and dark.
 // Values resolved from the shipped theme bundle (light | dark):
@@ -217,6 +219,12 @@ globalThis.fetch = async (url) => {
 
 // -------------------------------------------------------------- registrations --
 const first = bootClient();
+{
+  const dicts = first.dictionary.accountUsage;
+  for (const lang of ['zh', 'en', 'ja', 'es', 'fr', 'de', 'ru', 'pt']) {
+    assert.ok(dicts[lang], 'runtime dictionary registered for ' + lang);
+  }
+}
 assert.equal(first.tabTypes.length, 1, 'one tab type registered');
 {
   const type = first.tabTypes[0];
