@@ -293,27 +293,32 @@ assert.equal(first.registrations.filter((r) => r.definition.name === 'sidebar.ri
     }
   };
 
-  // Wide panel: the shortcut drives the host's own handle to the minimum width.
+  // Wide panel: opening the panel must not touch the width on its own.
   const wide = makeHandle('700px');
   globalThis.document = { querySelector: (selector) => (selector === '[data-side="rightbar"]' ? wide : null) };
   const wideBoot = bootClient();
-  const wideRun = wideBoot.shortcutRegistrations[0].resolve({ target: null });
-  wideRun.run();
-  assert.deepEqual(wide.events, ['pointerdown', 'pointermove', 'pointerup'], 'shortcut narrows a wide right sidebar');
+  wideBoot.shortcutRegistrations[0].resolve({ target: null }).run();
+  assert.deepEqual(wide.events, [], 'opening never resizes a wide sidebar on its own');
 
-  // Already at the minimum usable width: no synthetic drag happens.
-  const narrow = makeHandle('860px');
-  globalThis.document = { querySelector: () => narrow };
-  const narrowBoot = bootClient();
-  narrowBoot.shortcutRegistrations[0].resolve({ target: null }).run();
-  assert.deepEqual(narrow.events, [], 'no drag when the sidebar is already at the minimum width');
-
-  // Narrower than the minimum: the panel widens itself back to a usable width.
+  // Panel narrower than the readable minimum: it widens itself back.
   const tooNarrow = makeHandle('900px');
-  globalThis.document = { querySelector: () => tooNarrow };
+  const pane = { getBoundingClientRect: () => ({ width: 300, height: 800 }) };
+  globalThis.document = {
+    querySelector: (selector) => (selector === '[data-side="rightbar"]' ? tooNarrow : selector === '.aup-root' ? pane : null)
+  };
   const tooNarrowBoot = bootClient();
   tooNarrowBoot.shortcutRegistrations[0].resolve({ target: null }).run();
-  assert.deepEqual(tooNarrow.events, ['pointerdown', 'pointermove', 'pointerup'], 'a too-narrow sidebar is widened');
+  assert.deepEqual(tooNarrow.events, ['pointerdown', 'pointermove', 'pointerup'], 'a too-narrow panel is widened to the minimum');
+
+  // Already readable: still no synthetic drag.
+  const readable = makeHandle('860px');
+  const readablePane = { getBoundingClientRect: () => ({ width: 360, height: 800 }) };
+  globalThis.document = {
+    querySelector: (selector) => (selector === '[data-side="rightbar"]' ? readable : selector === '.aup-root' ? readablePane : null)
+  };
+  const readableBoot = bootClient();
+  readableBoot.shortcutRegistrations[0].resolve({ target: null }).run();
+  assert.deepEqual(readable.events, [], 'a readable panel is left alone');
 
   delete globalThis.document;
   delete globalThis.PointerEvent;

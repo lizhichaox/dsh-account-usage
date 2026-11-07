@@ -496,7 +496,7 @@ window.__ModuleLoader__.load({
       '.aup-series-cost{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}',
       '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-value{color:var(--dsw-alias-label-primary);font-weight:500}',
       '.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary)}',
-      '.aup-tab-title{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow:hidden}',
+      '.aup-tab-title{display:inline-flex;align-items:center;justify-content:center;min-width:0;flex:none}',
       '.aup-tab-title-text{min-width:0;white-space:nowrap}',
       // ---- one shared type scale: every Chinese text is 13px, only numbers vary by role ----
       '.aup-card{gap:6px;padding:10px}',
@@ -797,6 +797,17 @@ window.__ModuleLoader__.load({
 
     /** Minimum usable panel width: below this the no-wrap rows would collide. */
     const PANEL_MIN_WIDTH = 340;
+
+    /** Widen the sidebar only when it is below the readable minimum; otherwise leave it alone. */
+    function widenIfNeeded() {
+      if (typeof document === 'undefined') return;
+      const pane = document.querySelector('.aup-root');
+      const width = pane === null || pane === undefined ? 0 : pane.getBoundingClientRect().width;
+      // Without a measurement we must not guess: never resize on a blind guess.
+      if (!Number.isFinite(width) || width <= 0) return;
+      if (width >= PANEL_MIN_WIDTH - 2) return;
+      resizeRightbarTo(PANEL_MIN_WIDTH);
+    }
 
     /** Provider id that bills the signed-in DeepSeek account balance. */
     const ACCOUNT_PROVIDER = 'deepseek-account';
@@ -2849,12 +2860,7 @@ window.__ModuleLoader__.load({
     function AccountUsageTitle({ useTabInfo, t }) {
       const info = useTabInfo();
       const label = typeof t === 'function' ? t('tab.title') : info.tab.title;
-      return h(
-        'span',
-        { className: 'aup-tab-title' },
-        h('span', { className: 'aup-glyph' }, h(WalletGlyph, { size: 15 })),
-        h('span', { className: 'aup-tab-title-text' }, label)
-      );
+      return h('span', { className: 'aup-tab-title' }, h('span', { className: 'aup-tab-title-text' }, label));
     }
 
     // ----------------------------------------------------------------- apply --
@@ -3000,7 +3006,8 @@ window.__ModuleLoader__.load({
         try {
           if (ctx.sidebarRight.mounted.getSnapshot() === undefined) return;
           ctx.sidebarRight.openTab(KIND);
-          resizeRightbarTo(PANEL_MIN_WIDTH);
+          // Never resize on our own: only nudge a sidebar that is too narrow to read.
+          widenIfNeeded();
         } catch (error) {
           console.error('[account-usage] opening the account usage tab failed', error);
         }
