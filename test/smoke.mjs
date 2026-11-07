@@ -45,6 +45,17 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'ut
   assert.equal(manifest.homepage, 'https://github.com/lizhichaox/dsh-account-usage#readme', 'homepage');
 }
 
+{
+  // The Host reports the newest routed message so the balance card can preselect it.
+  const events = [
+    { type: 'assistant/message', data: { turn: 1, step: 1, message: { source: { provider: 'deepseek-account', model: 'deepseek-chat' } }, usage: { inputTokens: 10, outputTokens: 5 } } },
+    { type: 'assistant/message', data: { turn: 2, step: 1, message: { source: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' } }, usage: { inputTokens: 20, outputTokens: 10 } } }
+  ];
+  const folded = foldSessionModels(events);
+  assert.equal(folded.length, 2, 'two providers fold into two rows');
+  assert.equal(folded[0].provider, 'opencode-go', 'rows stay sorted by tokens');
+}
+
 // ------------------------------------------------------------- client boot --
 const source = fs.readFileSync(path.join(root, 'client.js'), 'utf8');
 assert.equal((source.match(/text-overflow:ellipsis/g) || []).length, 0, 'card text never uses ellipsis');

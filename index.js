@@ -431,7 +431,7 @@ function createSessionModelReader(ctx) {
     let models;
     let lastRoute;
     try {
-      const events = session.ownEvents();
+      const events = Array.from(session.ownEvents());
       models = foldSessionModels(events);
       lastRoute = lastRouteOf(events);
     } catch (error) {
