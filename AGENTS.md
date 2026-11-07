@@ -20,7 +20,8 @@
   - 横条高度**运行时测量**：`conversation.header` 的 `bottom` 减去本面板 root 的 `top`，
     写入 CSS 变量 `--aup-head-h`；找不到时用 `[data-phase]` 会话根的第一个子元素 bottom 兜底
   - root 的 `padding-top` 必须为 0，横条才能从面板顶端开始，测量值才对得上
-  - 横条要用**负外边距 `margin:0 -16px` + `padding:0 16px` 铺满面板整宽**（线必须顶到面板左右边缘），
+  - 面板边界留白要克制：root `padding: 0 8px 8px`、卡片间距 8px（不要回到 16px，会显得空旷）；
+    横条用**负外边距 `margin:0 -8px` + `padding:0 8px` 铺满面板整宽**（线必须顶到面板左右边缘），
     否则线和中间会话区的线之间会留出面板 padding 的空档、看起来「没连起来」
   - **线永远不能消失**：测量失败或数值不合理时退回默认 44px 的横条高度，绝不隐藏这条线
   - 定位方式：在 `[data-phase]` 会话根内做 BFS，取第一个「宽度>120 且有 `border-bottom`」的元素底边，
