@@ -11,11 +11,11 @@ Harness 的「插件市场」（Discover）不是中心化商店，而是**索�
 | GitHub 仓库 | <https://github.com/lizhichaox/dsh-account-usage>（public，`main`） |
 | 市场索引 | <https://lizhichaox.github.io/dsh-account-usage/market/index.json> |
 | 索引托管 | GitHub Pages（仓库根目录；`.nojekyll` 保证 JSON 原样输出，无重定向） |
-| 当前安装源 | **npm**：`dsh-account-usage@1.0.2`（待发布；线上索引仍为 1.0.1） |
-| 包名 / 版本 | `dsh-account-usage` / **1.0.2（准备发布）** |
+| 当前安装源 | **npm**：`dsh-account-usage@1.0.2`（索引 `source.type = npm`） |
+| 包名 / 版本 | `dsh-account-usage` / **1.0.2** |
 | 兼容性 | `engines.dsh: ^0.2.2-rc.1`（与当前 runtime 匹配） |
-| npm | 线上 **1.0.1**：<https://www.npmjs.com/package/dsh-account-usage>；`1.0.2` 已完成本地打包校验 |
-| 校验 | `npm run verify` 全绿；`npm pack --dry-run` 15 个文件 / 49.3 kB；CI 全绿；待发布后运行 npm/索引实测 |
+| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.2`，2026-11-07 06:00:42Z） |
+| 校验 | `npm run verify` 全绿；npm 包 15 个文件 / 49.3 kB；CI 全绿；Pages 索引已切到 1.0.2 |
 
 安装侧使用：
 

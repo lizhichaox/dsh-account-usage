@@ -183,7 +183,7 @@ DeepSeek 账号会话：**会话消耗 → 用量统计 → 账户余额**。
 本插件按 Harness 插件市场（Discover 索引）要求准备了发布元数据、无头测试与索引模板：
 
 - `npm run verify`：语法检查 + 依赖为零的冒烟测试
-- `market/index.json`：format 1 市场索引（当前线上 1.0.1，发布 1.0.2 后切到 npm 1.0.2）
+- `market/index.json`：format 1 市场索引（当前线上 npm 1.0.2）
 - `PUBLISHING.md`：从改包名、npm 发布、索引校验到上架的完整步骤与自查清单
 
 ## 文本可读性
