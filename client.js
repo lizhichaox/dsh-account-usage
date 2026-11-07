@@ -258,6 +258,7 @@ window.__ModuleLoader__.load({
     // ----------------------------------------------------------------- styles --
 
     const CSS = [
+      'html[data-account-usage-hide-stats] [data-composer-dock]{display:none!important}',
       'html[data-account-usage-hide-stats] [data-slot="conversation.composer.dock"]{display:none!important}',
       'html[data-account-usage-hide-stats] [data-composer-stat]{display:none!important}',
       '.aup-root{position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;height:100%;min-height:0;overflow:hidden;padding:16px;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px}',

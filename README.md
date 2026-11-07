@@ -180,8 +180,8 @@
 DSH 输入框底部原有一行会话统计（轮数/步数 · tok/s · Token · 缓存命中 · 上下文占用）。
 本插件启用后（默认，可在右上角设置里关闭「隐藏底栏会话统计」）：
 
-- 通过 `html[data-account-usage-hide-stats] [data-slot="conversation.composer.dock"]` 隐藏整个底栏统计 dock
-  （同时对 `[data-composer-stat]` 兜底，避免宿主改结构后残留）
+- 通过 `html[data-account-usage-hide-stats] [data-composer-dock]` 隐藏整个底栏统计 dock（同时隐藏 slot 内的统计 pill
+  和 slot 外的上下文环形指示器），并用 `[data-composer-stat]` 兜底，避免宿主改结构后残留
 - 同样的数据统一在**会话卡**展示：轮数、步数、输出速度、请求次数、缓存命中、平均每请求，
   以及 Token 合计、上下文占用与构成，不再占用输入区
 
