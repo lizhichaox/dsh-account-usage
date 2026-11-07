@@ -558,6 +558,28 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(unsupportedText.includes('7.5M'), 'unsupported provider card shows this session usage');
   assert.ok(unsupportedText.includes('1234'), 'unsupported provider card shows the request count');
   assert.equal(walk(unsupportedCard, (node) => hasClass(node, 'aup-retry')).length, 0, 'no dead retry for a provider without a balance API');
+
+  // Mixed sessions split the platform statistics by source instead of one flat total.
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [{ date: '2026-11-07', tokens: 1_000_000, cost: 1.5, count: 10 }], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 }, { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2_500_000, requests: 250 }], totalTokens: 3_500_000 },
+    { phase: 'ready', items: [], error: 'unsupported_provider' },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const mixedTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
+  stateQueue.length = 0;
+  const sourceRows = walk(mixedTree, (node) => hasClass(node, 'aup-source-row')).map(flat);
+  assert.equal(sourceRows.length, 2, 'one row per source in a mixed session: ' + JSON.stringify(sourceRows));
+  assert.ok(sourceRows[0].includes('DeepSeek 平台'), 'platform row first');
+  assert.ok(sourceRows[1].includes('OpenCode Go'), 'third-party row second');
+  assert.ok(sourceRows[1].includes('2.5M'), 'third-party row shows its session tokens');
+  const mixedAccount = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
+  assert.equal(walk(mixedAccount, (node) => hasClass(node, 'aup-account-note')).length, 0, 'no bottom note line on the account card');
 }
 
 // --------------------------------------------------------------- english --

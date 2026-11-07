@@ -127,6 +127,8 @@ window.__ModuleLoader__.load({
       'account.offAccountAll': '本次会话由 {provider} 提供，不消耗 DeepSeek 余额。',
       'account.offAccountPartial': '本次会话部分使用 {provider}，该部分不消耗 DeepSeek 余额。',
       'stats.platformBadge': 'DeepSeek 平台',
+      'stats.sessionScope': '本会话',
+      'account.partialBadge': '部分 {provider}',
       'stats.platformBadgeHint': '平台用量只统计 DeepSeek 账号，不含第三方 Provider。',
       'balance.bonus': '赠送额度',
       'balance.failed': '余额读取失败',
@@ -229,6 +231,8 @@ window.__ModuleLoader__.load({
       'account.offAccountAll': 'This session runs on {provider}; it does not use your DeepSeek balance.',
       'account.offAccountPartial': 'Part of this session runs on {provider}; that part does not use your DeepSeek balance.',
       'stats.platformBadge': 'DeepSeek platform',
+      'stats.sessionScope': 'session',
+      'account.partialBadge': 'partly {provider}',
       'stats.platformBadgeHint': 'Platform usage covers the DeepSeek account only, not third-party providers.',
       'balance.bonus': 'Bonus credit',
       'balance.failed': 'Could not read the balance',
@@ -457,6 +461,12 @@ window.__ModuleLoader__.load({
       '.aup-dim:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-stats-summary{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-variant-numeric:tabular-nums;font-size:12px;line-height:18px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-stats-summary>span{min-width:0;white-space:normal;overflow-wrap:anywhere}',
+      '.aup-sources{display:flex;flex-direction:column;gap:2px;flex:none}',
+      '.aup-source-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:baseline;gap:10px;font-size:13px;line-height:18px;font-variant-numeric:tabular-nums}',
+      '.aup-source-row-account .aup-source-tokens,.aup-source-row-account .aup-source-cost{font-size:16px;line-height:22px;font-weight:500;color:var(--dsw-alias-label-primary)}',
+      '.aup-source-label{min-width:0;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
+      '.aup-source-tokens{color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap;text-align:right}',
+      '.aup-source-cost{min-width:52px;color:var(--dsw-alias-label-secondary);white-space:nowrap;text-align:right}',
       '.aup-stats-total{flex:none;font-size:20px;line-height:26px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
       '.aup-card-stats .aup-series{flex:1 1 auto;display:flex;flex-direction:column;justify-content:space-between;gap:4px}',
       '.aup-card-stats .aup-series-row{flex:1 1 0;min-height:17px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
@@ -509,7 +519,6 @@ window.__ModuleLoader__.load({
       '.aup-card-account .aup-balance-value.aup-value-long{font-size:14px}',
       '.aup-card-account .aup-balance-value.aup-value-longer{font-size:12px}',
       '.aup-card-account .aup-balance-label{font-size:13px;line-height:16px;font-weight:500}',
-      '.aup-account-note{margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-hint{font-size:13px;line-height:16px}',
       // ---- content shedding at short card heights (no scrolling) ----
       '@container aup-card (max-height:380px){.aup-card-session .aup-compose{display:none}}',
@@ -1609,7 +1618,21 @@ window.__ModuleLoader__.load({
       const result = state.result;
       const accountLocale = result === undefined ? undefined : result.locale;
       const locale = uiLocale === undefined ? accountLocale : uiLocale;
-      const head = [h(CardHead, { icon: WalletGlyph, title: t('account.title') }), h('span', { className: 'aup-divider', 'aria-hidden': true })];
+      const head = [
+        h(CardHead, {
+          icon: WalletGlyph,
+          title: t('account.title'),
+          extra:
+            offAccountAll === true
+              ? typeof offAccountLabel === 'string' && offAccountLabel !== ''
+                ? h('span', { className: 'aup-badge' }, offAccountLabel)
+                : null
+              : typeof offAccountLabel === 'string' && offAccountLabel !== ''
+                ? h('span', { className: 'aup-badge', title: t('account.offAccountPartial', { provider: offAccountLabel }) }, t('account.partialBadge', { provider: offAccountLabel }))
+                : null
+        }),
+        h('span', { className: 'aup-divider', 'aria-hidden': true })
+      ];
 
       if (offAccountAll === true) {
         const providerHead = [
@@ -1792,14 +1815,11 @@ window.__ModuleLoader__.load({
           : walletItems.length === 0 && bonusItems.length === 0
             ? h(Hint, null, t('balance.empty'))
             : h('div', { className: 'aup-balance' }, walletItems, bonusItems),
-        typeof offAccountLabel === 'string' && offAccountLabel !== ''
-          ? h('p', { className: 'aup-account-note' }, t(offAccountAll === true ? 'account.offAccountAll' : 'account.offAccountPartial', { provider: offAccountLabel }))
-          : null
       );
     }
 
     /** Date-dimension statistics over real platform usage (local estimates as fallback). */
-    function UsageSection({ state, dimension, onDimension, onRetry, t, fallbackCurrency, locale, showCost, thirdPartyLabel }) {
+    function UsageSection({ state, dimension, onDimension, onRetry, t, fallbackCurrency, locale, showCost, thirdPartyLabel, categories }) {
       const moveDimension = (event) => {
         const index = DIMENSIONS.findIndex((entry) => entry.id === dimension);
         let next = null;
@@ -1939,18 +1959,49 @@ window.__ModuleLoader__.load({
         );
       });
 
+      const extraSources = (Array.isArray(categories) ? categories : []).filter(
+        (row) => row !== null && row !== undefined && Number.isFinite(row.tokens) && row.tokens > 0
+      );
+      const sourceBlock =
+        extraSources.length === 0
+          ? null
+          : h(
+              'div',
+              { className: 'aup-sources' },
+              h(
+                'div',
+                { key: 'account', className: 'aup-source-row aup-source-row-account' },
+                h('span', { className: 'aup-source-label' }, t('stats.platformBadge')),
+                h('span', { className: 'aup-source-tokens' }, formatTokens(series.total)),
+                showCost === false
+                  ? null
+                  : h('span', { className: 'aup-source-cost' }, formatCost(series.cost, currency, locale, estimate))
+              ),
+              extraSources.map((row) =>
+                h(
+                  'div',
+                  { key: row.provider, className: 'aup-source-row' },
+                  h('span', { className: 'aup-source-label' }, row.label),
+                  h('span', { className: 'aup-source-tokens' }, formatTokens(row.tokens)),
+                  h('span', { className: 'aup-source-cost' }, t('stats.sessionScope'))
+                )
+              )
+            );
+
       return h(
         'section',
         { className: 'aup-card aup-card-stats' },
         head,
-        h(
-          'div',
-          { className: 'aup-stats-summary' },
-          h('span', null, summary),
-          showCost !== false
-            ? h('span', { className: 'aup-stats-total' }, formatCost(series.cost, currency, locale, estimate))
-            : null
-        ),
+        sourceBlock === null
+          ? h(
+              'div',
+              { className: 'aup-stats-summary' },
+              h('span', null, summary),
+              showCost !== false
+                ? h('span', { className: 'aup-stats-total' }, formatCost(series.cost, currency, locale, estimate))
+                : null
+            )
+          : sourceBlock,
         series.total === 0
           ? h(Hint, null, t('stats.empty'))
           : h('div', { className: 'aup-series' }, rows)
@@ -2602,7 +2653,8 @@ window.__ModuleLoader__.load({
               fallbackCurrency: currency,
               locale: displayLocale,
               showCost: settings.showCost,
-              thirdPartyLabel: offAccountLabel
+              thirdPartyLabel: offAccountLabel,
+              categories: providerSessionUsage
             })
           : null,
           settings.cards.account === true

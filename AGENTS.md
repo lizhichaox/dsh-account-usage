@@ -99,7 +99,8 @@
     DeepSeek API Key 用 `/user/balance`）
   - 不支持的 Provider（如 OpenCode Go）显示「暂未开放余额接口」并改为展示本会话 Token/请求数（不给无效重试按钮）；未配置 Key 显示「未配置 … API Key」
   - Provider 卡为大号余额 + 使用率进度条（已用百分比与金额同行，总额只出现一次）+ 更新时间 + 单行说明
-- 混合会话：保留 DeepSeek 余额 + 提示「部分使用 …」，平台用量卡加「DeepSeek 平台」标记
+- 混合会话：保留 DeepSeek 余额，并在账户卡标题右侧显示「部分 {provider}」徽标（**不要**再占用底部说明行）；
+  用量统计卡顶部按来源分两行：DeepSeek 平台（本期 Token/金额）+ 每个第三方 Provider（本会话 Token）
 - Provider 余额缓存 60 秒；手动刷新强制重新查询
 - **API Key 只在 Host 侧读取**（`ctx.credentials`），不得下发到浏览器/客户端
 
