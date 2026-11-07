@@ -212,7 +212,7 @@ DSH 输入框底部原有一行会话统计（轮数/步数 · tok/s · Token ·
 | 会话 Provider 情况 | 账户余额卡 | 用量统计卡 | 会话卡 |
 |---|---|---|---|
 | 全部走 `deepseek-account` | DeepSeek 充值 + 赠送额度 | DeepSeek 平台用量 | 按模型（只写模型名） |
-| 全部走第三方（如 OpenRouter） | **变为 Provider 余额卡**：剩余/已用/总额、使用率进度条、说明 | **隐藏**（不展示 DeepSeek 账号用量） | 按模型（Provider 作为分组标题，模型名完整） |
+| 全部走第三方（如 OpenRouter） | **变为 Provider 余额卡**：剩余/已用/总额、使用率进度条、说明 | **隐藏平台用量**，改为「会话明细」卡（按模型 + 上下文） | 按模型（Provider 作为分组标题，模型名完整） |
 | 混合（部分账号 + 部分第三方） | DeepSeek 余额 + 说明 | DeepSeek 平台 + 说明标记 | 按模型（带 Provider 前缀） |
 
 ### Provider 余额支持

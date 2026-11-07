@@ -156,6 +156,7 @@ window.__ModuleLoader__.load({
       'tokens.context': '上下文占用',
       'tokens.contextValue': '{used} / {window}（{percent}%）',
       'tokens.contextUnknown': '暂无上下文数据',
+      'tokens.detail': '会话明细',
       'tokens.byModel': '按模型',
       'tokens.moreModels': '另有 {count} 个模型',
       'tokens.stat.requests': '请求次数',
@@ -249,6 +250,7 @@ window.__ModuleLoader__.load({
       'tokens.context': 'Context usage',
       'tokens.contextValue': '{used} / {window} ({percent}%)',
       'tokens.contextUnknown': 'No context data yet',
+      'tokens.detail': 'Session details',
       'tokens.byModel': 'By model',
       'tokens.moreModels': '{count} more models',
       'tokens.stat.requests': 'Requests',
@@ -367,9 +369,12 @@ window.__ModuleLoader__.load({
       '.aup-models-provider{min-width:0;white-space:nowrap;font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-provider{display:block;margin-top:2px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
       '.aup-card-account-provider{flex:0 1 auto;min-height:0;justify-content:flex-start}',
-      '.aup-provider-mode .aup-card-session-fixed{flex:2 1 0}',
+      '.aup-provider-mode .aup-card-session-fixed{flex:1.5 1 0}',
       '.aup-provider-mode .aup-session-body{justify-content:space-between}',
-      '.aup-provider-mode .aup-card-account-provider{flex:1 1 0}',
+      '.aup-card-detail{justify-content:flex-start}',
+      '.aup-detail-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:10px;justify-content:space-between}',
+      '.aup-provider-mode .aup-card-detail{flex:1.2 1 0}',
+      '.aup-provider-mode .aup-card-account-provider{flex:1.1 1 0}',
       '.aup-provider-mode .aup-provider-body{flex:1 1 auto;justify-content:space-between}',
       '.aup-card-account-provider .aup-balance{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;align-content:center}',
       '.aup-card-account-provider .aup-balance-value{font-size:20px;line-height:26px}',
@@ -1327,6 +1332,122 @@ window.__ModuleLoader__.load({
       };
     }
 
+    /** Provider session detail: per-model totals plus context composition. */
+    function SessionDetailCard({ t, useProjection, sessionModels, extraLabel }) {
+      const pressure = useProjection('contextPressure');
+      const contextBreakdown = useProjection('contextBreakdown');
+      const modelRows = sessionModels !== null && sessionModels !== undefined && Array.isArray(sessionModels.items) ? sessionModels.items : [];
+      const groups = new Map();
+      for (const item of modelRows.slice(0, 3)) {
+        const key = typeof item.provider === 'string' ? item.provider : '';
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(item);
+      }
+      const modelBlock =
+        modelRows.length === 0
+          ? h(Hint, null, t('tokens.empty'))
+          : h(
+              'div',
+              { className: 'aup-models', 'aria-label': t('tokens.byModel') },
+              h(
+                'div',
+                { className: 'aup-models-head' },
+                h('span', { className: 'aup-models-caption' }, t('tokens.byModel')),
+                groups.size === 1 && [...groups.keys()][0] !== '' ? h('span', { className: 'aup-models-provider' }, providerLabel([...groups.keys()][0], t)) : null
+              ),
+              [...groups.entries()].flatMap(([provider, items]) =>
+                provider === '' || groups.size === 1
+                  ? items.map((item) =>
+                      h(
+                        'div',
+                        { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
+                        (() => {
+                          const text = shortModelName(item.model);
+                          return h('span', { className: 'aup-model-name' + (text.length > 22 ? ' aup-model-name-long' : ''), title: item.model }, text);
+                        })(),
+                        h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
+                      )
+                    )
+                  : [
+                      h('span', { key: 'provider-' + provider, className: 'aup-model-provider' }, providerLabel(provider, t)),
+                      ...items.map((item) =>
+                        h(
+                          'div',
+                          { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row' },
+                          (() => {
+                            const text = shortModelName(item.model);
+                            return h('span', { className: 'aup-model-name' + (text.length > 22 ? ' aup-model-name-long' : ''), title: item.model }, text);
+                          })(),
+                          h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
+                        )
+                      )
+                    ]
+              ),
+              modelRows.length > 3 ? h('span', { className: 'aup-model-more' }, t('tokens.moreModels', { count: String(modelRows.length - 3) })) : null
+            );
+
+      const usedTokens =
+        pressure && Number.isFinite(pressure.projectedTokens)
+          ? pressure.projectedTokens
+          : pressure && Number.isFinite(pressure.pressureTokens)
+            ? pressure.pressureTokens
+            : undefined;
+      const contextWindow = pressure && Number.isFinite(pressure.contextWindow) ? pressure.contextWindow : undefined;
+      const hasContext = usedTokens !== undefined && contextWindow !== undefined && contextWindow > 0;
+      const percent = hasContext ? Math.min(100, Math.round((usedTokens / contextWindow) * 100)) : 0;
+      const contextParts = contextBreakdown === null || contextBreakdown === undefined
+        ? []
+        : [
+            { key: 'system', label: t('tokens.breakdown.system'), value: Number.isFinite(contextBreakdown.systemTokens) ? contextBreakdown.systemTokens : 0, color: 'var(--dsw-static-neutral-bluish-400, #adb2b8)' },
+            { key: 'tools', label: t('tokens.breakdown.tools'), value: Number.isFinite(contextBreakdown.toolsTokens) ? contextBreakdown.toolsTokens : 0, color: 'var(--dsw-static-violet-400, #a78bfa)' },
+            { key: 'messages', label: t('tokens.breakdown.messages'), value: Number.isFinite(contextBreakdown.messageTokens) ? contextBreakdown.messageTokens : 0, color: 'var(--dsw-static-blue-450, #4d93f8)' }
+          ].filter((part) => part.value > 0);
+      const contextTotal = contextParts.reduce((sum, part) => sum + part.value, 0);
+      const contextBlock = h(
+        'div',
+        { className: 'aup-context' },
+        h(
+          'div',
+          { className: 'aup-context-head' },
+          h('span', null, t('tokens.context')),
+          h(
+            'span',
+            { className: 'aup-context-figures' },
+            hasContext ? t('tokens.contextValue', { used: formatTokens(usedTokens), window: formatTokens(contextWindow), percent: String(percent) }) : t('tokens.contextUnknown')
+          )
+        ),
+        hasContext ? h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } })) : null,
+        contextTotal === 0
+          ? null
+          : h(
+              'div',
+              { className: 'aup-context-breakdown' },
+              h(
+                'div',
+                { className: 'aup-context-compose' },
+                contextParts.map((part) => h('span', { key: part.key, className: 'aup-context-seg', style: { flexGrow: part.value, background: part.color } }))
+              ),
+              h(
+                'div',
+                { className: 'aup-context-legend' },
+                contextParts.map((part) => h('span', { key: part.key, className: 'aup-context-legend-item' }, part.label + ' ' + Math.round((part.value / contextTotal) * 100) + '%'))
+              )
+            )
+      );
+
+      return h(
+        'section',
+        { className: 'aup-card aup-card-detail' },
+        h(CardHead, {
+          icon: ChartGlyph,
+          title: t('tokens.detail'),
+          extra: typeof extraLabel === 'string' && extraLabel !== '' ? h('span', { className: 'aup-badge' }, extraLabel) : null
+        }),
+        h('span', { className: 'aup-divider', 'aria-hidden': true }),
+        h('div', { className: 'aup-detail-body' }, modelBlock, contextBlock)
+      );
+    }
+
     /** One labelled wallet row. */
     function WalletItem({ label, wallet, locale, major }) {
       return h(
@@ -1662,7 +1783,7 @@ window.__ModuleLoader__.load({
     }
 
     /** This session's durable token totals plus context occupancy. */
-    function TokenSection({ useProjection, t, sessionModels }) {
+    function TokenSection({ useProjection, t, sessionModels, providerMode }) {
       const usage = useProjection('tokenUsage');
       const pressure = useProjection('contextPressure');
       const contextBreakdown = useProjection('contextBreakdown');
@@ -1765,7 +1886,7 @@ window.__ModuleLoader__.load({
         groups.get(key).push(item);
       }
       const modelBlock =
-        modelRows.length === 0
+        providerMode === true || modelRows.length === 0
           ? null
           : h(
               'div',
@@ -1853,8 +1974,8 @@ window.__ModuleLoader__.load({
             ),
         modelBlock === null ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
         modelBlock,
-        h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
-        h(
+        providerMode === true ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
+        providerMode === true ? null : h(
           'div',
           { className: 'aup-context' },
           h(
@@ -2263,7 +2384,10 @@ window.__ModuleLoader__.load({
         h(
           'div',
           { className: 'aup-cards' },
-          settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels }) : null,
+          settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels, providerMode: offAccountAll === true }) : null,
+          settings.cards.stats === true && offAccountAll === true
+            ? h(SessionDetailCard, { t, useProjection, sessionModels, extraLabel: offAccountLabel })
+            : null,
           settings.cards.stats === true && offAccountAll !== true
           ? h(UsageSection, {
               state: displayedUsage,
