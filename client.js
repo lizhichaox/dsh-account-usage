@@ -160,7 +160,7 @@ window.__ModuleLoader__.load({
       'tokens.breakdown.tools': '工具',
       'tokens.breakdown.messages': '消息',
       'balance.total': '总额',
-      'account.providerNote': '余额由 {provider} 提供，不消耗 DeepSeek 账号。',
+      'account.providerNote': '余额由 {provider} 提供',
       'account.providerUsedRate': '已用 {percent}%',
     };
 
@@ -241,7 +241,7 @@ window.__ModuleLoader__.load({
       'tokens.breakdown.tools': 'Tools',
       'tokens.breakdown.messages': 'Messages',
       'balance.total': 'Total',
-      'account.providerNote': 'Balance is provided by {provider}; the DeepSeek account is not used.',
+      'account.providerNote': 'Balance provided by {provider}',
       'account.providerUsedRate': '{percent}% used',
     };
 
@@ -312,6 +312,7 @@ window.__ModuleLoader__.load({
       '.aup-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
       '.aup-retry{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;line-height:18px;cursor:pointer}',
       '.aup-retry:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.aup-card-session-fixed{flex:0 1 auto}',
       '.aup-card-session .aup-session-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px;justify-content:flex-start}',
       '.aup-card-session .aup-session-grid{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;align-content:space-evenly;justify-items:stretch;margin:0;padding:0;width:100%}',
       '.aup-card-session .aup-session-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}',
@@ -319,7 +320,7 @@ window.__ModuleLoader__.load({
       '.aup-models{display:flex;flex-direction:column;gap:2px;flex:none;min-height:0}',
       '.aup-models-caption{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0;font-size:13px;line-height:17px}',
-      '.aup-model-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
+      '.aup-model-name{min-width:0;font-size:12px;line-height:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-tokens{flex:none;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
       '.aup-model-more{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
       '.aup-session-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px}',
@@ -333,11 +334,11 @@ window.__ModuleLoader__.load({
       '.aup-models-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}',
       '.aup-models-provider{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-provider{display:block;margin-top:2px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.aup-card-account-provider{flex:2 1 0;min-height:0;justify-content:flex-start}',
+      '.aup-card-account-provider{flex:0 1 auto;min-height:0;justify-content:flex-start}',
       '.aup-card-account-provider .aup-balance{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;align-content:center}',
       '.aup-card-account-provider .aup-balance-value{font-size:20px;line-height:26px}',
       '.aup-card-account-provider .aup-balance-value.aup-minor{font-size:17px;line-height:22px}',
-      '.aup-provider-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:10px;justify-content:center}',
+      '.aup-provider-body{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;gap:8px;justify-content:flex-start}',
       '.aup-provider-hero{display:flex;flex-direction:column;gap:2px;min-width:0}',
       '.aup-provider-hero-label{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-provider-hero-value{font-size:30px;line-height:36px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -1590,7 +1591,7 @@ window.__ModuleLoader__.load({
     }
 
     /** This session's durable token totals plus context occupancy. */
-    function TokenSection({ useProjection, t, sessionModels }) {
+    function TokenSection({ useProjection, t, sessionModels, providerMode }) {
       const usage = useProjection('tokenUsage');
       const pressure = useProjection('contextPressure');
       const contextBreakdown = useProjection('contextBreakdown');
@@ -1780,7 +1781,7 @@ window.__ModuleLoader__.load({
 
       return h(
         'section',
-        { className: 'aup-card aup-card-session' },
+        { className: 'aup-card aup-card-session' + (providerMode === true ? ' aup-card-session-fixed' : '') },
         h(CardHead, { icon: ChatGlyph, title: t('tokens.title') }),
         h('span', { className: 'aup-divider', 'aria-hidden': true }),
         sessionBody
@@ -2131,7 +2132,7 @@ window.__ModuleLoader__.load({
         settingsOpen === true
           ? h(SettingsPanel, { settings, onChange: applySettings, onReset: resetSettings, onClose: closeSettings, t })
           : null,
-        settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels }) : null,
+        settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels, providerMode: offAccountAll === true }) : null,
         settings.cards.stats === true && offAccountAll !== true
           ? h(UsageSection, {
               state: displayedUsage,
