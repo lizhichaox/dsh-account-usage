@@ -1769,6 +1769,64 @@ window.__ModuleLoader__.load({
       );
     }
 
+    /**
+     * Best-effort narrow right sidebar: the host exposes no width API, so drive
+     * its own resize handle to the contract minimum before/while the panel opens.
+     * The handle is found by a stable data attribute and every step degrades
+     * silently when the host markup or pointer support is unavailable.
+     */
+    function requestNarrowRightbar() {
+      if (typeof document === 'undefined') return;
+      const minimum = 300;
+      const attempt = (tries) => {
+        const handle = document.querySelector('[data-side="rightbar"]');
+        if (handle === null || handle === undefined) {
+          if (tries < 20 && typeof setTimeout === 'function') setTimeout(() => attempt(tries + 1), 120);
+          return;
+        }
+        try {
+          const frame = handle.parentElement;
+          if (frame === null || frame === undefined) return;
+          const frameWidth = frame.getBoundingClientRect().width;
+          const left = Number.parseFloat(handle.style.left);
+          if (Number.isFinite(left) && frameWidth > 0 && frameWidth - left <= minimum + 4) return;
+          if (typeof PointerEvent !== 'function') return;
+          const rect = handle.getBoundingClientRect();
+          const startX = rect.left + rect.width / 2;
+          const startY = rect.top + rect.height / 2;
+          const setCapture = handle.setPointerCapture;
+          const hasCapture = handle.hasPointerCapture;
+          const releaseCapture = handle.releasePointerCapture;
+          handle.setPointerCapture = () => {};
+          handle.hasPointerCapture = () => false;
+          handle.releasePointerCapture = () => {};
+          const fire = (type, clientX) =>
+            handle.dispatchEvent(
+              new PointerEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                pointerId: 1,
+                isPrimary: true,
+                button: 0,
+                buttons: 1,
+                clientX,
+                clientY: startY,
+                pointerType: 'mouse'
+              })
+            );
+          fire('pointerdown', startX);
+          fire('pointermove', startX + 600);
+          fire('pointerup', startX + 600);
+          handle.setPointerCapture = setCapture;
+          handle.hasPointerCapture = hasCapture;
+          handle.releasePointerCapture = releaseCapture;
+        } catch (error) {
+          /* host-internal detail: leave the current width */
+        }
+      };
+      attempt(0);
+    }
+
     /** Tab chip: wallet glyph plus the title captured when the tab opened. */
     function AccountUsageTitle({ useTabInfo }) {
       const info = useTabInfo();
@@ -1794,6 +1852,7 @@ window.__ModuleLoader__.load({
         try {
           if (ctx.sidebarRight.mounted.getSnapshot() === undefined) return;
           ctx.sidebarRight.openTab(KIND);
+          requestNarrowRightbar();
         } catch (error) {
           console.error('[account-usage] opening the account usage tab failed', error);
         }

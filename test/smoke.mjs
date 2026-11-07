@@ -240,6 +240,52 @@ assert.equal(first.registrations.filter((r) => r.definition.name === 'sidebar.ri
   assert.equal(blockedResolution.reason, '请先选择会话', 'blocked shortcut explains why');
 }
 
+// ------------------------------------------------------- rightbar narrowing --
+{
+  const makeHandle = (left) => {
+    const events = [];
+    const handle = {
+      parentElement: { getBoundingClientRect: () => ({ width: 1200 }) },
+      style: { left },
+      setPointerCapture() {},
+      hasPointerCapture() { return false; },
+      releasePointerCapture() {},
+      getBoundingClientRect: () => ({ left: 692, top: 0, width: 8, height: 800 }),
+      dispatchEvent: (event) => {
+        events.push(event.type);
+        return true;
+      },
+      events
+    };
+    return handle;
+  };
+
+  globalThis.PointerEvent = class {
+    constructor(type, init) {
+      this.type = type;
+      Object.assign(this, init);
+    }
+  };
+
+  // Wide panel: the shortcut drives the host's own handle to the minimum width.
+  const wide = makeHandle('700px');
+  globalThis.document = { querySelector: (selector) => (selector === '[data-side="rightbar"]' ? wide : null) };
+  const wideBoot = bootClient();
+  const wideRun = wideBoot.shortcutRegistrations[0].resolve({ target: null });
+  wideRun.run();
+  assert.deepEqual(wide.events, ['pointerdown', 'pointermove', 'pointerup'], 'shortcut narrows a wide right sidebar');
+
+  // Already narrow: no synthetic drag happens.
+  const narrow = makeHandle('900px');
+  globalThis.document = { querySelector: () => narrow };
+  const narrowBoot = bootClient();
+  narrowBoot.shortcutRegistrations[0].resolve({ target: null }).run();
+  assert.deepEqual(narrow.events, [], 'no drag when the sidebar is already at the minimum');
+
+  delete globalThis.document;
+  delete globalThis.PointerEvent;
+}
+
 // ---------------------------------------------------------------- readers --
 const bodyRegistration = first.registrations.find((r) => r.definition.name === 'sidebar.right.pane.tab');
 const bodyProps = bodyRegistration.definition.inject('session-1');
