@@ -1,0 +1,1896 @@
+/**
+ * Account usage — Client half.
+ *
+ * Registers a page tab type in the right sidebar (`account-usage`), a guide
+ * card that opens it, and a sidebar-foot action beside Settings that opens it
+ * in one click.
+ *
+ * The usage card shows real DeepSeek platform usage: the Client fetches one
+ * month at a time from this bundle's Host route
+ * (`/account-usage/platform/usage`), which proxies the platform's private
+ * usage amount/cost endpoints with the signed-in account's platform session.
+ * Daily token counts and real costs are folded into the selected
+ * day / week / month / quarter / year buckets.
+ *
+ * When the platform route cannot serve a window (signed out, session rejected,
+ * offline), the panel falls back to local session records: token totals from
+ * `session.list`'s `tokenUsage` summary projection, attributed to each
+ * session's last activity, with DeepSeek list prices used only to estimate the
+ * amount (shown with `≈`).
+ *
+ * The account card reads balance from the `account` Remote namespace, and this
+ * session's own usage comes from the token-meter projections (`tokenUsage`,
+ * `contextPressure`).
+ */
+window.__ModuleLoader__.load({
+  id: 'dsh-account-usage',
+  factory(require) {
+    const React = require('react');
+    const h = React.createElement;
+
+    /** Module identity: the tab type id and the slot cell key collide by design. */
+    const ID = 'dsh-account-usage';
+    /** The page kind users open through the guide card or the foot action. */
+    const KIND = 'account-usage';
+    /** This plugin's Client locale namespace. */
+    const NS = 'accountUsage';
+    /** How often the account wallet is re-read while the panel stays mounted and visible. */
+    const ACCOUNT_REFRESH_MS = 5 * 60 * 1000;
+    /** How often the session-list fallback is re-read; platform reads mostly hit the month cache. */
+    const USAGE_REFRESH_MS = 2 * 60 * 1000;
+
+    /** Display preferences persisted by the browser, so the panel needs no Host configuration. */
+    const SETTINGS_KEY = 'dsh.account-usage.settings.v1';
+    const DEFAULT_SETTINGS = {
+      dimension: 'day',
+      autoRefresh: true,
+      showCost: true,
+      cards: { session: true, stats: true, account: true }
+    };
+
+    /** Read persisted preferences, falling back to defaults on any malformed or unknown value. */
+    function readSettings() {
+      try {
+        const raw = globalThis.localStorage === undefined ? null : globalThis.localStorage.getItem(SETTINGS_KEY);
+        if (raw === null || raw === undefined) return DEFAULT_SETTINGS;
+        const parsed = JSON.parse(raw);
+        if (parsed === null || typeof parsed !== 'object') return DEFAULT_SETTINGS;
+        const dimension = DIMENSIONS.some((entry) => entry.id === parsed.dimension) ? parsed.dimension : DEFAULT_SETTINGS.dimension;
+        const cards = parsed.cards !== null && typeof parsed.cards === 'object' ? parsed.cards : {};
+        return {
+          dimension,
+          autoRefresh: typeof parsed.autoRefresh === 'boolean' ? parsed.autoRefresh : DEFAULT_SETTINGS.autoRefresh,
+          showCost: typeof parsed.showCost === 'boolean' ? parsed.showCost : DEFAULT_SETTINGS.showCost,
+          cards: {
+            session: typeof cards.session === 'boolean' ? cards.session : DEFAULT_SETTINGS.cards.session,
+            stats: typeof cards.stats === 'boolean' ? cards.stats : DEFAULT_SETTINGS.cards.stats,
+            account: typeof cards.account === 'boolean' ? cards.account : DEFAULT_SETTINGS.cards.account
+          }
+        };
+      } catch (error) {
+        return DEFAULT_SETTINGS;
+      }
+    }
+
+    /** Persist preferences; private mode or a full quota only skips persistence. */
+    function writeSettings(settings) {
+      try {
+        if (globalThis.localStorage !== undefined) globalThis.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      } catch (error) {
+        /* preferences stay in memory for this session */
+      }
+    }
+
+    // ------------------------------------------------------------------ copy --
+
+    /** Simplified Chinese dictionary (the key-set source of truth). */
+    const zh = {
+      'tab.title': '账号用量',
+      'panel.title': '账号用量',
+      'guide.title': '账号用量',
+      'guide.description': '余额与按日、周、月、季、年统计的用量',
+      'shortcut.open': '打开账号用量统计',
+      'shortcut.noSession': '请先选择会话',
+      'refresh.aria': '刷新余额与用量',
+      'loading': '正在读取…',
+      'stats.loading': '正在读取用量…',
+      'error': '读取账号信息失败',
+      'retry': '重试',
+      'settings.aria': '设置',
+      'settings.title': '设置',
+      'settings.defaultDimension': '默认维度',
+      'settings.card.session': '会话消耗',
+      'settings.card.stats': '用量统计',
+      'settings.card.account': '账户余额',
+      'settings.autoRefresh': '自动刷新',
+      'settings.autoRefreshHint': '用量 2 分钟 · 余额 5 分钟',
+      'settings.showCost': '显示消费金额',
+      'settings.reset': '恢复默认',
+      'settings.close': '关闭',
+      'settings.allHidden': '三张卡片都已隐藏，点右上角设置可重新开启。',
+      'account.title': '账户余额',
+      'account.signedOut': '当前未登录 DeepSeek 账号',
+      'account.signedOutHint': '设置 → 账号 登录后显示余额',
+      'balance.recharge': '余额',
+      'balance.bonus': '赠送额度',
+      'balance.failed': '余额读取失败',
+      'balance.empty': '暂无余额数据',
+      'stats.title': '用量统计',
+      'stats.dim.day': '日',
+      'stats.dim.week': '周',
+      'stats.dim.month': '月',
+      'stats.dim.quarter': '季',
+      'stats.dim.year': '年',
+      'stats.summary.requests': '合计 {total} · {count} 次请求',
+      'stats.summary.sessions': '合计 {total} · {count} 个会话',
+      'stats.empty': '暂无用量记录',
+      'stats.failed': '用量记录读取失败',
+      'stats.localBadge': '本地估算',
+      'stats.reason.no_account': '未登录账号',
+      'stats.reason.auth_failed': '账号登录态不可用',
+      'stats.reason.timeout': '平台请求超时',
+      'stats.reason.fetch_failed': '网络请求失败',
+      'stats.reason.invalid_response': '平台接口返回异常',
+      'stats.reason.network': '网络请求失败',
+      'stats.reason.local_unavailable': '本地记录不可用',
+      'tokens.title': '会话消耗',
+      'tokens.total': '合计',
+      'tokens.uncachedInput': '输入（未缓存）',
+      'tokens.output': '输出',
+      'tokens.cacheRead': '缓存读取',
+      'tokens.cacheWrite': '缓存写入',
+      'tokens.empty': '本次会话还没有 Token 记录。',
+      'tokens.context': '上下文占用',
+      'tokens.contextValue': '{used} / {window}（{percent}%）',
+      'tokens.contextUnknown': '暂无上下文数据',
+    };
+
+    /** English dictionary, checked against the Chinese key set. */
+    const en = {
+      'tab.title': 'Account usage',
+      'panel.title': 'Account usage',
+      'guide.title': 'Account usage',
+      'guide.description': 'Balance and usage grouped by day, week, month, quarter, or year',
+      'shortcut.open': 'Open account usage',
+      'shortcut.noSession': 'Select a session first',
+      'refresh.aria': 'Refresh balance and usage',
+      'loading': 'Reading…',
+      'stats.loading': 'Reading usage…',
+      'error': 'Could not read account information',
+      'retry': 'Retry',
+      'settings.aria': 'Settings',
+      'settings.title': 'Settings',
+      'settings.defaultDimension': 'Default range',
+      'settings.card.session': 'Session usage',
+      'settings.card.stats': 'Usage stats',
+      'settings.card.account': 'Account balance',
+      'settings.autoRefresh': 'Auto refresh',
+      'settings.autoRefreshHint': 'Usage 2 min · Balance 5 min',
+      'settings.showCost': 'Show spend',
+      'settings.reset': 'Reset to defaults',
+      'settings.close': 'Close',
+      'settings.allHidden': 'All three cards are hidden. Turn them back on in the display settings.',
+      'account.title': 'Account balance',
+      'account.signedOut': 'No DeepSeek account is signed in',
+      'account.signedOutHint': 'Sign in via Settings to see the balance',
+      'balance.recharge': 'Balance',
+      'balance.bonus': 'Bonus credit',
+      'balance.failed': 'Could not read the balance',
+      'balance.empty': 'No balance data yet',
+      'stats.title': 'Usage statistics',
+      'stats.dim.day': 'Day',
+      'stats.dim.week': 'Week',
+      'stats.dim.month': 'Month',
+      'stats.dim.quarter': 'Qtr',
+      'stats.dim.year': 'Year',
+      'stats.summary.requests': 'Total {total} · {count} requests',
+      'stats.summary.sessions': 'Total {total} · {count} sessions',
+      'stats.empty': 'No usage records yet',
+      'stats.failed': 'Could not read usage records',
+      'stats.localBadge': 'local',
+      'stats.reason.no_account': 'no signed-in account',
+      'stats.reason.auth_failed': 'account session rejected',
+      'stats.reason.timeout': 'platform request timed out',
+      'stats.reason.fetch_failed': 'platform request failed',
+      'stats.reason.invalid_response': 'platform response was invalid',
+      'stats.reason.network': 'network request failed',
+      'stats.reason.local_unavailable': 'local records unavailable',
+      'tokens.title': 'Session usage',
+      'tokens.total': 'Total',
+      'tokens.uncachedInput': 'Input (uncached)',
+      'tokens.output': 'Output',
+      'tokens.cacheRead': 'Cache read',
+      'tokens.cacheWrite': 'Cache write',
+      'tokens.empty': 'This session has no token records yet.',
+      'tokens.context': 'Context usage',
+      'tokens.contextValue': '{used} / {window} ({percent}%)',
+      'tokens.contextUnknown': 'No context data yet',
+    };
+
+    // ----------------------------------------------------------------- styles --
+
+    const CSS = [
+      '.aup-root{position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;height:100%;min-height:0;overflow:hidden;padding:16px;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px}',
+      '.aup-root *{box-sizing:border-box}',
+      '.aup-head{display:flex;align-items:center;gap:8px;flex:none}',
+      '.aup-glyph{flex:none;color:var(--dsw-alias-label-secondary);display:inline-flex}',
+      '.aup-title{flex:1;min-width:0;margin:0;font-size:14px;font-weight:500;line-height:20px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      '.aup-icon-button{flex:none;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:background-color .12s,color .12s}',
+      '.aup-icon-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
+      '.aup-icon-button:disabled{opacity:.4;cursor:default}',
+      '.aup-head-actions{display:inline-flex;align-items:center;gap:2px;flex:none}',
+      '.aup-icon-button[data-active]{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
+      '.aup-pop-backdrop{position:absolute;inset:0;z-index:20}',
+      '.aup-pop{position:absolute;top:44px;right:12px;z-index:21;width:258px;max-width:calc(100% - 24px);max-height:calc(100% - 56px);overflow:auto;display:flex;flex-direction:column;gap:6px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 10px 28px color-mix(in srgb,var(--dsw-alias-label-primary) 16%,transparent)}',
+      '.aup-pop-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}',
+      '.aup-pop-title{font-size:13px;line-height:18px;font-weight:600;color:var(--dsw-alias-label-primary)}',
+      '.aup-pop-close{width:22px;height:22px;margin-right:-4px}',
+      '.aup-pop-close-glyph{font-size:16px;line-height:1;font-weight:400}',
+      '.aup-pop-block{display:flex;flex-direction:column;gap:6px;margin-top:2px}',
+      '.aup-pop-label{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
+      '.aup-pop-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:26px}',
+      '.aup-pop-row>span{font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-primary);white-space:nowrap}',
+      '.aup-pop-hint{font-size:13px;line-height:18px;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:visible;text-overflow:clip}',
+      '.aup-pop-sep{flex:none;height:1px;margin:2px 0;background:var(--dsw-alias-border-l2)}',
+      '.aup-pop-foot{display:flex;justify-content:flex-end;padding-top:2px}',
+      '.aup-pop-link{padding:0;border:none;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:18px;cursor:pointer}',
+      '.aup-pop-link:hover{color:var(--dsw-alias-label-primary)}',
+      '.aup-dims-mini{background:var(--dsw-alias-bg-skeleton);padding:2px;gap:2px;border-radius:8px}',
+      '.aup-dims-mini .aup-dim{flex:1 1 0;height:22px;padding:0 4px;border-radius:6px;font-size:12px;line-height:16px}',
+      '.aup-toggle{position:relative;flex:none;width:34px;height:20px;padding:0;border:none;border-radius:999px;background:var(--dsw-alias-bg-skeleton);cursor:pointer;transition:background-color .15s}',
+      '.aup-toggle[data-on]{background:var(--dsw-alias-brand-primary)}',
+      '.aup-toggle-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 20%,transparent);transition:transform .15s}',
+      '.aup-toggle[data-on] .aup-toggle-knob{transform:translateX(14px)}',
+      '.aup-toggle:focus-visible,.aup-pop-link:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
+      '@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob{transition:none}}',
+      '.aup-empty{padding:12px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:18px;font-weight:500;text-align:center}',      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
+      '.aup-spin{animation:aup-spin 1s linear infinite}',
+      '@keyframes aup-spin{to{transform:rotate(360deg)}}',
+      '.aup-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden;container-type:size;container-name:aup-card}',
+      '.aup-card-session{justify-content:space-between}',
+      '.aup-card-stats{flex:2 1 0;justify-content:space-between}',
+      '.aup-card-account{justify-content:space-evenly}',
+      '.aup-card-account .aup-balance-value{font-size:26px;line-height:32px}',
+      '.aup-card-head{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex:none}',
+      '.aup-divider{display:block;height:1px;flex:none;margin:0;background:var(--dsw-alias-border-l2)}',
+      '.aup-card-icon{display:inline-flex;flex:none;color:var(--dsw-alias-label-secondary)}',
+      '.aup-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}',
+      '.aup-skeleton{display:block;height:10px;border-radius:6px;background:linear-gradient(90deg,color-mix(in srgb,var(--dsw-alias-label-primary) 6%,transparent) 25%,color-mix(in srgb,var(--dsw-alias-label-primary) 11%,transparent) 37%,color-mix(in srgb,var(--dsw-alias-label-primary) 6%,transparent) 63%);background-size:400% 100%;animation:aup-shimmer 1.4s ease-in-out infinite}',
+      '@keyframes aup-shimmer{0%{background-position:100% 0}100%{background-position:0 0}}',
+      '.aup-skeleton-row{pointer-events:none}',
+      '.aup-skeleton-label{width:38px}',
+      '.aup-skeleton-track{width:100%;height:8px;border-radius:999px;justify-self:stretch}',
+      '.aup-skeleton-value{width:44px;justify-self:end}',
+      '@media (prefers-reduced-motion:reduce){.aup-skeleton{animation:none}}',
+      '.aup-badge{flex:none;padding:0 6px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:18px;font-weight:500;white-space:nowrap}',
+      '.aup-card-title{margin:0;font-size:12px;font-weight:500;line-height:18px;color:var(--dsw-alias-label-secondary)}',
+
+      '.aup-balance{display:flex;flex-direction:column;gap:6px;margin:0;padding:0}',
+      '.aup-balance-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0}',
+      '.aup-balance-label{margin:0;font-size:12px;font-weight:500;color:var(--dsw-alias-label-secondary);flex:none;white-space:nowrap}',
+      '.aup-balance-value{margin:0;font-size:20px;font-weight:500;line-height:26px;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}',
+      '.aup-balance-value.aup-minor{font-size:13px;line-height:20px;font-weight:400;color:var(--dsw-alias-label-primary)}',
+      '.aup-hint{margin:0;font-size:12px;line-height:18px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.aup-error{margin:0;font-size:12px;line-height:18px;color:var(--dsw-alias-state-error-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.aup-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
+      '.aup-retry{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:12px;line-height:18px;cursor:pointer}',
+      '.aup-retry:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.aup-card-session .aup-session-grid{flex:1 1 auto;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;align-content:space-evenly;justify-items:stretch;margin:0;padding:0;width:100%}',
+      '.aup-card-session .aup-session-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}',
+      '.aup-card-session .aup-session-cell:nth-child(even){align-items:flex-end;text-align:right}',
+      '.aup-card-session .aup-session-label{margin:0;font-size:11px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.aup-card-session .aup-session-value{margin:0;font-size:15px;line-height:20px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
+      '.aup-card-session .aup-bar{height:8px}',
+      '.aup-session-total{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex:none;width:100%}',
+      '.aup-session-total-value{font-size:26px;line-height:32px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary);white-space:nowrap}',
+      '.aup-session-total-label{font-size:11px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
+      '.aup-compose{display:flex;height:8px;flex:none;gap:1px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-skeleton)}',
+      '.aup-compose-seg{flex:1 1 0;min-width:2px;height:100%}',
+      '.aup-context{display:flex;flex-direction:column;gap:6px;margin-top:2px}',
+      '.aup-context-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:12px;line-height:18px;font-weight:500;color:var(--dsw-alias-label-secondary);min-width:0}',
+      '.aup-context-head>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.aup-context-figures{flex:none;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary);text-align:right}',
+      '.aup-bar{height:4px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
+      '.aup-bar-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary)}',
+      '.aup-dims{display:flex;gap:2px;flex-wrap:nowrap;padding:2px;border-radius:9px;background:var(--dsw-alias-bg-skeleton)}',
+      '.aup-dim{flex:1;min-width:0;height:22px;padding:0 4px;border:.5px solid transparent;border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary);font-family:inherit;font-size:12px;font-weight:500;line-height:18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background-color .12s,color .12s}',
+      '.aup-dim:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.aup-dim[data-active]{background:var(--dsw-alias-bg-layer-1);border-color:var(--dsw-alias-border-l3);box-shadow:0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 9%,transparent);color:var(--dsw-alias-label-primary);font-weight:500}',
+      '.aup-dim:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
+      '.aup-stats-summary{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-size:12px;line-height:18px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
+      '.aup-stats-summary>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.aup-stats-total{flex:none;font-size:17px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
+      '.aup-card-stats .aup-series{flex:1 1 auto;display:flex;flex-direction:column;justify-content:space-between;gap:4px}',
+      '.aup-card-stats .aup-series-row{flex:1 1 0;min-height:0;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
+      '.aup-card-stats .aup-series-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
+      '.aup-card-stats .aup-series-row[data-current]{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent)}',
+      '.aup-card-stats .aup-series-row[data-current]:hover{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 16%, transparent)}',
+      '.aup-card-stats .aup-series-track{height:8px}',
+      '.aup-series-row{display:grid;grid-template-columns:minmax(46px,max-content) minmax(0,1fr) minmax(52px,max-content);align-items:center;gap:8px;font-size:12px;line-height:18px}',
+      '.aup-series-label{color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}',
+      '.aup-series-tokens{white-space:nowrap}',
+      '.aup-series-cost{white-space:nowrap}',
+      '.aup-series-track{height:6px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
+      '.aup-series-fill{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--dsw-alias-brand-primary),color-mix(in srgb,var(--dsw-alias-brand-primary) 55%,var(--dsw-alias-bg-layer-1)))}',
+      '.aup-series-value{display:flex;flex-direction:column;align-items:flex-end;line-height:16px;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-secondary)}',
+      '.aup-series-tokens{font-size:12px;line-height:16px}',
+      '.aup-series-cost{font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
+      '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-value{color:var(--dsw-alias-label-primary);font-weight:500}',
+      '.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary)}',
+      '.aup-tab-title{display:inline-flex;align-items:center;gap:6px;min-width:0;overflow:hidden}',
+      '.aup-tab-title-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+      // ---- one shared type scale: every Chinese text is 13px, only numbers vary by role ----
+      '.aup-card{gap:6px;padding:10px}',
+      '.aup-card-title{font-size:13px;line-height:16px;font-weight:500}',
+      '.aup-card-icon{width:15px;height:15px}',
+      '.aup-card-icon svg{width:100%;height:100%}',
+      '.aup-dim{height:22px;font-size:13px;line-height:16px}',
+      '.aup-session-total-value{font-size:26px;line-height:30px}',
+      '.aup-session-total-label{font-size:13px;line-height:16px}',
+      '.aup-session-label{font-size:13px;line-height:16px}',
+      '.aup-session-value{font-size:13px;line-height:16px;font-weight:500}',
+      '.aup-card-session .aup-session-grid{gap:6px 12px}',
+      '.aup-compose{height:6px}',
+      '.aup-bar{height:6px}',
+      '.aup-context{gap:4px}',
+      '.aup-context-head{font-size:13px;line-height:16px}',
+      '.aup-stats-summary{font-size:13px;line-height:16px}',
+      '.aup-stats-total{font-size:17px;line-height:22px}',
+      '.aup-card-stats .aup-series{flex:1 1 auto;min-height:0}',
+      '.aup-card-stats .aup-series-row{font-size:13px;line-height:16px}',
+      '.aup-card-stats .aup-series-track{height:6px}',
+      '.aup-card-stats .aup-series-label,.aup-card-stats .aup-series-tokens{font-size:inherit;line-height:15px}',
+      '.aup-card-stats .aup-series-cost{font-size:12px;line-height:13px}',
+      '.aup-card-account .aup-balance{flex:1 1 auto;justify-content:center;gap:0;padding:2px 0}',
+      '.aup-card-account .aup-balance-row{align-items:center;min-height:38px;gap:14px}',
+      '.aup-card-account .aup-balance-row+.aup-balance-row{margin-top:8px;padding-top:10px;border-top:.5px solid var(--dsw-alias-border-l2)}',
+      '.aup-card-account .aup-balance-value{font-size:28px;line-height:32px;letter-spacing:-.01em}',
+      '.aup-card-account .aup-balance-value.aup-minor{font-size:20px;line-height:24px;font-weight:500;color:var(--dsw-alias-label-primary)}',
+      '.aup-card-account .aup-balance-label{font-size:13px;line-height:16px;font-weight:500}',
+      '.aup-hint{font-size:13px;line-height:16px}',
+      // ---- content shedding at short card heights (no scrolling) ----
+      '@container aup-card (max-height:220px){.aup-card-session .aup-compose{display:none}}',
+      '@container aup-card (max-height:180px){.aup-card-session .aup-context{display:none}}',
+      '@container aup-card (max-height:145px){.aup-card-session .aup-session-grid{display:none}}',
+      '@container aup-card (max-height:180px){.aup-card-stats .aup-stats-summary{display:none}}'
+    ].join('\n');
+
+    // --------------------------------------------------------------- glyphs --
+
+    /** Wallet glyph used by the panel header, the guide card, and the foot action. */
+    function WalletGlyph({ size = 16 }) {
+      return h(
+        'svg',
+        {
+          viewBox: '0 0 24 24',
+          width: size,
+          height: size,
+          fill: 'none',
+          'aria-hidden': true,
+          focusable: 'false'
+        },
+        h('rect', {
+          x: 2.25,
+          y: 6.25,
+          width: 19.5,
+          height: 13.5,
+          rx: 3.4,
+          fill: 'currentColor',
+          opacity: 0.14
+        }),
+        h('path', {
+          d: 'M5.6 6.4V5.5c0-.9.72-1.6 1.6-1.6h8.2',
+          stroke: 'currentColor',
+          strokeWidth: 1.5,
+          strokeLinecap: 'round'
+        }),
+        h('rect', {
+          x: 2.25,
+          y: 6.25,
+          width: 19.5,
+          height: 13.5,
+          rx: 3.4,
+          stroke: 'currentColor',
+          strokeWidth: 1.5
+        }),
+        h('circle', {
+          cx: 16.9,
+          cy: 13,
+          r: 2.15,
+          stroke: 'currentColor',
+          strokeWidth: 1.5
+        })
+      );
+    }
+
+    /** Small chat glyph for the session card header. */
+    function ChatGlyph({ size = 14 }) {
+      return h(
+        'svg',
+        { viewBox: '0 0 16 16', width: size, height: size, fill: 'none', 'aria-hidden': true, focusable: 'false' },
+        h('path', {
+          d: 'M2.6 3.4h10.8a1 1 0 0 1 1 1v6.2a1 1 0 0 1-1 1H6.4L3.6 13.4V11.6h-1a1 1 0 0 1-1-1V4.4a1 1 0 0 1 1-1Z',
+          stroke: 'currentColor',
+          strokeWidth: 1.3,
+          strokeLinejoin: 'round'
+        }),
+        h('path', { d: 'M4.6 6.2h6.8M4.6 8.6h4.2', stroke: 'currentColor', strokeWidth: 1.2, strokeLinecap: 'round' })
+      );
+    }
+
+    /** Small bar-chart glyph for the usage statistics header. */
+    function ChartGlyph({ size = 14 }) {
+      return h(
+        'svg',
+        { viewBox: '0 0 16 16', width: size, height: size, fill: 'none', 'aria-hidden': true, focusable: 'false' },
+        h('path', { d: 'M2.2 13.4h11.6', stroke: 'currentColor', strokeWidth: 1.3, strokeLinecap: 'round' }),
+        h('rect', { x: 3.4, y: 8.2, width: 2.2, height: 4, rx: 1, fill: 'currentColor' }),
+        h('rect', { x: 6.9, y: 5.4, width: 2.2, height: 6.8, rx: 1, fill: 'currentColor' }),
+        h('rect', { x: 10.4, y: 2.8, width: 2.2, height: 9.4, rx: 1, fill: 'currentColor', opacity: 0.55 })
+      );
+    }
+
+    /** Shared card header: glyph + title (+ optional trailing content). */
+    function CardHead({ icon, title, extra }) {
+      return h(
+        'div',
+        { className: 'aup-card-head' },
+        icon === undefined ? null : h('span', { className: 'aup-card-icon' }, h(icon, { size: 14 })),
+        h('h3', { className: 'aup-card-title' }, title),
+        extra === undefined ? null : extra
+      );
+    }
+
+    /** Circular refresh glyph; the header button spins it while a read is running. */
+    function RefreshGlyph({ size = 15, className }) {
+      return h(
+        'svg',
+        {
+          viewBox: '0 0 16 16',
+          width: size,
+          height: size,
+          className,
+          fill: 'none',
+          'aria-hidden': true,
+          focusable: 'false'
+        },
+        h('path', {
+          d: 'M13.4 6.1A5.6 5.6 0 1 0 14 8.3',
+          stroke: 'currentColor',
+          strokeWidth: 1.5,
+          strokeLinecap: 'round'
+        }),
+        h('path', {
+          d: 'M13.7 2.6v3.7H10',
+          stroke: 'currentColor',
+          strokeWidth: 1.5,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round'
+        })
+      );
+    }
+
+    /** Gear glyph for the display settings trigger. */
+    function SettingsGlyph({ size = 15 }) {
+      return h(
+        'svg',
+        {
+          viewBox: '0 0 16 16',
+          width: size,
+          height: size,
+          fill: 'none',
+          'aria-hidden': true,
+          focusable: 'false'
+        },
+        h('circle', { cx: 8, cy: 8, r: 2.1, stroke: 'currentColor', strokeWidth: 1.4 }),
+        h('path', {
+          d: 'M8 1.6v1.5M8 12.9v1.5M1.6 8h1.5M12.9 8h1.5M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M12.5 3.5l-1.1 1.1M4.6 11.4l-1.1 1.1',
+          stroke: 'currentColor',
+          strokeWidth: 1.3,
+          strokeLinecap: 'round'
+        })
+      );
+    }
+
+    /** One labelled switch used by the display settings panel. */
+    function Toggle({ checked, label, onChange }) {
+      return h(
+        'button',
+        {
+          type: 'button',
+          role: 'switch',
+          className: 'aup-toggle',
+          'data-on': checked === true ? true : undefined,
+          'aria-checked': checked === true,
+          'aria-label': label,
+          onClick: () => onChange(checked !== true)
+        },
+        h('span', { className: 'aup-toggle-knob' })
+      );
+    }
+
+    /** Display settings popover: default range, visible cards, spend, auto refresh. */
+    function SettingsPanel({ settings, onChange, onReset, onClose, t }) {
+      const dimensionControl = h(
+        'div',
+        { className: 'aup-dims aup-dims-mini' },
+        DIMENSIONS.map((entry) =>
+          h(
+            'button',
+            {
+              key: entry.id,
+              type: 'button',
+              className: 'aup-dim',
+              'data-active': entry.id === settings.dimension ? true : undefined,
+              'aria-pressed': entry.id === settings.dimension,
+              onClick: () => onChange({ dimension: entry.id })
+            },
+            t(entry.key)
+          )
+        )
+      );
+      const switchRow = (key, labelKey, checked, patch) =>
+        h(
+          'div',
+          { key, className: 'aup-pop-row' },
+          h('span', null, t(labelKey)),
+          h(Toggle, { checked: checked === true, label: t(labelKey), onChange: (value) => onChange(patch(value)) })
+        );
+      return h(
+        'div',
+        { className: 'aup-pop', role: 'dialog', 'aria-label': t('settings.title') },
+        h(
+          'div',
+          { className: 'aup-pop-head' },
+          h('span', { className: 'aup-pop-title' }, t('settings.title')),
+          h(
+            'button',
+            { type: 'button', className: 'aup-icon-button aup-pop-close', 'aria-label': t('settings.close'), autoFocus: true, onClick: onClose },
+            h('span', { className: 'aup-pop-close-glyph', 'aria-hidden': true }, '×')
+          )
+        ),
+        h('div', { className: 'aup-pop-block' }, h('span', { className: 'aup-pop-label' }, t('settings.defaultDimension')), dimensionControl),
+        h('div', { className: 'aup-pop-sep' }),
+        switchRow('session', 'settings.card.session', settings.cards.session, (value) => ({ cards: { session: value } })),
+        switchRow('stats', 'settings.card.stats', settings.cards.stats, (value) => ({ cards: { stats: value } })),
+        switchRow('account', 'settings.card.account', settings.cards.account, (value) => ({ cards: { account: value } })),
+        switchRow('showCost', 'settings.showCost', settings.showCost, (value) => ({ showCost: value })),
+        h(
+          'div',
+          { className: 'aup-pop-row' },
+          h('span', null, t('settings.autoRefresh')),
+          h(Toggle, {
+            checked: settings.autoRefresh === true,
+            label: t('settings.autoRefresh'),
+            onChange: (value) => onChange({ autoRefresh: value })
+          })
+        ),
+        h('div', { className: 'aup-pop-hint' }, t('settings.autoRefreshHint')),
+        h('div', { className: 'aup-pop-sep' }),
+        h(
+          'div',
+          { className: 'aup-pop-foot' },
+          h('button', { type: 'button', className: 'aup-pop-link', onClick: onReset }, t('settings.reset'))
+        )
+      );
+    }
+
+    // ------------------------------------------------------------- formatting --
+
+    /** Whether a Host balance string is a plain decimal number. */
+    function isNumericText(raw) {
+      return typeof raw === 'string' && raw.trim() !== '' && Number.isFinite(Number(raw.trim()));
+    }
+
+    /** Reused Intl formatters; constructing one per amount is measurable in long lists. */
+    const moneyFormatters = new Map();
+
+    /** Localized currency text for one already-settled amount. */
+    function moneyText(amount, currency, locale) {
+      const key = String(currency === undefined ? '' : currency) + '|' + String(locale === undefined ? '' : locale);
+      let formatter = moneyFormatters.get(key);
+      if (formatter === undefined) {
+        try {
+          formatter = new Intl.NumberFormat(locale === undefined ? undefined : locale, {
+            style: 'currency',
+            currency,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+        } catch (error) {
+          formatter = null;
+        }
+        moneyFormatters.set(key, formatter);
+      }
+      if (formatter !== null) return formatter.format(amount);
+      const symbol = currency === 'CNY' ? '¥' : currency === 'USD' ? '$' : '';
+      return symbol + amount.toFixed(2);
+    }
+
+    /**
+     * Format one raw Host balance string the way the account settings page
+     * does: two decimals and digit grouping, positive amounts truncated to
+     * cents, positive sub-cent amounts shown as "<0.01", and negative amounts
+     * rounded with a minimum displayed magnitude of 0.01.
+     */
+    function formatMoney(raw, currency, locale) {
+      if (!isNumericText(raw)) return raw === undefined || raw === null ? '—' : String(raw);
+      const amount = Number(raw);
+      if (amount > 0) {
+        const truncated = Math.floor(amount * 100) / 100;
+        if (truncated === 0) return '<' + moneyText(0.01, currency, locale);
+        return moneyText(truncated, currency, locale);
+      }
+      if (amount < 0) {
+        let rounded = Math.round(amount * 100) / 100;
+        if (rounded === 0) rounded = -0.01;
+        return moneyText(rounded, currency, locale);
+      }
+      return moneyText(0, currency, locale);
+    }
+
+    /** Spend label: platform amounts as recorded, or list-price estimates with an `≈` mark. */
+    function formatCost(value, currency, locale, estimate) {
+      const amount = Number.isFinite(value) && value > 0 ? formatMoney(String(value), currency, locale) : moneyText(0, currency, locale);
+      return estimate === true ? '≈' + amount : amount;
+    }
+
+    /** Compact token count: exact below 1K, then K / M / B / T, promoting at 1000 of a unit. */
+    const TOKEN_TIERS = [
+      { div: 1000000000000, unit: 'T' },
+      { div: 1000000000, unit: 'B' },
+      { div: 1000000, unit: 'M' },
+      { div: 1000, unit: 'K' }
+    ];
+
+    function formatTokens(value) {
+      if (!Number.isFinite(value)) return '—';
+      const count = Math.max(0, Math.round(value));
+      if (count < 1000) return String(count);
+      // Cap compact unit counts at two decimal places (trailing zeros trimmed by String()).
+      const scaled = (ratio) => (ratio >= 100 ? Math.round(ratio) : Math.round(ratio * 100) / 100);
+      for (let index = 0; index < TOKEN_TIERS.length; index += 1) {
+        const tier = TOKEN_TIERS[index];
+        if (count < tier.div) continue;
+        const rounded = scaled(count / tier.div);
+        if (rounded < 1000 || index === 0) return String(rounded) + tier.unit;
+        return String(scaled(count / (tier.div * 1000))) + TOKEN_TIERS[index - 1].unit;
+      }
+      return String(count);
+    }
+
+    // ------------------------------------------------------------ usage dates --
+
+    /** The five date dimensions and how many of their most recent buckets the panel lists. */
+    const DIMENSIONS = [
+      { id: 'day', key: 'stats.dim.day', buckets: 7 },
+      { id: 'week', key: 'stats.dim.week', buckets: 6 },
+      { id: 'month', key: 'stats.dim.month', buckets: 6 },
+      { id: 'quarter', key: 'stats.dim.quarter', buckets: 4 },
+      { id: 'year', key: 'stats.dim.year', buckets: 3 }
+    ];
+
+    /** Round one instant down to the start of its bucket, in local time. */
+    function startOfBucket(time, dimension) {
+      const date = new Date(time);
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      switch (dimension) {
+        case 'day':
+          return new Date(year, month, date.getDate());
+        case 'week': {
+          const daysSinceMonday = (date.getDay() + 6) % 7;
+          return new Date(year, month, date.getDate() - daysSinceMonday);
+        }
+        case 'month':
+          return new Date(year, month, 1);
+        case 'quarter':
+          return new Date(year, Math.floor(month / 3) * 3, 1);
+        default:
+          return new Date(year, 0, 1);
+      }
+    }
+
+    /** Move one bucket start by `units` buckets (negative moves backward). */
+    function shiftBucket(start, dimension, units) {
+      const date = new Date(start);
+      switch (dimension) {
+        case 'day':
+          date.setDate(date.getDate() + units);
+          break;
+        case 'week':
+          date.setDate(date.getDate() + units * 7);
+          break;
+        case 'month':
+          date.setMonth(date.getMonth() + units);
+          break;
+        case 'quarter':
+          date.setMonth(date.getMonth() + units * 3);
+          break;
+        default:
+          date.setFullYear(date.getFullYear() + units);
+          break;
+      }
+      return date;
+    }
+
+    /** Short label for one bucket start. */
+    function bucketLabel(start, dimension) {
+      const pad = (value) => (value < 10 ? '0' + value : String(value));
+      const year = start.getFullYear();
+      const month = start.getMonth();
+      switch (dimension) {
+        case 'day':
+        case 'week':
+          return pad(month + 1) + '-' + pad(start.getDate());
+        case 'month':
+          return year + '-' + pad(month + 1);
+        case 'quarter':
+          return year + ' Q' + (Math.floor(month / 3) + 1);
+        default:
+          return String(year);
+      }
+    }
+
+    /** Total model tokens one usage block reports. */
+    function sumUsage(usage) {
+      if (usage === null || usage === undefined || typeof usage !== 'object') return 0;
+      return (
+        (usage.uncachedInputTokens || 0) +
+        (usage.outputTokens || 0) +
+        (usage.cacheReadTokens || 0) +
+        (usage.cacheWriteTokens || 0)
+      );
+    }
+
+    /**
+     * Estimated DeepSeek list prices per one million tokens, by wallet
+     * currency. These are estimate inputs, not billing records: edit them when
+     * the price list in use changes. `cacheRead` is the cache-hit input price;
+     * `cacheWrite` is priced like a cache-miss input.
+     */
+    const PRICE_TABLE = {
+      CNY: { cacheRead: 0.2, input: 2, output: 3, cacheWrite: 2 },
+      USD: { cacheRead: 0.028, input: 0.28, output: 0.42, cacheWrite: 0.28 }
+    };
+    /** Token counts in PRICE_TABLE are per one million tokens. */
+    const PRICE_UNIT = 1000000;
+
+    /** Estimated spend of one usage block under the price table. */
+    function costOfUsage(usage, currency) {
+      if (usage === null || usage === undefined || typeof usage !== 'object') return 0;
+      const price = PRICE_TABLE[currency] || PRICE_TABLE.CNY;
+      return (
+        ((usage.uncachedInputTokens || 0) * price.input +
+          (usage.cacheReadTokens || 0) * price.cacheRead +
+          (usage.cacheWriteTokens || 0) * price.cacheWrite +
+          (usage.outputTokens || 0) * price.output) /
+        PRICE_UNIT
+      );
+    }
+
+    /** One local calendar date key, `YYYY-MM-DD`. */
+    function localDateKey(time) {
+      const date = new Date(time);
+      const pad = (value) => (value < 10 ? '0' + value : String(value));
+      return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+    }
+
+    /** Parse a `YYYY-MM-DD` day key as a local calendar date. */
+    function parseDayKey(key) {
+      const parts = String(key).split('-');
+      const year = Number(parts[0]);
+      const month = Number(parts[1]);
+      const day = Number(parts[2]);
+      if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return undefined;
+      const date = new Date(year, month - 1, day);
+      return Number.isFinite(date.getTime()) ? date : undefined;
+    }
+
+    /** The most recent bucket starts of one dimension, oldest first. */
+    function bucketStarts(dimensionId, now) {
+      const dimension = DIMENSIONS.find((entry) => entry.id === dimensionId) || DIMENSIONS[0];
+      const currentStart = startOfBucket((now === undefined ? new Date() : now).getTime(), dimension.id);
+      const starts = [];
+      let cursor = currentStart;
+      for (let index = 0; index < dimension.buckets; index += 1) {
+        starts.unshift(cursor);
+        cursor = shiftBucket(cursor, dimension.id, -1);
+      }
+      return { dimension, starts };
+    }
+
+    /**
+     * The platform months that cover one dimension's window: from the month of
+     * the oldest bucket through the current month, inclusive.
+     */
+    function monthsForDimension(dimensionId, now) {
+      const { starts } = bucketStarts(dimensionId, now);
+      const reference = now === undefined ? new Date() : now;
+      const first = starts[0];
+      const months = [];
+      let cursor = new Date(first.getFullYear(), first.getMonth(), 1);
+      const last = new Date(reference.getFullYear(), reference.getMonth(), 1);
+      while (cursor.getTime() <= last.getTime()) {
+        months.push({ year: cursor.getFullYear(), month: cursor.getMonth() + 1 });
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      }
+      return months;
+    }
+
+    /** Run `worker` over `items` with bounded concurrency, keeping input order. */
+    async function mapLimit(items, limit, worker) {
+      const results = new Array(items.length);
+      let next = 0;
+      const runners = [];
+      for (let index = 0; index < Math.min(limit, items.length); index += 1) {
+        runners.push(
+          (async () => {
+            while (next < items.length) {
+              const current = next;
+              next += 1;
+              results[current] = await worker(items[current], current);
+            }
+          })()
+        );
+      }
+      await Promise.all(runners);
+      return results;
+    }
+
+    /**
+     * Fold per-day usage records into the most recent buckets of one dimension.
+     * Day records are `{ date: 'YYYY-MM-DD', tokens, cost, count }`; platform
+     * data counts requests while the local fallback counts sessions.
+     */
+    function buildSeries(days, dimensionId, now) {
+      const { dimension, starts } = bucketStarts(dimensionId, now);
+      const cells = starts.map((start, index) => ({
+        key: String(start.getTime()),
+        label: bucketLabel(start, dimension.id),
+        total: 0,
+        cost: 0,
+        count: 0,
+        current: index === starts.length - 1
+      }));
+      const indexByStart = new Map(starts.map((start, index) => [start.getTime(), index]));
+      for (const day of days) {
+        if (day === null || typeof day !== 'object') continue;
+        const date = parseDayKey(day.date);
+        if (date === undefined) continue;
+        const start = startOfBucket(date.getTime(), dimension.id);
+        const index = indexByStart.get(start.getTime());
+        if (index === undefined) continue;
+        cells[index].total += Number(day.tokens) || 0;
+        cells[index].cost += Number(day.cost) || 0;
+        cells[index].count += Number(day.count) || 0;
+      }
+      const total = cells.reduce((sum, cell) => sum + cell.total, 0);
+      const cost = cells.reduce((sum, cell) => sum + cell.cost, 0);
+      const count = cells.reduce((sum, cell) => sum + cell.count, 0);
+      const max = cells.reduce((value, cell) => Math.max(value, cell.total), 0);
+      return { dimension: dimension.id, cells, total, cost, count, max };
+    }
+
+    // ----------------------------------------------------------- panel body --
+
+    /** One read of the account namespace; never throws, always resolves to a status object. */
+    function createAccountReader(ctx) {
+      const harnessVersion = () => {
+        const boot = globalThis.__DSH_BOOT__;
+        const version = boot && boot.release ? boot.release.version : undefined;
+        return typeof version === 'string' && version !== '' ? version : '0.0.0';
+      };
+      const clientMetadata = () => {
+        const snapshot = ctx.locale.getSnapshot();
+        return {
+          version: harnessVersion(),
+          locale: snapshot.active,
+          timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60
+        };
+      };
+      const envelope = (result) =>
+        result !== undefined &&
+        result !== null &&
+        typeof result === 'object' &&
+        result.ok === true;
+      return async function readAccount(force) {
+        try {
+          const stateResult = await ctx.remote.account.getState();
+          if (!envelope(stateResult)) {
+            return {
+              ok: false,
+              message:
+                stateResult && stateResult.error
+                  ? String(stateResult.error.message || stateResult.error.code || '')
+                  : ''
+            };
+          }
+          const view = stateResult.value;
+          if (
+            view === undefined ||
+            view === null ||
+            typeof view !== 'object' ||
+            view.status !== 'credential-stored'
+          ) {
+            return { ok: true, view: view || { status: 'signed-out', links: {} }, balance: null };
+          }
+          const metadata = clientMetadata();
+          const failedRead = (error) => ({
+            ok: false,
+            error: { code: 'client', message: String((error && error.message) || error || '') }
+          });
+          const balanceResult = await ctx.remote.account.getBalance(metadata).catch(failedRead);
+          return {
+            ok: true,
+            view,
+            locale: metadata.locale,
+            balance: envelope(balanceResult) ? balanceResult.value : { status: 'failed' }
+          };
+        } catch (error) {
+          return { ok: false, message: String((error && error.message) || error || '') };
+        }
+      };
+    }
+
+    /** Host route that proxies one platform usage month (see the Host half). */
+    const PLATFORM_USAGE_ROUTE = '/account-usage/platform/usage';
+    /** Cache lifetime for the month still being written (platform updates it live). */
+    const MONTH_CACHE_TTL_MS = 2 * 60 * 1000;
+    /** Cache lifetime for closed months; their daily totals no longer change. */
+    const HISTORY_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+    /** localStorage key holding the last few weeks of month payloads. */
+    const MONTH_STORAGE_KEY = 'dsh.account-usage.months.v1';
+    /** Fetched platform months, keyed `YYYY-M`; module lifetime across panel remounts. */
+    const platformMonthCache = new Map();
+    let platformMonthsRestored = false;
+
+    /** Whether one period is the month currently being written. */
+    function isCurrentMonth(period) {
+      const now = new Date();
+      return period.year === now.getFullYear() && period.month === now.getMonth() + 1;
+    }
+
+    /** One cache entry's lifetime: the live month expires quickly, closed months do not. */
+    function monthTtl(period) {
+      return isCurrentMonth(period) ? MONTH_CACHE_TTL_MS : HISTORY_CACHE_TTL_MS;
+    }
+
+    /** Restore persisted months once per page load so switching to 年 is fast after reload. */
+    function restorePersistedMonths() {
+      if (platformMonthsRestored) return;
+      platformMonthsRestored = true;
+      try {
+        const storage = globalThis.localStorage;
+        if (storage === undefined || storage === null) return;
+        const raw = storage.getItem(MONTH_STORAGE_KEY);
+        if (typeof raw !== 'string' || raw === '') return;
+        const parsed = JSON.parse(raw);
+        if (parsed === null || typeof parsed !== 'object') return;
+        const now = Date.now();
+        for (const key of Object.keys(parsed)) {
+          const entry = parsed[key];
+          if (entry === null || typeof entry !== 'object' || typeof entry.at !== 'number') continue;
+          if (entry.data === null || typeof entry.data !== 'object') continue;
+          if (now - entry.at > HISTORY_CACHE_TTL_MS) continue;
+          if (!platformMonthCache.has(key)) platformMonthCache.set(key, { at: entry.at, data: entry.data });
+        }
+      } catch (error) {
+        /* storage unavailable or malformed: start empty */
+      }
+    }
+
+    /** Persist every non-expired cached month, dropping entries past the history TTL. */
+    function persistMonths() {
+      try {
+        const storage = globalThis.localStorage;
+        if (storage === undefined || storage === null) return;
+        const now = Date.now();
+        const out = {};
+        for (const [key, entry] of platformMonthCache) {
+          if (now - entry.at > HISTORY_CACHE_TTL_MS) {
+            platformMonthCache.delete(key);
+            continue;
+          }
+          out[key] = { at: entry.at, data: entry.data };
+        }
+        storage.setItem(MONTH_STORAGE_KEY, JSON.stringify(out));
+      } catch (error) {
+        /* best effort: quota or privacy mode */
+      }
+    }
+
+    /**
+     * Read one platform usage month through the Host route. Closed months are
+     * cached for a week (also in localStorage), the live month for two minutes;
+     * `force` re-reads the live month through both cache layers.
+     */
+    async function readPlatformMonth(period, force) {
+      restorePersistedMonths();
+      const key = String(period.year) + '-' + String(period.month);
+      const cached = platformMonthCache.get(key);
+      if (force !== true && cached !== undefined && Date.now() - cached.at < monthTtl(period)) {
+        return { ok: true, data: cached.data };
+      }
+      const query = '?year=' + String(period.year) + '&month=' + String(period.month) + (force === true ? '&force=1' : '');
+      try {
+        const response = await fetch(PLATFORM_USAGE_ROUTE + query, {
+          headers: { accept: 'application/json' },
+          credentials: 'same-origin'
+        });
+        const body = await response.json().catch(() => null);
+        if (body !== null && typeof body === 'object' && body.ok === true && body.data !== null && typeof body.data === 'object') {
+          platformMonthCache.set(key, { at: Date.now(), data: body.data });
+          return { ok: true, data: body.data };
+        }
+        return { ok: false, code: body !== null && typeof body === 'object' && typeof body.code === 'string' ? body.code : 'invalid_response' };
+      } catch (error) {
+        return { ok: false, code: 'network' };
+      }
+    }
+
+    /** Platform usage over one dimension's window, folded into day records. */
+    async function readPlatformUsage(dimension, force) {
+      restorePersistedMonths();
+      const months = monthsForDimension(dimension, new Date());
+      const results = await mapLimit(months, 6, (period) => readPlatformMonth(period, force === true && isCurrentMonth(period)));
+      const failed = results.find((result) => result.ok !== true);
+      if (failed !== undefined) return { ok: false, code: failed.code };
+      const days = [];
+      let currency = 'CNY';
+      for (const result of results) {
+        const data = result.data;
+        if (typeof data.currency === 'string' && data.currency !== '') currency = data.currency;
+        for (const day of Array.isArray(data.days) ? data.days : []) {
+          if (day === null || typeof day !== 'object' || typeof day.date !== 'string') continue;
+          days.push({
+            date: day.date,
+            tokens: Number(day.tokens) || 0,
+            cost: Number(day.cost) || 0,
+            count: Number(day.requests) || 0
+          });
+        }
+      }
+      persistMonths();
+      return { ok: true, source: 'platform', days, currency };
+    }
+
+    /** Last ready result per dimension, so switching back never shows a loading frame. */
+    const dimensionResults = new Map();
+    /** One-time background warm-up flag for the other dimensions. */
+    let dimensionsWarmed = false;
+
+    /** Cheap structural comparison of two day-record arrays. */
+    function sameDays(left, right) {
+      if (left === right) return true;
+      if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+      for (let index = 0; index < left.length; index += 1) {
+        const a = left[index];
+        const b = right[index];
+        if (a.date !== b.date || a.tokens !== b.tokens || a.cost !== b.cost || a.count !== b.count) return false;
+      }
+      return true;
+    }
+
+    /** Local fallback: session token totals attributed to each session's last activity. */
+    async function readLocalUsage(ctx, currency) {
+      try {
+        const result = await ctx.remote.session.list({});
+        if (!result || result.ok !== true) return { ok: false };
+        const items = result.value && Array.isArray(result.value.items) ? result.value.items : [];
+        const days = [];
+        for (const item of items) {
+          if (item === null || item === undefined || typeof item.sessionId !== 'string') continue;
+          if (typeof item.updatedAt !== 'number') continue;
+          const values = item.projections && item.projections.values;
+          const usage = values === undefined ? undefined : values.tokenUsage;
+          if (usage === undefined || usage === null) continue;
+          const tokens = sumUsage(usage);
+          if (tokens <= 0) continue;
+          days.push({
+            date: localDateKey(item.updatedAt),
+            tokens,
+            cost: costOfUsage(usage, currency),
+            count: 1
+          });
+        }
+        return { ok: true, source: 'local', days, currency };
+      } catch (error) {
+        return { ok: false };
+      }
+    }
+
+    /**
+     * Usage for one dimension: real platform data first, local estimates only
+     * when the platform route cannot serve the window (signed out, platform
+     * session rejected, offline). The caller receives the reason so the panel
+     * can label a fallback.
+     */
+    function createUsageReader(ctx) {
+      return async function readUsage(dimension, force, currencyHint) {
+        const platform = await readPlatformUsage(dimension, force);
+        if (platform.ok === true) return platform;
+        const local = await readLocalUsage(ctx, currencyHint || 'CNY');
+        if (local.ok === true) return { ...local, reason: platform.code || 'fetch_failed' };
+        return { ok: false, code: platform.code || 'local_unavailable' };
+      };
+    }
+
+    /** One labelled wallet row. */
+    function WalletRow({ label, wallet, locale, major }) {
+      return h(
+        'div',
+        { className: 'aup-balance-row' },
+        h('dt', { className: 'aup-balance-label' }, label),
+        h(
+          'dd',
+          { className: 'aup-balance-value' + (major ? '' : ' aup-minor') },
+          formatMoney(wallet.balance, wallet.currency, locale)
+        )
+      );
+    }
+
+    /** One-line hint: truncates with an ellipsis at narrow widths, full text stays in the tooltip. */
+    function Hint({ children }) {
+      return h('p', { className: 'aup-hint', title: typeof children === 'string' ? children : undefined }, children);
+    }
+
+    /** One-line error text with the same truncation behaviour. */
+    function ErrorText({ children }) {
+      return h('p', { className: 'aup-error', title: typeof children === 'string' ? children : undefined }, children);
+    }
+
+    /** Signed-in identity and wallet balances. */
+    function AccountSection({ state, t, onRetry }) {
+      const result = state.result;
+      const locale = result === undefined ? undefined : result.locale;
+      const head = [h(CardHead, { icon: WalletGlyph, title: t('account.title') }), h('span', { className: 'aup-divider', 'aria-hidden': true })];
+
+      if (state.phase === 'loading') {
+        return h('section', { className: 'aup-card aup-card-account' }, head, h(Hint, null, t('loading')));
+      }
+      if (state.phase === 'error' || !result || result.ok !== true) {
+        const detail = result && result.message ? result.message : '';
+        return h(
+          'section',
+          { className: 'aup-card aup-card-account' },
+          head,
+          h(ErrorText, null, t('error')),
+          detail === '' ? null : h(Hint, null, detail),
+          h('div', { className: 'aup-actions' }, h('button', { type: 'button', className: 'aup-retry', onClick: onRetry }, t('retry')))
+        );
+      }
+
+      const view = result.view || {};
+      if (view.status !== 'credential-stored') {
+        return h(
+          'section',
+          { className: 'aup-card aup-card-account' },
+          head,
+          h(Hint, null, t('account.signedOut')),
+          h(Hint, null, t('account.signedOutHint'))
+        );
+      }
+
+      const balance = result.balance;
+      const wallets = balance && balance.status === 'ready' ? balance.value || [] : [];
+      const bonusWallets = balance && balance.status === 'ready' ? balance.bonusWallets || [] : [];
+      const walletRows = wallets.map((wallet, index) =>
+        h(WalletRow, { key: 'w' + index, label: t('balance.recharge'), wallet, locale, major: index === 0 })
+      );
+      const bonusRows = bonusWallets.map((wallet, index) =>
+        h(WalletRow, { key: 'b' + index, label: t('balance.bonus'), wallet, locale, major: false })
+      );
+
+      return h(
+        'section',
+        { className: 'aup-card aup-card-account' },
+        head,
+        !balance || balance.status === 'failed'
+          ? h(Hint, null, t('balance.failed'))
+          : walletRows.length === 0 && bonusRows.length === 0
+            ? h(Hint, null, t('balance.empty'))
+            : h('dl', { className: 'aup-balance' }, walletRows, bonusRows)
+      );
+    }
+
+    /** Date-dimension statistics over real platform usage (local estimates as fallback). */
+    function UsageSection({ state, dimension, onDimension, onRetry, t, fallbackCurrency, locale, showCost }) {
+      const moveDimension = (event) => {
+        const index = DIMENSIONS.findIndex((entry) => entry.id === dimension);
+        let next = null;
+        if (event.key === 'ArrowRight') next = (index + 1) % DIMENSIONS.length;
+        else if (event.key === 'ArrowLeft') next = (index - 1 + DIMENSIONS.length) % DIMENSIONS.length;
+        else if (event.key === 'Home') next = 0;
+        else if (event.key === 'End') next = DIMENSIONS.length - 1;
+        if (next === null) return;
+        event.preventDefault();
+        onDimension(DIMENSIONS[next].id);
+        const buttons = event.currentTarget.querySelectorAll('[role="tab"]');
+        if (buttons[next] !== undefined) buttons[next].focus();
+      };
+      const dimensions = h(
+        'div',
+        {
+          className: 'aup-dims',
+          role: 'tablist',
+          'aria-label': t('stats.title'),
+          onKeyDown: moveDimension
+        },
+        DIMENSIONS.map((entry) =>
+          h(
+            'button',
+            {
+              key: entry.id,
+              type: 'button',
+              role: 'tab',
+              className: 'aup-dim',
+              'data-active': entry.id === dimension ? true : undefined,
+              'aria-selected': entry.id === dimension,
+              tabIndex: entry.id === dimension ? 0 : -1,
+              onClick: () => onDimension(entry.id)
+            },
+            t(entry.key)
+          )
+        )
+      );
+
+      const head = [
+        h(CardHead, {
+          icon: ChartGlyph,
+          title: t('stats.title'),
+          extra: state.source === 'local' ? h('span', { className: 'aup-badge' }, t('stats.localBadge')) : null
+        }),
+        h('span', { className: 'aup-divider', 'aria-hidden': true }),
+        dimensions
+      ];
+
+      if (state.phase === 'loading') {
+        const skeletonRows = [];
+        for (let index = 0; index < 7; index += 1) {
+          skeletonRows.push(
+            h(
+              'div',
+              { key: 'skeleton-' + index, className: 'aup-series-row aup-skeleton-row' },
+              h('span', { className: 'aup-skeleton aup-skeleton-label' }),
+              h('span', { className: 'aup-skeleton aup-skeleton-track' }),
+              h('span', { className: 'aup-skeleton aup-skeleton-value' })
+            )
+          );
+        }
+        return h(
+          'section',
+          { className: 'aup-card aup-card-stats', 'aria-busy': true },
+          head,
+          h('span', { className: 'aup-sr-only' }, t('stats.loading')),
+          h('div', { className: 'aup-series', 'aria-hidden': true }, skeletonRows)
+        );
+      }
+      if (state.phase === 'error' || state.ok === false) {
+        const reasonKey = state.code === undefined ? '' : 'stats.reason.' + String(state.code);
+        const reason = reasonKey === '' ? '' : t(reasonKey);
+        const reasonText = reason === reasonKey ? '' : reason;
+        return h(
+          'section',
+          { className: 'aup-card aup-card-stats' },
+          head,
+          h(ErrorText, null, t('stats.failed')),
+          reasonText === '' ? null : h(Hint, null, reasonText),
+          h(
+            'div',
+            { className: 'aup-actions' },
+            h('button', { type: 'button', className: 'aup-retry', onClick: onRetry }, t('retry'))
+          )
+        );
+      }
+
+      const source = state.source === 'platform' ? 'platform' : 'local';
+      const estimate = source !== 'platform';
+      const currency = typeof state.currency === 'string' && state.currency !== '' ? state.currency : fallbackCurrency || 'CNY';
+      const series = buildSeries(state.days || [], dimension);
+      const summary = t(source === 'platform' ? 'stats.summary.requests' : 'stats.summary.sessions', {
+        total: formatTokens(series.total),
+        count: String(series.count)
+      });
+      const rows = series.cells.map((cell) => {
+        const detail =
+          showCost !== false && cell.cost > 0
+            ? cell.label + ' · ' + formatTokens(cell.total) + ' tokens · ' + formatCost(cell.cost, currency, locale, estimate)
+            : cell.label + ' · ' + formatTokens(cell.total) + ' tokens';
+        return h(
+          'div',
+          {
+            key: cell.key,
+            className: 'aup-series-row',
+            title: detail,
+            'data-current': cell.current ? true : undefined
+          },
+          h('span', { className: 'aup-series-label' }, cell.label),
+          h(
+            'span',
+            { className: 'aup-series-track' },
+            h('span', {
+              className: 'aup-series-fill',
+              style: {
+                width:
+                  series.max === 0 || cell.total === 0
+                    ? '0%'
+                    : Math.max(2, Math.round((cell.total / series.max) * 100)) + '%'
+              }
+            })
+          ),
+          h(
+            'span',
+            { className: 'aup-series-value' },
+            h('span', { className: 'aup-series-tokens' }, formatTokens(cell.total)),
+            showCost !== false && cell.cost > 0
+              ? h('span', { className: 'aup-series-cost' }, formatCost(cell.cost, currency, locale, estimate))
+              : null
+          )
+        );
+      });
+
+      return h(
+        'section',
+        { className: 'aup-card aup-card-stats' },
+        head,
+        h(
+          'div',
+          { className: 'aup-stats-summary' },
+          h('span', null, summary),
+          showCost !== false
+            ? h('span', { className: 'aup-stats-total' }, formatCost(series.cost, currency, locale, estimate))
+            : null
+        ),
+        series.total === 0
+          ? h(Hint, null, t('stats.empty'))
+          : h('div', { className: 'aup-series' }, rows)
+      );
+    }
+
+    /** This session's durable token totals plus context occupancy. */
+    function TokenSection({ useProjection, t }) {
+      const usage = useProjection('tokenUsage');
+      const pressure = useProjection('contextPressure');
+
+      const total = usage
+        ? (usage.uncachedInputTokens || 0) +
+          (usage.outputTokens || 0) +
+          (usage.cacheReadTokens || 0) +
+          (usage.cacheWriteTokens || 0)
+        : 0;
+      const rows = usage
+        ? [
+            { key: 'total', label: t('tokens.total'), value: total, total: true },
+            { key: 'input', label: t('tokens.uncachedInput'), value: usage.uncachedInputTokens || 0 },
+            { key: 'output', label: t('tokens.output'), value: usage.outputTokens || 0 },
+            { key: 'cacheRead', label: t('tokens.cacheRead'), value: usage.cacheReadTokens || 0 },
+            { key: 'cacheWrite', label: t('tokens.cacheWrite'), value: usage.cacheWriteTokens || 0 }
+          ]
+        : [];
+      const usedTokens =
+        pressure && Number.isFinite(pressure.projectedTokens)
+          ? pressure.projectedTokens
+          : pressure && Number.isFinite(pressure.pressureTokens)
+            ? pressure.pressureTokens
+            : undefined;
+      const contextWindow = pressure && Number.isFinite(pressure.contextWindow) ? pressure.contextWindow : undefined;
+      const hasContext = usedTokens !== undefined && contextWindow !== undefined && contextWindow > 0;
+      const percent = hasContext ? Math.min(100, Math.round((usedTokens / contextWindow) * 100)) : 0;
+
+      const detailRows = rows.filter((row) => row.total !== true);
+      const composeSegments = usage
+        ? [
+            { key: 'input', value: usage.uncachedInputTokens || 0, color: 'var(--dsw-static-blue-450, #4d93f8)' },
+            { key: 'output', value: usage.outputTokens || 0, color: 'var(--dsw-static-violet-400, #a78bfa)' },
+            { key: 'cacheRead', value: usage.cacheReadTokens || 0, color: 'var(--dsw-static-amber-500, #f59e0b)' },
+            { key: 'cacheWrite', value: usage.cacheWriteTokens || 0, color: 'var(--dsw-static-neutral-bluish-400, #adb2b8)' }
+          ].filter((segment) => segment.value > 0)
+        : [];
+      const composeTotal = composeSegments.reduce((sum, segment) => sum + segment.value, 0);
+      const composeBar =
+        composeTotal === 0
+          ? null
+          : h(
+              'div',
+              { className: 'aup-compose' },
+              composeSegments.map((segment) =>
+                h('span', {
+                  key: segment.key,
+                  className: 'aup-compose-seg',
+                  title: formatTokens(segment.value),
+                  style: { flexGrow: segment.value, background: segment.color }
+                })
+              )
+            );
+
+      return h(
+        'section',
+        { className: 'aup-card aup-card-session' },
+        h(CardHead, { icon: ChatGlyph, title: t('tokens.title') }),
+        h('span', { className: 'aup-divider', 'aria-hidden': true }),
+        h(
+          'div',
+          { className: 'aup-session-total' },
+          h('span', { className: 'aup-session-total-label' }, t('tokens.total')),
+          h('span', { className: 'aup-session-total-value' }, usage ? formatTokens(total) : '—')
+        ),
+        composeBar,
+        detailRows.length === 0
+          ? h(Hint, null, t('tokens.empty'))
+          : h(
+              'dl',
+              { className: 'aup-session-grid' },
+              detailRows.map((row) =>
+                h(
+                  'div',
+                  { key: row.key, className: 'aup-session-cell' },
+                  h('dt', { className: 'aup-session-label' }, row.label),
+                  h('dd', { className: 'aup-session-value' }, formatTokens(row.value))
+                )
+              )
+            ),
+        h(
+          'div',
+          { className: 'aup-context' },
+          h(
+            'div',
+            { className: 'aup-context-head' },
+            h('span', null, t('tokens.context')),
+            h(
+              'span',
+              { className: 'aup-context-figures' },
+              hasContext
+                ? t('tokens.contextValue', {
+                    used: formatTokens(usedTokens),
+                    window: formatTokens(contextWindow),
+                    percent: String(percent)
+                  })
+                : t('tokens.contextUnknown')
+            )
+          ),
+          hasContext
+            ? h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } }))
+            : null
+        )
+      );
+    }
+
+    /** Right-sidebar tab body. */
+    function AccountUsageBody({ t, useProjection, readAccount, readUsage }) {
+      const [account, setAccount] = React.useState({ phase: 'loading', result: undefined, refreshing: false });
+      const [usage, setUsage] = React.useState({ phase: 'loading', days: [], ok: undefined, refreshing: false, dimension: DIMENSIONS[0].id });
+      const [settings, setSettings] = React.useState(readSettings);
+      const [dimension, setDimension] = React.useState(settings.dimension);
+      const [accountRequest, setAccountRequest] = React.useState({ count: 0, force: false });
+      const [usageRequest, setUsageRequest] = React.useState({ count: 0, force: false });
+      const [settingsOpen, setSettingsOpen] = React.useState(false);
+      const gearRef = React.useRef(null);
+      const busy = account.refreshing === true || usage.refreshing === true;
+      const cachedUsage = dimensionResults.get(dimension);
+      /** Render the selected dimension's own data immediately; never bucket another dimension's days. */
+      const displayedUsage =
+        usage.dimension === dimension
+          ? usage
+          : cachedUsage === undefined
+            ? { phase: 'loading', days: [], dimension, refreshing: true }
+            : { phase: 'ready', ok: true, source: cachedUsage.source, days: cachedUsage.days, currency: cachedUsage.currency, reason: cachedUsage.reason, dimension, refreshing: true };
+      const currencyRef = React.useRef('CNY');
+
+      React.useEffect(() => {
+        let cancelled = false;
+        setAccount((previous) => ({
+          ...previous,
+          phase: previous.result === undefined ? 'loading' : previous.phase,
+          refreshing: true
+        }));
+        readAccount(accountRequest.force)
+          .then((result) => {
+            if (cancelled) return;
+            setAccount({ phase: 'ready', result, refreshing: false });
+          })
+          .catch((error) => {
+            if (cancelled) return;
+            setAccount({
+              phase: 'error',
+              result: { ok: false, message: String((error && error.message) || error || '') },
+              refreshing: false
+            });
+          });
+        return () => {
+          cancelled = true;
+        };
+      }, [accountRequest.count, accountRequest.force, readAccount]);
+
+      React.useEffect(() => {
+        let cancelled = false;
+        const force = usageRequest.force;
+        const cached = dimensionResults.get(dimension);
+        // Show the dimension's previous result immediately (cached months make the
+        // follow-up read cheap), so no loading frame replaces the chart.
+        setUsage((previous) => {
+          if (cached !== undefined) {
+            return {
+              phase: 'ready',
+              ok: true,
+              source: cached.source,
+              days: cached.days,
+              currency: cached.currency,
+              reason: cached.reason,
+              dimension,
+              refreshing: true
+            };
+          }
+          if (previous.dimension === dimension && previous.ok === true) {
+            return { ...previous, refreshing: true };
+          }
+          return { phase: 'loading', ok: undefined, days: [], dimension, refreshing: true };
+        });
+        readUsage(dimension, force, currencyRef.current)
+          .then((result) => {
+            if (cancelled) return;
+            if (result.ok === true) {
+              const days = result.days || [];
+              dimensionResults.set(dimension, {
+                source: result.source,
+                days,
+                currency: result.currency,
+                reason: result.reason
+              });
+              if (!dimensionsWarmed && result.source === 'platform') {
+                dimensionsWarmed = true;
+                const currentDimension = dimension;
+                // Year is the widest window: warming it also fills the month cache that
+                // every narrower dimension reuses, so one background pass is enough.
+                if (currentDimension !== 'year' && !dimensionResults.has('year')) {
+                  setTimeout(() => {
+                    (async () => {
+                      try {
+                        const warm = await readUsage('year', false, currencyRef.current);
+                        if (warm.ok === true && warm.source === 'platform' && !dimensionResults.has('year')) {
+                          dimensionResults.set('year', {
+                            source: warm.source,
+                            days: warm.days || [],
+                            currency: warm.currency,
+                            reason: warm.reason
+                          });
+                        }
+                      } catch (error) {
+                        /* warm-up is best effort */
+                      }
+                    })();
+                  }, 1500);
+                }
+              }
+              setUsage((previous) => {
+                if (previous.dimension !== dimension) return previous;
+                if (previous.phase === 'ready' && sameDays(previous.days, days)) {
+                  return { ...previous, source: result.source, currency: result.currency, reason: result.reason, refreshing: false };
+                }
+                return {
+                  phase: 'ready',
+                  ok: true,
+                  source: result.source,
+                  days,
+                  currency: result.currency,
+                  reason: result.reason,
+                  dimension,
+                  refreshing: false
+                };
+              });
+            } else {
+              setUsage((previous) => {
+                if (previous.dimension !== dimension) return previous;
+                if (previous.phase === 'ready') return { ...previous, refreshing: false };
+                return { phase: 'error', ok: false, days: [], code: result.code, dimension, refreshing: false };
+              });
+            }
+          })
+          .catch((error) => {
+            if (cancelled) return;
+            setUsage((previous) => {
+              if (previous.dimension !== dimension) return previous;
+              if (previous.phase === 'ready') return { ...previous, refreshing: false };
+              return {
+                phase: 'error',
+                ok: false,
+                days: [],
+                code: 'fetch_failed',
+                message: String((error && error.message) || error || ''),
+                dimension,
+                refreshing: false
+              };
+            });
+          });
+        return () => {
+          cancelled = true;
+        };
+      }, [usageRequest.count, usageRequest.force, dimension, readUsage]);
+
+      // Account balances move slowly; refresh them rarely and never while the page is hidden.
+      React.useEffect(() => {
+        if (settings.autoRefresh !== true) return undefined;
+        const tick = () => {
+          if (typeof document !== 'undefined' && document.hidden === true) return;
+          setAccountRequest((previous) => ({ count: previous.count + 1, force: false }));
+        };
+        const timer = setInterval(tick, ACCOUNT_REFRESH_MS);
+        const onVisible = () => {
+          if (typeof document === 'undefined' || document.hidden !== true) tick();
+        };
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          clearInterval(timer);
+          if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [settings.autoRefresh]);
+
+      // Usage mostly resolves from the month cache; this keeps the live month fresh.
+      React.useEffect(() => {
+        if (settings.autoRefresh !== true) return undefined;
+        const tick = () => {
+          if (typeof document !== 'undefined' && document.hidden === true) return;
+          setUsageRequest((previous) => ({ count: previous.count + 1, force: false }));
+        };
+        const timer = setInterval(tick, USAGE_REFRESH_MS);
+        const onVisible = () => {
+          if (typeof document === 'undefined' || document.hidden !== true) tick();
+        };
+        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible);
+        return () => {
+          clearInterval(timer);
+          if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisible);
+        };
+      }, [settings.autoRefresh]);
+
+      const refresh = () => {
+        setAccountRequest((previous) => ({ count: previous.count + 1, force: true }));
+        setUsageRequest((previous) => ({ count: previous.count + 1, force: true }));
+      };
+
+      /** Merge one display-settings patch; a range change also applies to the open panel. */
+      const applySettings = (patch) => {
+        setSettings((previous) => ({
+          ...previous,
+          ...patch,
+          cards: { ...previous.cards, ...(patch.cards === undefined ? {} : patch.cards) }
+        }));
+        if (patch.dimension !== undefined) setDimension(patch.dimension);
+      };
+      const resetSettings = () => {
+        setSettings(DEFAULT_SETTINGS);
+        setDimension(DEFAULT_SETTINGS.dimension);
+      };
+
+      React.useEffect(() => {
+        writeSettings(settings);
+      }, [settings]);
+
+      /** Close the dialog and hand focus back to the trigger. */
+      const closeSettings = () => {
+        setSettingsOpen(false);
+        if (gearRef.current !== null && gearRef.current !== undefined && typeof gearRef.current.focus === 'function') gearRef.current.focus();
+      };
+
+      React.useEffect(() => {
+        if (settingsOpen !== true) return undefined;
+        const onKeyDown = (event) => {
+          if (event.key === 'Escape') closeSettings();
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+      }, [settingsOpen]);
+
+      const accountResult = account.result;
+      const accountLocale = accountResult === undefined ? undefined : accountResult.locale;
+      const wallets =
+        accountResult !== undefined &&
+        accountResult.balance !== null &&
+        accountResult.balance !== undefined &&
+        accountResult.balance.status === 'ready' &&
+        Array.isArray(accountResult.balance.value)
+          ? accountResult.balance.value
+          : [];
+      const currency =
+        wallets.length > 0 && typeof wallets[0].currency === 'string' ? wallets[0].currency : 'CNY';
+      currencyRef.current = currency;
+
+      return h(
+        'div',
+        { className: 'aup-root' },
+        h('style', null, CSS),
+        h(
+          'header',
+          { className: 'aup-head' },
+          h('span', { className: 'aup-glyph' }, h(WalletGlyph, { size: 18 })),
+          h('h2', { className: 'aup-title' }, t('panel.title')),
+          h(
+            'div',
+            { className: 'aup-head-actions' },
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'aup-icon-button',
+                title: t('settings.aria'),
+                'aria-label': t('settings.aria'),
+                'aria-haspopup': 'dialog',
+                'aria-expanded': settingsOpen === true,
+                'data-active': settingsOpen === true ? true : undefined,
+                onClick: () => setSettingsOpen((open) => open !== true),
+                ref: gearRef
+              },
+              h(SettingsGlyph)
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'aup-icon-button',
+                title: t('refresh.aria'),
+                'aria-label': t('refresh.aria'),
+                disabled: busy,
+                'aria-busy': busy === true,
+                onClick: refresh
+              },
+              h(RefreshGlyph, { className: busy ? 'aup-spin' : undefined })
+            )
+          )
+        ),
+        settingsOpen === true
+          ? h('div', { className: 'aup-pop-backdrop', onClick: closeSettings })
+          : null,
+        settingsOpen === true
+          ? h(SettingsPanel, { settings, onChange: applySettings, onReset: resetSettings, onClose: closeSettings, t })
+          : null,
+        settings.cards.session === true ? h(TokenSection, { useProjection, t }) : null,
+        settings.cards.stats === true
+          ? h(UsageSection, {
+              state: displayedUsage,
+              dimension,
+              onDimension: (next) => setDimension(next),
+              onRetry: refresh,
+              t,
+              fallbackCurrency: currency,
+              locale: accountLocale,
+              showCost: settings.showCost
+            })
+          : null,
+        settings.cards.account === true
+          ? h(AccountSection, {
+              state: account,
+              t,
+              onRetry: refresh
+            })
+          : null,
+        settings.cards.session !== true && settings.cards.stats !== true && settings.cards.account !== true
+          ? h('div', { className: 'aup-empty' }, t('settings.allHidden'))
+          : null
+      );
+    }
+
+    /** Tab chip: wallet glyph plus the title captured when the tab opened. */
+    function AccountUsageTitle({ useTabInfo }) {
+      const info = useTabInfo();
+      return h(
+        'span',
+        { className: 'aup-tab-title' },
+        h('span', { className: 'aup-glyph' }, h(WalletGlyph, { size: 15 })),
+        h('span', { className: 'aup-tab-title-text' }, info.tab.title)
+      );
+    }
+
+    // ----------------------------------------------------------------- apply --
+
+    /** Client plugin body. */
+    function apply(ctx) {
+      ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'account-usage: dictionaries');
+
+      const t = ctx.locale.bind(NS);
+      const readAccount = createAccountReader(ctx);
+      const readUsage = createUsageReader(ctx);
+
+      const openPanel = () => {
+        try {
+          if (ctx.sidebarRight.mounted.getSnapshot() === undefined) return;
+          ctx.sidebarRight.openTab(KIND);
+        } catch (error) {
+          console.error('[account-usage] opening the account usage tab failed', error);
+        }
+      };
+
+      ctx.effect(
+        () =>
+          ctx.sidebarRightTabs.register({
+            id: ID,
+            kind: KIND,
+            priority: 'extension',
+            title: () => t('tab.title'),
+            guide: [
+              {
+                id: 'account-usage',
+                order: 40,
+                title: () => t('guide.title'),
+                description: () => t('guide.description'),
+                icon: WalletGlyph
+              }
+            ]
+          }),
+        'account-usage: tab type'
+      );
+
+      ctx.effect(
+        () =>
+          ctx.slots.inject('sidebar.right.pane.tab', () =>
+            ctx.slots.register(
+              {
+                name: 'sidebar.right.pane.tab',
+                key: ID,
+                locale: NS,
+                inject: () => ({ readAccount, readUsage })
+              },
+              AccountUsageBody
+            )
+          ),
+        'account-usage: tab body'
+      );
+
+      ctx.effect(
+        () =>
+          ctx.slots.inject('sidebar.right.pane.tab.title', () =>
+            ctx.slots.register(
+              {
+                name: 'sidebar.right.pane.tab.title',
+                key: ID
+              },
+              AccountUsageTitle
+            )
+          ),
+        'account-usage: tab title'
+      );
+
+      ctx.inject(['shortcuts'], (shortcutCtx) => {
+        shortcutCtx.effect(() => {
+          try {
+            return shortcutCtx.shortcuts.register({
+              id: 'accountUsage.open',
+              label: () => t('shortcut.open'),
+              aliases: ['account usage', 'usage', '用量'],
+              defaults: {
+                'desktop:macos': { code: 'KeyU', modifiers: ['primary'] },
+                'desktop:windows': { code: 'KeyU', modifiers: ['primary'] },
+                'desktop:linux': { code: 'KeyU', modifiers: ['primary'] },
+                'web:macos': { code: 'KeyU', modifiers: ['primary', 'alt'] },
+                'web:windows': { code: 'KeyU', modifiers: ['primary', 'alt'] }
+              },
+              regions: ['page', 'editable', 'terminal'],
+              modals: [],
+              resolve: () => {
+                if (ctx.sidebarRight.mounted.getSnapshot() === undefined) {
+                  return { status: 'blocked', reason: t('shortcut.noSession') };
+                }
+                return { status: 'handled', run: () => openPanel() };
+              }
+            });
+          } catch (error) {
+            console.error('[account-usage] shortcut registration failed', error);
+            return undefined;
+          }
+        }, 'account-usage: open shortcut');
+      });
+    }
+
+    return {
+      inject: [
+        'slots',
+        'locale',
+        'sidebarRight',
+        'sidebarRightTabs',
+        'remote',
+        'remote.account',
+        'remote.session'
+      ],
+      apply
+    };
+  }
+});

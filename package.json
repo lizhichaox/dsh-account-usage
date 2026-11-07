@@ -1,0 +1,66 @@
+{
+  "name": "dsh-account-usage",
+  "version": "1.0.0",
+  "description": "Shows account balances and token usage grouped by day, week, month, quarter, or year in the right sidebar.",
+  "author": "chaox",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "dsh": "^0.2.2-rc.1"
+  },
+  "keywords": [
+    "deepseek",
+    "dsh",
+    "harness",
+    "plugin",
+    "account",
+    "usage",
+    "balance",
+    "tokens",
+    "billing",
+    "sidebar"
+  ],
+  "homepage": "https://github.com/lizhichaox/dsh-account-usage#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lizhichaox/dsh-account-usage.git"
+  },
+  "bugs": {
+    "url": "https://github.com/lizhichaox/dsh-account-usage/issues"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "scripts": {
+    "test": "node test/smoke.mjs",
+    "market:check": "node market/check.mjs market/index-entry.example.json",
+    "secret:scan": "node scripts/secret-scan.mjs",
+    "prepack": "node scripts/secret-scan.mjs",
+    "verify": "node --check index.js && node --check client.js && node test/smoke.mjs && node scripts/secret-scan.mjs && node market/check.mjs market/index-entry.example.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar-right"
+      ]
+    }
+  }
+}
