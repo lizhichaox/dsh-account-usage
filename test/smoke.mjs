@@ -642,6 +642,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const sourceTabs = walk(mixedWallet, (node) => hasClass(node, 'aup-src-tab')).map(flat);
   assert.deepEqual(sourceTabs, ['DeepSeek API', 'OpenRouter'], 'one tab per source: ' + JSON.stringify(sourceTabs));
   assert.equal(walk(mixedWallet, (node) => hasClass(node, 'aup-badge')).length, 0, 'no partial badge once tabs exist');
+  assert.equal(walk(mixedWallet, (node) => hasClass(node, 'aup-account-body')).length, 1, 'tab bodies share one fixed-height box');
   assert.ok(!mixedWalletText.includes('部分'), 'no 部分 prefix anywhere');
 }
 

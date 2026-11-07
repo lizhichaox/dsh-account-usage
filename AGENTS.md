@@ -106,6 +106,8 @@
   - Provider 卡为大号余额 + 使用率进度条（已用百分比与金额同行，总额只出现一次）+ 更新时间 + 单行说明
 - 混合会话：账户卡用**来源 tab**（`aup-src-tabs`）列出会话里出现的每个来源（DeepSeek API / 各第三方 Provider），
   点击切换显示该来源的余额；**禁止**使用「部分 {provider}」这类徽标或说明文字；
+  所有 tab 共用一个固定高度内容盒（`aup-account-body`，min-height 132px、内容垂直居中），
+  **切换 tab 不允许改变卡片高度**；tab 模式下省略 Provider 说明/更新时间等附加行；
   第三方余额与 DeepSeek 钱包一样实时读取（opencode 走套餐百分比）；
   用量统计卡顶部按来源分两行：DeepSeek API（本期 Token/金额）+ 每个第三方 Provider（本会话 Token）；
   卡标题**不要**再挂「DeepSeek API」徽标（内容已经是多来源）

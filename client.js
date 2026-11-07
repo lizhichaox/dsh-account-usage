@@ -360,6 +360,10 @@ window.__ModuleLoader__.load({
       '.aup-card-stats{flex:1 1 0;justify-content:flex-start}',
       '.aup-stats-head{flex:none;display:flex;flex-direction:column;gap:6px}',
       '.aup-card-account{flex:0 0 auto;min-height:0;justify-content:flex-start}',
+      '.aup-account-body{flex:1 1 auto;min-height:132px;display:flex;flex-direction:column;justify-content:center;gap:6px}',
+      '.aup-plan-windows{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 12px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
+      '.aup-plan-window{display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap}',
+      '.aup-plan-window-value{color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
       '.aup-card-head{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex:none}',
       '.aup-divider{display:block;height:1px;flex:none;margin:0;background:var(--dsw-alias-border-l2)}',
       '.aup-card-icon{display:inline-flex;flex:none;color:var(--dsw-alias-label-secondary)}',
@@ -1684,22 +1688,22 @@ window.__ModuleLoader__.load({
           ),
           h(
             'div',
-            { className: 'aup-provider-meta' },
+            { className: 'aup-plan-windows' },
             entry.windows
               .filter((window) => window.id !== monthly.id)
               .map((window) =>
                 h(
-                  'div',
-                  { key: window.id, className: 'aup-provider-meta-item' },
-                  h('span', { className: 'aup-provider-meta-label' }, labelFor(window.id)),
-                  h('span', { className: 'aup-provider-meta-value' }, t('account.planUsed', { percent: String(window.usedPercent) }))
+                  'span',
+                  { key: window.id, className: 'aup-plan-window' },
+                  h('span', { className: 'aup-plan-window-label' }, labelFor(window.id)),
+                  h('span', { className: 'aup-plan-window-value' }, t('account.planUsed', { percent: String(window.usedPercent) }))
                 )
               )
           )
         );
       };
 
-      const moneyBody = (entry, providerName) => {
+      const moneyBody = (entry, providerName, compact) => {
         const currency = currencyOf(entry);
         const remaining = Number.isFinite(entry.remaining) ? entry.remaining : undefined;
         const used = Number.isFinite(entry.used) ? entry.used : undefined;
@@ -1743,12 +1747,25 @@ window.__ModuleLoader__.load({
                 ),
                 h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: usedPercent + '%' } }))
               ),
-          updatedTime === ''
+          compact === true || updatedTime === ''
             ? null
             : h('p', { className: 'aup-provider-updated' }, t('account.providerUpdated', { time: updatedTime })),
           meta.length === 0
             ? null
-            : h(
+            : compact === true
+              ? h(
+                  'div',
+                  { className: 'aup-plan-windows' },
+                  meta.map((item) =>
+                    h(
+                      'span',
+                      { key: item.key, className: 'aup-plan-window' },
+                      h('span', { className: 'aup-plan-window-label' }, item.label),
+                      h('span', { className: 'aup-plan-window-value' }, formatMoney(String(item.value), currency, locale))
+                    )
+                  )
+                )
+              : h(
                 'div',
                 { className: 'aup-provider-meta' },
                 meta.map((item) =>
@@ -1763,7 +1780,7 @@ window.__ModuleLoader__.load({
                   )
                 )
               ),
-          h('p', { className: 'aup-provider-note' }, t('account.providerNote', { provider: providerName }))
+          compact === true ? null : h('p', { className: 'aup-provider-note' }, t('account.providerNote', { provider: providerName }))
         );
       };
 
@@ -1805,7 +1822,7 @@ window.__ModuleLoader__.load({
           ];
         }
         if (entry.kind === 'opencode-plan' && Array.isArray(entry.windows) && entry.windows.length > 0) return planBody(entry);
-        return moneyBody(entry, providerName);
+        return moneyBody(entry, providerName, list.length > 1);
       };
 
       const accountBody = () => {
@@ -1876,7 +1893,7 @@ window.__ModuleLoader__.load({
         { className: 'aup-card aup-card-account' + (isProviderCard ? ' aup-card-account-provider' : '') },
         head,
         tabs,
-        isProviderCard ? providerBody(active) : accountBody()
+        h('div', { className: 'aup-account-body' }, isProviderCard ? providerBody(active) : accountBody())
       );
     }
 
