@@ -34,6 +34,8 @@ const COST_PATH = '/api/v0/usage/cost';
 const DEFAULT_ORIGIN = 'https://platform.deepseek.com';
 const ROUTE_PATH = '/account-usage/platform/usage';
 const MODELS_ROUTE_PATH = '/account-usage/session/models';
+const PROVIDER_BALANCE_ROUTE_PATH = '/account-usage/provider/balance';
+const PROVIDER_ID_PATTERN = /^[a-z][a-z0-9-]{0,40}$/;
 const SESSION_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const TIMEOUT_MS = 15000;
@@ -442,6 +444,139 @@ function createSessionModelReader(ctx) {
   };
 }
 
+// ---------------------------------------------------------- provider balances --
+
+/** Balance endpoints per provider; unsupported providers return a typed reason. */
+const PROVIDER_BALANCE_SPECS = {
+  openrouter: { kind: 'openrouter', currency: 'USD', keyEnv: 'OPENROUTER_API_KEY' },
+  deepseek: { kind: 'deepseek', currency: 'CNY', keyEnv: 'DEEPSEEK_API_KEY' },
+  'deepseek-api': { kind: 'deepseek', currency: 'CNY', keyEnv: 'DEEPSEEK_API_KEY' },
+  'deepseek-api-key': { kind: 'deepseek', currency: 'CNY', keyEnv: 'DEEPSEEK_API_KEY' }
+};
+
+function finiteNumber(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))) return Number(value);
+  return undefined;
+}
+
+/** Read one provider API key from the Host credential seam, never from the client. */
+async function resolveProviderKey(ctx, spec, provider) {
+  const credentials = typeof ctx.get === 'function' ? ctx.get('credentials') : undefined;
+  if (credentials === undefined || credentials === null) return undefined;
+  try {
+    const envRef = spec.keyEnv || provider.toUpperCase().replaceAll('-', '_') + '_API_KEY';
+    if (typeof credentials.resolve === 'function') {
+      const hit = await credentials.resolve(envRef);
+      if (hit !== undefined && hit !== null && typeof hit.value === 'string' && hit.value.trim() !== '') return hit.value;
+    }
+    if (typeof credentials.readRecord === 'function') {
+      const record = await credentials.readRecord('llm-pi-ai/' + provider);
+      if (record !== undefined && record !== null && record.kind === 'api-key' && typeof record.key === 'string' && record.key.trim() !== '') return record.key;
+    }
+  } catch (error) {
+    return undefined;
+  }
+  return undefined;
+}
+
+async function getJson(url, key, signal) {
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: { authorization: 'Bearer ' + key, accept: 'application/json' },
+      redirect: 'manual',
+      signal
+    });
+  } catch (error) {
+    throw codedError(error && error.name === 'TimeoutError' ? 'timeout' : 'fetch_failed', 'provider balance request failed');
+  }
+  if (response.status === 401 || response.status === 403) throw codedError('auth_failed', 'provider rejected the API key', response.status);
+  if (response.status !== 200) throw codedError('invalid_response', 'provider returned HTTP ' + String(response.status), response.status);
+  const text = await response.text();
+  if (Buffer.byteLength(text, 'utf8') > 262144) throw codedError('invalid_response', 'provider response too large');
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw codedError('invalid_response', 'provider response is not JSON');
+  }
+}
+
+async function readOpenRouterBalance(key, signal) {
+  try {
+    const payload = await getJson('https://openrouter.ai/api/v1/credits', key, signal);
+    const data = payload !== null && typeof payload === 'object' && payload.data !== null && typeof payload.data === 'object' ? payload.data : {};
+    const total = finiteNumber(data.total_credits);
+    const used = finiteNumber(data.total_usage);
+    if (total !== undefined) {
+      return {
+        provider: 'openrouter',
+        kind: 'openrouter',
+        currency: 'USD',
+        remaining: Math.max(0, total - (used === undefined ? 0 : used)),
+        ...used === undefined ? {} : { used },
+        total
+      };
+    }
+  } catch (error) {
+    /* fall back to the per-key view below */
+  }
+  const payload = await getJson('https://openrouter.ai/api/v1/key', key, signal);
+  const data = payload !== null && typeof payload === 'object' && payload.data !== null && typeof payload.data === 'object' ? payload.data : {};
+  const used = finiteNumber(data.usage);
+  const limit = finiteNumber(data.limit);
+  const limitRemaining = finiteNumber(data.limit_remaining);
+  const remaining = limitRemaining !== undefined ? limitRemaining : limit !== undefined && used !== undefined ? Math.max(0, limit - used) : undefined;
+  if (remaining === undefined && used === undefined) throw codedError('invalid_response', 'provider balance response missing amounts');
+  return {
+    provider: 'openrouter',
+    kind: 'openrouter',
+    currency: 'USD',
+    ...remaining === undefined ? {} : { remaining },
+    ...used === undefined ? {} : { used }
+  };
+}
+
+async function readDeepSeekKeyBalance(key, signal) {
+  const payload = await getJson('https://api.deepseek.com/user/balance', key, signal);
+  const infos = payload !== null && typeof payload === 'object' && Array.isArray(payload.balance_infos) ? payload.balance_infos : [];
+  const first = infos[0] !== null && typeof infos[0] === 'object' ? infos[0] : {};
+  const remaining = finiteNumber(first.total_balance);
+  if (remaining === undefined) throw codedError('invalid_response', 'provider balance response missing amounts');
+  const granted = finiteNumber(first.granted_balance);
+  const currency = typeof first.currency === 'string' && first.currency !== '' ? first.currency : 'CNY';
+  return {
+    provider: 'deepseek',
+    kind: 'deepseek',
+    currency,
+    remaining,
+    ...granted === undefined ? {} : { granted }
+  };
+}
+
+/** One cached provider balance read; unsupported providers and missing keys stay typed. */
+function createProviderBalanceReader(ctx) {
+  const cache = new Map();
+  return async function readProviderBalance(provider, force) {
+    const spec = Object.prototype.hasOwnProperty.call(PROVIDER_BALANCE_SPECS, provider) ? PROVIDER_BALANCE_SPECS[provider] : undefined;
+    if (spec === undefined) return { ok: false, code: 'unsupported_provider' };
+    const hit = cache.get(provider);
+    if (force !== true && hit !== undefined && Date.now() - hit.at < 60000) return hit.data;
+    const key = await resolveProviderKey(ctx, spec, provider);
+    if (key === undefined) return { ok: false, code: 'no_credential' };
+    try {
+      const signal = AbortSignal.timeout(TIMEOUT_MS);
+      const data = spec.kind === 'openrouter' ? await readOpenRouterBalance(key, signal) : await readDeepSeekKeyBalance(key, signal);
+      const result = { ok: true, data: { ...data, fetchedAt: Date.now() } };
+      cache.set(provider, { at: Date.now(), data: result });
+      return result;
+    } catch (error) {
+      const code = error !== null && typeof error === 'object' && typeof error.code === 'string' ? error.code : 'fetch_failed';
+      return { ok: false, code };
+    }
+  };
+}
+
 function writeJson(res, status, body) {
   if (res.headersSent === true) return;
   res.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
@@ -451,6 +586,7 @@ function writeJson(res, status, body) {
 export function apply(ctx) {
   const readMonth = createMonthReader(ctx);
   const readSessionModels = createSessionModelReader(ctx);
+  const readProviderBalance = createProviderBalanceReader(ctx);
 
   const handler = async (req, res) => {
     if (!isTrustedRequest(req)) {
@@ -519,6 +655,52 @@ export function apply(ctx) {
       writeJson(res, 502, { ok: false, code: 'fetch_failed' });
     }
   };
+
+
+  const providerBalanceHandler = async (req, res) => {
+    if (!isTrustedRequest(req)) {
+      writeJson(res, 403, { ok: false, code: 'forbidden' });
+      return;
+    }
+    if (req.method !== 'GET') {
+      writeJson(res, 405, { ok: false, code: 'method_not_allowed' });
+      return;
+    }
+    let url;
+    try {
+      url = new URL(req.url, 'http://127.0.0.1');
+    } catch {
+      writeJson(res, 400, { ok: false, code: 'invalid_request' });
+      return;
+    }
+    const provider = (url.searchParams.get('provider') || '').toLowerCase();
+    if (!PROVIDER_ID_PATTERN.test(provider)) {
+      writeJson(res, 400, { ok: false, code: 'invalid_provider' });
+      return;
+    }
+    try {
+      const result = await readProviderBalance(provider, url.searchParams.get('force') === '1');
+      if (result.ok !== true) {
+        const status = result.code === 'unsupported_provider' || result.code === 'no_credential' ? 404 : 502;
+        writeJson(res, status, { ok: false, code: result.code });
+        return;
+      }
+      writeJson(res, 200, { ok: true, data: result.data });
+    } catch (error) {
+      console.error('[account-usage] provider balance failed:', { code: 'fetch_failed' });
+      writeJson(res, 502, { ok: false, code: 'fetch_failed' });
+    }
+  };
+
+  ctx.effect(
+    () =>
+      ctx.webServer.register({
+        kind: 'exact',
+        path: PROVIDER_BALANCE_ROUTE_PATH,
+        handler: providerBalanceHandler
+      }),
+    'account-usage: provider balance route'
+  );
 
   ctx.effect(
     () =>

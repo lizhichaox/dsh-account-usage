@@ -22,7 +22,7 @@
 
 1. **会话消耗**（最上面）：大号合计、输入（未缓存）/输出/缓存读/缓存写 2×2 明细、
    **按模型分类统计**（模型名 + Token 合计，最多 3 个）、Token 构成彩条、上下文占用条
-2. **用量统计**（中间，默认 `日`）：`日 / 周 / 月 / 季 / 年` 五个维度切换（日 7 期、周 6 期、
+2. **用量统计**（中间，默认 `日`；会话全部走第三方 Provider 时隐藏）：`日 / 周 / 月 / 季 / 年` 五个维度切换（日 7 期、周 6 期、
    月 6 期、季 4 期、年 3 期），每期同时显示 **Token 用量** 与 **消费金额**，顶部有区间合计、
    请求次数；当前期淡蓝高亮，行悬停高亮
 3. **账户余额**（最下面）：只有充值余额 + 赠送额度，**不显示账号名称、手机号、头像等身份信息**；
@@ -170,25 +170,33 @@
 - `market/index.json`：已上线的 format 1 市场索引（Git commit pin，图标已内联）
 - `PUBLISHING.md`：从改包名、npm 发布、索引校验到上架的完整步骤与自查清单
 
-## 第三方 Provider 识别
+## 第三方 Provider 识别与余额
 
 会话不一定走 DeepSeek 账号：DSH 可以配置 OpenRouter、Anthropic、OpenAI、DeepSeek API Key 等
-其他 Provider。插件从**当前会话的持久日志**读取每条模型响应的 route，自动区分：
+其他 Provider。插件从**当前会话的持久日志**读取每条模型响应的 route，自动区分并切换展示：
 
-| 会话实际使用的 Provider | 展示 |
-|---|---|
-| `deepseek-account`（登录的 DeepSeek 账号） | 正常显示；会话卡模型行只写模型名 |
-| 其他 Provider（`openrouter`、`deepseek` API Key、Anthropic 等） | 会话卡模型行带 Provider 前缀；余额卡加一行说明；统计卡标题加 `DeepSeek 平台` 标记 |
+| 会话 Provider 情况 | 账户余额卡 | 用量统计卡 | 会话卡 |
+|---|---|---|---|
+| 全部走 `deepseek-account` | DeepSeek 充值 + 赠送额度 | DeepSeek 平台用量 | 按模型（只写模型名） |
+| 全部走第三方（如 OpenRouter） | **改为显示该 Provider 的余额** | **隐藏**（不展示 DeepSeek 账号用量） | 按模型（带 Provider 前缀） |
+| 混合（部分账号 + 部分第三方） | DeepSeek 余额 + 说明 | DeepSeek 平台 + 说明标记 | 按模型（带 Provider 前缀） |
 
-- **余额卡**：当会话完全不消耗账号余额时提示「本次会话由 OpenRouter 提供，不消耗 DeepSeek 余额。」；
-  混合会话提示「部分使用 …」；未登录时仍显示原有的登录提示，不重复加说明
-- **用量统计**：平台 `/api/v0/usage/*` 只统计 DeepSeek 账号侧用量，因此有第三方 Provider 时
-  标题旁显示「DeepSeek 平台」小标记（悬停说明不含第三方 Provider）
-- **会话卡**：按模型统计始终来自本会话真实日志，第三方模型显示为 `OpenRouter · 模型名`
-- 识别依据是 assistant message 的 `source.provider`；`deepseek-account` 视为账号计费，
-  其他一律视为不经过账号余额（包括 DeepSeek API Key 路线）
+### Provider 余额支持
 
-## 安装
+| Provider | 查询接口 | 展示 |
+|---|---|---|
+| `openrouter` | `GET /api/v1/credits`（失败回退 `/api/v1/key`） | 剩余额度、已用（USD） |
+| `deepseek` / `deepseek-api`（API Key 路线） | `GET https://api.deepseek.com/user/balance` | 余额、赠送额度（响应币种） |
+| 其他 Provider | 无公开余额接口 | 显示「不支持余额查询」说明 |
+
+- 凭据只在 **Host** 侧读取：`ctx.credentials.resolve('OPENROUTER_API_KEY')` 或 `llm-pi-ai/<provider>`
+  的存储记录，**API Key 不会返回给浏览器**
+- Provider 余额缓存 60 秒；手动刷新会强制重新查询
+- 未配置 Key 时显示「未配置 … API Key」，接口失败显示「暂时读不到 … 余额」
+- 混合会话仍保留 DeepSeek 余额，并提示「部分使用 …，该部分不消耗 DeepSeek 余额」；
+  统计卡显示「DeepSeek 平台」小标记（平台用量只统计账号侧）
+
+## 安装## 安装
 
 从插件市场安装（推荐）：
 
@@ -241,10 +249,10 @@ npm 页面：<https://www.npmjs.com/package/dsh-account-usage>（也可用 Git �
   78,770,161、消费 ¥3.808647、请求 446 次、币种 CNY），日期桶与金额解析正确；
   调试探针在验证后已移除
 - 账户余额卡只显示「余额 / 赠送额度」两项（无账号身份信息），两列紧凑布局，主金额 24px、赠送额度 18px；
-  会话卡按模型统计来自 Host 折叠日志（真实数据），已用活动会话验证：如 `deepseek-account / deepseek-flash` 与 `openrouter / ~deepseek/deepseek-flash-latest` 的 Token 合计与请求数均正确，Provider 识别生效
+  会话卡按模型统计来自 Host 折叠日志（真实数据），已用活动会话验证：如 `deepseek-account / deepseek-flash` 与 `openrouter / ~deepseek/deepseek-flash-latest` 的 Token 合计与请求数均正确，Provider 识别生效；OpenRouter 余额实测返回 USD 剩余 11.04 / 已用 8.96，DeepSeek API Key 余额接口同样可用
 - 无头冒烟测试覆盖了：面板顺序（会话消耗 → 用量统计 → 余额）、默认 `日`、本地估算标记、
   平台数据渲染（真实金额不带 `≈`、「次请求」合计）、平台失败时的本地估算回退（带 `≈` 与失败原因）、
   两者都失败时的错误态、五档维度的桶数量与标签格式、月缓存/强制刷新参数、切维度不闪屏（不串用其他维度的数据）、
-  K/M/B/T 单位进位、固定卡高与无滚动容器查询、骨架屏与 tablist 键盘切换、行悬停明细、**设置弹层**（默认维度、卡片开关、金额开关、自动刷新、持久化与恢复默认）、**主题 token 契约**（禁止 bg-layer-2 / 硬编码颜色，校验浅深两套 token 定义与对比度）、**按模型折叠**（同 turn/step 替换、不同模型归属、流式 usage 回退）、**第三方 Provider 提示**（余额卡说明、平台标记、模型行 Provider 前缀）、空数据
+  K/M/B/T 单位进位、固定卡高与无滚动容器查询、骨架屏与 tablist 键盘切换、行悬停明细、**设置弹层**（默认维度、卡片开关、金额开关、自动刷新、持久化与恢复默认）、**主题 token 契约**（禁止 bg-layer-2 / 硬编码颜色，校验浅深两套 token 定义与对比度）、**按模型折叠**（同 turn/step 替换、不同模型归属、流式 usage 回退）、**第三方 Provider 模式**（隐藏 DeepSeek 余额/平台用量、Provider 余额卡、平台标记、模型行 Provider 前缀）、空数据
 - 未验证：真实浏览器中的渲染外观（本环境无浏览器控制）。样式只使用
   `--dsw-alias-*` 主题 token

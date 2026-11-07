@@ -366,11 +366,12 @@ const DEFAULT_SETTINGS = {
   showCost: true,
   cards: { session: true, stats: true, account: true }
 };
-function render(usageState, projection, dimensionValue, settingsValue, settingsOpen, sessionModelsValue) {
+function render(usageState, projection, dimensionValue, settingsValue, settingsOpen, sessionModelsValue, providerBalancesValue) {
   stateQueue.push(
     accountState,
     usageState,
     sessionModelsValue || { phase: 'idle', items: [], totalTokens: 0 },
+    providerBalancesValue || { phase: 'idle', items: [], error: undefined },
     settingsValue || DEFAULT_SETTINGS,
     dimensionValue || 'day',
     { count: 0, force: false },
@@ -457,6 +458,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
     accountState,
     { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
     { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 5000, requests: 2 }, { provider: 'deepseek-account', model: 'deepseek-reasoner', tokens: 3000, requests: 1 }], totalTokens: 8000 },
+    { phase: 'idle', items: [], error: undefined },
     DEFAULT_SETTINGS,
     'day',
     { count: 0, force: false },
@@ -478,6 +480,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
     accountState,
     { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
     { phase: 'ready', items: [{ provider: 'openrouter', model: 'deepseek-flash', tokens: 5000, requests: 2 }], totalTokens: 5000 },
+    { phase: 'idle', items: [], error: undefined },
     DEFAULT_SETTINGS,
     'day',
     { count: 0, force: false },
@@ -488,12 +491,33 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   stateQueue.length = 0;
   const accountCard = walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const accountText = flat(accountCard);
-  assert.ok(accountText.includes('本次会话由 OpenRouter 提供'), 'balance card explains a third-party session');
-  assert.ok(accountText.includes('不消耗 DeepSeek 余额'), 'balance card explains the balance is untouched');
-  const statsCard = walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0];
-  assert.ok(flat(statsCard).includes('DeepSeek 平台'), 'stats card marks platform-only usage');
+  assert.ok(!accountText.includes('542.52'), 'DeepSeek balance is hidden for an off-account session');
+  assert.ok(accountText.includes('OpenRouter'), 'balance card names the provider');
+  assert.equal(walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 0, 'DeepSeek platform stats are hidden for an off-account session');
   const modelName = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat)[0];
   assert.equal(modelName, 'OpenRouter · deepseek-flash', 'third-party model rows include the provider');
+
+  // Provider balance mode renders the provider amounts instead of the DeepSeek wallet.
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [{ provider: 'openrouter', model: 'deepseek-flash', tokens: 5000, requests: 2 }], totalTokens: 5000 },
+    { phase: 'ready', items: [{ provider: 'openrouter', kind: 'openrouter', currency: 'USD', remaining: 42.5, used: 7.5 }], error: undefined },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const providerTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
+  stateQueue.length = 0;
+  const providerCard = walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
+  const providerText = flat(providerCard);
+  assert.ok(providerText.includes('42.50'), 'provider remaining balance');
+  assert.ok(providerText.includes('7.50'), 'provider used amount');
+  assert.ok(!providerText.includes('542.52'), 'DeepSeek wallet never renders in provider mode');
+  assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 0, 'platform stats stay hidden in provider mode');
+  assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-session')).length, 1, 'session card still renders');
 }
 
 // --------------------------------------------------------------- settings --

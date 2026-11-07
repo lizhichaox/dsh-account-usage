@@ -112,6 +112,10 @@ window.__ModuleLoader__.load({
       'account.signedOut': '当前未登录 DeepSeek 账号',
       'account.signedOutHint': '设置 → 账号 登录后显示余额',
       'balance.recharge': '余额',
+      'balance.used': '已用',
+      'account.providerUnavailable': '暂时读不到 {provider} 余额。',
+      'account.providerUnsupported': '{provider} 不支持余额查询。',
+      'account.providerNoKey': '未配置 {provider} API Key，无法读取余额。',
       'account.offAccountAll': '本次会话由 {provider} 提供，不消耗 DeepSeek 余额。',
       'account.offAccountPartial': '本次会话部分使用 {provider}，该部分不消耗 DeepSeek 余额。',
       'stats.platformBadge': 'DeepSeek 平台',
@@ -180,6 +184,10 @@ window.__ModuleLoader__.load({
       'account.signedOut': 'No DeepSeek account is signed in',
       'account.signedOutHint': 'Sign in via Settings to see the balance',
       'balance.recharge': 'Balance',
+      'balance.used': 'Used',
+      'account.providerUnavailable': 'Cannot read the {provider} balance right now.',
+      'account.providerUnsupported': '{provider} does not expose a balance API.',
+      'account.providerNoKey': 'No {provider} API key is configured.',
       'account.offAccountAll': 'This session runs on {provider}; it does not use your DeepSeek balance.',
       'account.offAccountPartial': 'Part of this session runs on {provider}; that part does not use your DeepSeek balance.',
       'stats.platformBadge': 'DeepSeek platform',
@@ -984,6 +992,7 @@ window.__ModuleLoader__.load({
     /** Host route that proxies one platform usage month (see the Host half). */
     const PLATFORM_USAGE_ROUTE = '/account-usage/platform/usage';
     const SESSION_MODELS_ROUTE = '/account-usage/session/models';
+    const PROVIDER_BALANCE_ROUTE = '/account-usage/provider/balance';
     /** Cache lifetime for the month still being written (platform updates it live). */
     const MONTH_CACHE_TTL_MS = 2 * 60 * 1000;
     /** Cache lifetime for closed months; their daily totals no longer change. */
@@ -1121,6 +1130,23 @@ window.__ModuleLoader__.load({
       return true;
     }
 
+    /** One provider's balance, read by the Host with the provider credential it holds. */
+    function createProviderBalanceReader() {
+      return async function readProviderBalance(provider, force) {
+        try {
+          const query = '?provider=' + encodeURIComponent(provider) + (force === true ? '&force=1' : '');
+          const response = await fetch(PROVIDER_BALANCE_ROUTE + query, { credentials: 'same-origin' });
+          const body = await response.json();
+          if (response.ok && body !== null && typeof body === 'object' && body.ok === true && body.data !== null && typeof body.data === 'object') {
+            return { ok: true, ...body.data };
+          }
+          return { ok: false, code: body !== null && typeof body === 'object' && typeof body.code === 'string' ? body.code : 'fetch_failed' };
+        } catch (error) {
+          return { ok: false, code: 'fetch_failed' };
+        }
+      };
+    }
+
     /** Per-model token totals for one session, computed by the Host from its durable log. */
     function createSessionModelReader() {
       return async function readSessionModels(sessionId) {
@@ -1220,10 +1246,44 @@ window.__ModuleLoader__.load({
     }
 
     /** Signed-in identity and wallet balances. */
-    function AccountSection({ state, t, onRetry, offAccountLabel, offAccountAll }) {
+    function AccountSection({ state, t, onRetry, offAccountLabel, offAccountAll, providerBalances }) {
       const result = state.result;
       const locale = result === undefined ? undefined : result.locale;
       const head = [h(CardHead, { icon: WalletGlyph, title: t('account.title') }), h('span', { className: 'aup-divider', 'aria-hidden': true })];
+
+      if (offAccountAll === true) {
+        const providerHead = [
+          h(CardHead, {
+            icon: WalletGlyph,
+            title: t('account.title'),
+            extra: offAccountLabel === '' ? null : h('span', { className: 'aup-badge' }, offAccountLabel)
+          }),
+          h('span', { className: 'aup-divider', 'aria-hidden': true })
+        ];
+        const phase = providerBalances === null || providerBalances === undefined ? 'loading' : providerBalances.phase;
+        const rows = phase === 'ready' && Array.isArray(providerBalances.items) ? providerBalances.items : [];
+        if (phase !== 'ready') return h('section', { className: 'aup-card aup-card-account' }, providerHead, h(Hint, null, t('loading')));
+        if (rows.length === 0) {
+          const code = providerBalances.error;
+          const messageKey = code === 'unsupported_provider' ? 'account.providerUnsupported' : code === 'no_credential' ? 'account.providerNoKey' : 'account.providerUnavailable';
+          return h(
+            'section',
+            { className: 'aup-card aup-card-account' },
+            providerHead,
+            h(Hint, null, t(messageKey, { provider: offAccountLabel })),
+            h('div', { className: 'aup-actions' }, h('button', { type: 'button', className: 'aup-retry', onClick: onRetry }, t('retry')))
+          );
+        }
+        const items = [];
+        for (const entry of rows) {
+          const currency = typeof entry.currency === 'string' ? entry.currency : 'USD';
+          const prefix = rows.length > 1 ? providerLabel(entry.provider) + ' ' : '';
+          if (Number.isFinite(entry.remaining)) items.push(h('div', { key: entry.provider + '-remaining', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.recharge')), h('span', { className: 'aup-balance-value' }, formatMoney(String(entry.remaining), currency, undefined))));
+          if (Number.isFinite(entry.used)) items.push(h('div', { key: entry.provider + '-used', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.used')), h('span', { className: 'aup-balance-value aup-minor' }, formatMoney(String(entry.used), currency, undefined))));
+          if (Number.isFinite(entry.granted)) items.push(h('div', { key: entry.provider + '-granted', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.bonus')), h('span', { className: 'aup-balance-value aup-minor' }, formatMoney(String(entry.granted), currency, undefined))));
+        }
+        return h('section', { className: 'aup-card aup-card-account' }, providerHead, h('div', { className: 'aup-balance' }, items));
+      }
 
       if (state.phase === 'loading') {
         return h('section', { className: 'aup-card aup-card-account' }, head, h(Hint, null, t('loading')));
@@ -1569,10 +1629,11 @@ window.__ModuleLoader__.load({
     }
 
     /** Right-sidebar tab body. */
-    function AccountUsageBody({ t, useProjection, readAccount, readUsage, readSessionModels, sessionId }) {
+    function AccountUsageBody({ t, useProjection, readAccount, readUsage, readSessionModels, readProviderBalances, sessionId }) {
       const [account, setAccount] = React.useState({ phase: 'loading', result: undefined, refreshing: false });
       const [usage, setUsage] = React.useState({ phase: 'loading', days: [], ok: undefined, refreshing: false, dimension: DIMENSIONS[0].id });
       const [sessionModels, setSessionModels] = React.useState({ phase: 'idle', items: [], totalTokens: 0 });
+      const [providerBalances, setProviderBalances] = React.useState({ phase: 'idle', items: [], error: undefined });
       const [settings, setSettings] = React.useState(readSettings);
       const [dimension, setDimension] = React.useState(settings.dimension);
       const [accountRequest, setAccountRequest] = React.useState({ count: 0, force: false });
@@ -1596,6 +1657,7 @@ window.__ModuleLoader__.load({
 
       React.useEffect(() => {
         let cancelled = false;
+        if (offAccountAll === true) return undefined;
         setAccount((previous) => ({
           ...previous,
           phase: previous.result === undefined ? 'loading' : previous.phase,
@@ -1617,10 +1679,11 @@ window.__ModuleLoader__.load({
         return () => {
           cancelled = true;
         };
-      }, [accountRequest.count, accountRequest.force, readAccount]);
+      }, [accountRequest.count, accountRequest.force, readAccount, offAccountAll]);
 
       React.useEffect(() => {
         let cancelled = false;
+        if (offAccountAll === true) return undefined;
         const force = usageRequest.force;
         const cached = dimensionResults.get(dimension);
         // Show the dimension's previous result immediately (cached months make the
@@ -1722,7 +1785,7 @@ window.__ModuleLoader__.load({
         return () => {
           cancelled = true;
         };
-      }, [usageRequest.count, usageRequest.force, dimension, readUsage]);
+      }, [usageRequest.count, usageRequest.force, dimension, readUsage, offAccountAll]);
 
       React.useEffect(() => {
         let cancelled = false;
@@ -1746,6 +1809,32 @@ window.__ModuleLoader__.load({
           cancelled = true;
         };
       }, [sessionId, usageRequest.count, usageRequest.force, readSessionModels]);
+
+      React.useEffect(() => {
+        let cancelled = false;
+        if (offAccountAll !== true || offAccountProviders.length === 0) {
+          setProviderBalances({ phase: 'idle', items: [], error: undefined });
+          return undefined;
+        }
+        setProviderBalances((previous) => ({ ...previous, phase: previous.items.length === 0 ? 'loading' : 'ready' }));
+        Promise.all(offAccountProviders.map(async (provider) => ({ provider, result: await readProviderBalances(provider, usageRequest.force === true) })))
+          .then((entries) => {
+            if (cancelled) return;
+            const items = [];
+            let error;
+            for (const entry of entries) {
+              if (entry.result.ok === true) items.push(entry.result);
+              else if (error === undefined) error = entry.result.code;
+            }
+            setProviderBalances({ phase: 'ready', items, error });
+          })
+          .catch(() => {
+            if (!cancelled) setProviderBalances({ phase: 'ready', items: [], error: 'fetch_failed' });
+          });
+        return () => {
+          cancelled = true;
+        };
+      }, [offAccountAll, offAccountProviders.join('|'), usageRequest.count, usageRequest.force, readProviderBalances]);
 
       // Account balances move slowly; refresh them rarely and never while the page is hidden.
       React.useEffect(() => {
@@ -1884,7 +1973,7 @@ window.__ModuleLoader__.load({
           ? h(SettingsPanel, { settings, onChange: applySettings, onReset: resetSettings, onClose: closeSettings, t })
           : null,
         settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels }) : null,
-        settings.cards.stats === true
+        settings.cards.stats === true && offAccountAll !== true
           ? h(UsageSection, {
               state: displayedUsage,
               dimension,
@@ -1903,7 +1992,8 @@ window.__ModuleLoader__.load({
               t,
               onRetry: refresh,
               offAccountLabel,
-              offAccountAll
+              offAccountAll,
+              providerBalances
             })
           : null,
         settings.cards.session !== true && settings.cards.stats !== true && settings.cards.account !== true
@@ -1991,6 +2081,7 @@ window.__ModuleLoader__.load({
       const readAccount = createAccountReader(ctx);
       const readUsage = createUsageReader(ctx);
       const readSessionModels = createSessionModelReader();
+      const readProviderBalances = createProviderBalanceReader();
 
       const openPanel = () => {
         try {
@@ -2030,7 +2121,7 @@ window.__ModuleLoader__.load({
                 name: 'sidebar.right.pane.tab',
                 key: ID,
                 locale: NS,
-                inject: () => ({ readAccount, readUsage, readSessionModels })
+                inject: () => ({ readAccount, readUsage, readSessionModels, readProviderBalances })
               },
               AccountUsageBody
             )
