@@ -20,6 +20,9 @@
   - 横条高度**运行时测量**：`conversation.header` 的 `bottom` 减去本面板 root 的 `top`，
     写入 CSS 变量 `--aup-head-h`；找不到时用 `[data-phase]` 会话根的第一个子元素 bottom 兜底
   - root 的 `padding-top` 必须为 0，横条才能从面板顶端开始，测量值才对得上
+  - 横条要用**负外边距 `margin:0 -16px` + `padding:0 16px` 铺满面板整宽**（线必须顶到面板左右边缘），
+    否则线和中间会话区的线之间会留出面板 padding 的空档、看起来「没连起来」
+  - 若测量到的线位在本面板之上（height < 14px），说明无法延长，则**不画线**（`data-flush`），不要错位地乱画
   - 左侧设置齿轮、右侧刷新按钮在横条内**垂直居中**；中间是问候语（`aup-head-greeting`）
 - 问候语优先级：**24 节气 > 法定节假日/农历节日 > 时段问候**；再叠加一句随机小祝福（按天稳定 seed）。
   节气用 `Y*0.2422+C` 近似公式（21 世纪常数表）；农历节日用 `Intl.DateTimeFormat('zh-CN-u-ca-chinese')`

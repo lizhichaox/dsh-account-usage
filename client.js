@@ -311,7 +311,8 @@ window.__ModuleLoader__.load({
       'html[data-account-usage-hide-stats] [data-composer-stat]{display:none!important}',
       '.aup-root{position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;height:100%;min-height:0;overflow:hidden;padding:0 16px 16px;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:13px;line-height:20px}',
       '.aup-root *{box-sizing:border-box}',
-      '.aup-head{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;height:var(--aup-head-h,44px);margin:0 0 4px;padding:0;border-bottom:.5px solid var(--dsw-alias-border-l3)}',
+      '.aup-head{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;height:var(--aup-head-h,44px);margin:0 -16px 4px;padding:0 16px;border-bottom:.5px solid var(--dsw-alias-border-l3)}',
+      '.aup-head[data-flush]{border-bottom:none}',
       '.aup-head-greeting{min-width:0;text-align:center;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:clip}',
       '.aup-glyph{flex:none;color:var(--dsw-alias-label-secondary);display:inline-flex}',
       '.aup-title{flex:1;min-width:0;margin:0;font-size:14px;font-weight:500;line-height:20px;white-space:nowrap}',
@@ -2251,6 +2252,7 @@ window.__ModuleLoader__.load({
       const t = React.useMemo(() => bindTranslation(), [bindTranslation, localeId]);
       const displayLocale = String(localeId).toLowerCase().startsWith('zh') ? localeId : 'en';
       const greeting = React.useMemo(() => greetingLine(new Date(), localeId, greetingSeed), [localeId, greetingSeed]);
+      const [headFlush, setHeadFlush] = React.useState(false);
 
       React.useEffect(() => {
         const update = () => setLocaleId(readLocale());
@@ -2613,7 +2615,14 @@ window.__ModuleLoader__.load({
           if (!Number.isFinite(anchorY)) return;
           const top = node.getBoundingClientRect().top;
           const height = Math.round(anchorY - top);
-          if (!Number.isFinite(height) || height < 24 || height > 160) return;
+          if (!Number.isFinite(height) || height > 240) return;
+          if (height < 14) {
+            // The conversation rule sits above our pane: drawing one here would break the line.
+            node.style.setProperty('--aup-head-h', '44px');
+            setHeadFlush(true);
+            return;
+          }
+          setHeadFlush(false);
           node.style.setProperty('--aup-head-h', height + 'px');
         };
         apply();
@@ -2669,7 +2678,7 @@ window.__ModuleLoader__.load({
         h('style', null, CSS),
         h(
           'header',
-          { className: 'aup-head', 'aria-label': t('panel.title') },
+          { className: 'aup-head', 'aria-label': t('panel.title'), 'data-flush': headFlush === true ? true : undefined },
           h(
             'div',
             { className: 'aup-head-actions aup-head-left' },
