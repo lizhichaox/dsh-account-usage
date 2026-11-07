@@ -451,7 +451,10 @@ const PROVIDER_BALANCE_SPECS = {
   openrouter: { kind: 'openrouter', currency: 'USD', keyEnv: 'OPENROUTER_API_KEY' },
   deepseek: { kind: 'deepseek', currency: 'CNY', keyEnv: 'DEEPSEEK_API_KEY' },
   'deepseek-api': { kind: 'deepseek', currency: 'CNY', keyEnv: 'DEEPSEEK_API_KEY' },
-  'deepseek-api-key': { kind: 'deepseek', currency: 'CNY', keyEnv: 'DEEPSEEK_API_KEY' }
+  'deepseek-api-key': { kind: 'deepseek', currency: 'CNY', keyEnv: 'DEEPSEEK_API_KEY' },
+  opencode: { kind: 'opencode-plan', keyEnv: 'OPENCODE_API_KEY' },
+  'opencode-go': { kind: 'opencode-plan', keyEnv: 'OPENCODE_API_KEY' },
+  'opencode-zen': { kind: 'opencode-plan', keyEnv: 'OPENCODE_API_KEY' }
 };
 
 function finiteNumber(value) {
@@ -554,6 +557,32 @@ async function readDeepSeekKeyBalance(key, signal) {
   };
 }
 
+/**
+ * Plan usage for opencode (Go/Zen): the official endpoint reports percentages
+ * over rolling / weekly / monthly windows instead of a money balance.
+ *   GET https://opencode.ai/zen/go/v1/usage  (Authorization: Bearer <key>)
+ */
+async function readOpenCodePlan(key, signal) {
+  const payload = await getJson('https://opencode.ai/zen/go/v1/usage', key, signal);
+  const usage = payload !== null && typeof payload === 'object' && payload.usage !== null && typeof payload.usage === 'object' ? payload.usage : undefined;
+  if (usage === undefined) throw codedError('invalid_response', 'opencode plan response missing usage');
+  const windows = [];
+  for (const id of ['rolling', 'weekly', 'monthly']) {
+    const window = usage[id];
+    if (window === null || typeof window !== 'object') continue;
+    const percent = finiteNumber(window.percent);
+    if (percent === undefined) continue;
+    windows.push({
+      id,
+      usedPercent: Math.min(100, Math.max(0, Math.round(percent * 10) / 10)),
+      ...typeof window.status === 'string' ? { status: window.status } : {},
+      ...typeof window.resetsAt === 'string' ? { resetsAt: window.resetsAt } : {}
+    });
+  }
+  if (windows.length === 0) throw codedError('invalid_response', 'opencode plan response missing windows');
+  return { provider: 'opencode-go', kind: 'opencode-plan', windows };
+}
+
 /** One cached provider balance read; unsupported providers and missing keys stay typed. */
 function createProviderBalanceReader(ctx) {
   const cache = new Map();
@@ -566,7 +595,12 @@ function createProviderBalanceReader(ctx) {
     if (key === undefined) return { ok: false, code: 'no_credential' };
     try {
       const signal = AbortSignal.timeout(TIMEOUT_MS);
-      const data = spec.kind === 'openrouter' ? await readOpenRouterBalance(key, signal) : await readDeepSeekKeyBalance(key, signal);
+      const data =
+        spec.kind === 'openrouter'
+          ? await readOpenRouterBalance(key, signal)
+          : spec.kind === 'opencode-plan'
+            ? await readOpenCodePlan(key, signal)
+            : await readDeepSeekKeyBalance(key, signal);
       const result = { ok: true, data: { ...data, fetchedAt: Date.now() } };
       cache.set(provider, { at: Date.now(), data: result });
       return result;

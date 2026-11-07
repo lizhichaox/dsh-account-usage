@@ -190,6 +190,11 @@ window.__ModuleLoader__.load({
       'tokens.requestsCount': '{count} 次请求',
       'account.providerUpdated': '更新于 {time}',
       'account.providerUsedRate': '已用 {percent}%',
+      'account.planRemaining': '套餐剩余',
+      'account.planRolling': '5 小时',
+      'account.planWeekly': '本周',
+      'account.planMonthly': '本月',
+      'account.planUsed': '已用 {percent}%',
     };
 
     /** English dictionary, checked against the Chinese key set. */
@@ -295,6 +300,11 @@ window.__ModuleLoader__.load({
       'tokens.requestsCount': '{count} requests',
       'account.providerUpdated': 'Updated {time}',
       'account.providerUsedRate': '{percent}% used',
+      'account.planRemaining': 'Plan left',
+      'account.planRolling': '5 hours',
+      'account.planWeekly': 'This week',
+      'account.planMonthly': 'This month',
+      'account.planUsed': '{percent}% used',
     };
 
     // ----------------------------------------------------------------- styles --
@@ -1709,6 +1719,46 @@ window.__ModuleLoader__.load({
         }
 
         const single = rows[0];
+        if (single.kind === 'opencode-plan' && Array.isArray(single.windows) && single.windows.length > 0) {
+          const monthly = single.windows.find((window) => window.id === 'monthly') || single.windows[single.windows.length - 1];
+          const used = Number.isFinite(monthly.usedPercent) ? monthly.usedPercent : 0;
+          const remaining = Math.round((100 - used) * 10) / 10;
+          return h(
+            'section',
+            { className: 'aup-card aup-card-account aup-card-account-provider' },
+            providerHead,
+            h(
+              'div',
+              { className: 'aup-provider-body' },
+              h(
+                'div',
+                { className: 'aup-provider-hero' },
+                h('span', { className: 'aup-provider-hero-label' }, t('account.planRemaining')),
+                h('span', { className: 'aup-provider-hero-value' }, remaining + '%')
+              ),
+              h(
+                'div',
+                { className: 'aup-provider-progress' },
+                h('div', { className: 'aup-provider-rate' }, h('span', null, t('account.planUsed', { percent: String(used) })), h('span', null, monthly.id === undefined ? '' : t('account.planMonthly'))),
+                h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: used + '%' } }))
+              ),
+              h(
+                'div',
+                { className: 'aup-provider-meta' },
+                single.windows
+                  .filter((window) => window.id !== monthly.id)
+                  .map((window) =>
+                    h(
+                      'div',
+                      { key: window.id, className: 'aup-provider-meta-item' },
+                      h('span', { className: 'aup-provider-meta-label' }, window.id === 'rolling' ? t('account.planRolling') : window.id === 'weekly' ? t('account.planWeekly') : t('account.planMonthly')),
+                      h('span', { className: 'aup-provider-meta-value' }, t('account.planUsed', { percent: String(window.usedPercent) }))
+                    )
+                  )
+              )
+            )
+          );
+        }
         const currency = currencyOf(single);
         const remaining = Number.isFinite(single.remaining) ? single.remaining : undefined;
         const used = Number.isFinite(single.used) ? single.used : undefined;
@@ -1813,7 +1863,21 @@ window.__ModuleLoader__.load({
       const providerItems = [];
       if (providerBalances !== null && providerBalances !== undefined && providerBalances.phase === 'ready' && Array.isArray(providerBalances.items)) {
         for (const entry of providerBalances.items) {
-          if (entry === null || entry === undefined || !Number.isFinite(entry.remaining)) continue;
+          if (entry === null || entry === undefined) continue;
+          if (entry.kind === 'opencode-plan' && Array.isArray(entry.windows) && entry.windows.length > 0) {
+            const monthly = entry.windows.find((window) => window.id === 'monthly') || entry.windows[entry.windows.length - 1];
+            const used = Number.isFinite(monthly.usedPercent) ? monthly.usedPercent : 0;
+            providerItems.push(
+              h(
+                'div',
+                { key: 'provider-' + String(entry.provider), className: 'aup-balance-item' },
+                h('span', { className: 'aup-balance-label' }, providerLabel(entry.provider, t) + ' ' + t('account.planRemaining')),
+                h('span', { className: 'aup-balance-value aup-minor' }, String(Math.round((100 - used) * 10) / 10) + '%')
+              )
+            );
+            continue;
+          }
+          if (!Number.isFinite(entry.remaining)) continue;
           const entryCurrency = typeof entry.currency === 'string' ? entry.currency : 'USD';
           const text = formatMoney(String(entry.remaining), entryCurrency, locale);
           providerItems.push(
@@ -2078,12 +2142,6 @@ window.__ModuleLoader__.load({
                     )
                   )
                 ),
-                h(
-                  'div',
-                  { className: 'aup-trend-axis' },
-                  h('span', null, visibleCells.length === 0 ? '' : visibleCells[0].label),
-                  h('span', null, visibleCells.length === 0 ? '' : visibleCells[visibleCells.length - 1].label)
-                )
               )
       );
     }

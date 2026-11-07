@@ -560,6 +560,26 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(unsupportedText.includes('1234'), 'unsupported provider card shows the request count');
   assert.equal(walk(unsupportedCard, (node) => hasClass(node, 'aup-retry')).length, 0, 'no dead retry for a provider without a balance API');
 
+  // opencode reports plan usage percentages instead of a money balance.
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [{ provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 5_000_000, requests: 500 }], totalTokens: 5_000_000 },
+    { phase: 'ready', items: [{ provider: 'opencode-go', kind: 'opencode-plan', windows: [{ id: 'rolling', usedPercent: 1 }, { id: 'weekly', usedPercent: 12 }, { id: 'monthly', usedPercent: 35 }] }], error: undefined },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const planTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
+  stateQueue.length = 0;
+  const planCard = walk(planTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
+  const planText = flat(planCard);
+  assert.ok(planText.includes('套餐剩余'), 'plan card leads with the remaining share');
+  assert.ok(planText.includes('65%'), 'remaining share is the complement of monthly usage: ' + planText);
+  assert.ok(planText.includes('5 小时') && planText.includes('本周'), 'other windows are listed');
+
   // Mixed sessions split the platform statistics by source instead of one flat total.
   stateQueue.push(
     accountState,
