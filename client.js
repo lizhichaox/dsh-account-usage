@@ -364,7 +364,9 @@ window.__ModuleLoader__.load({
       '.aup-plan-windows{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 12px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-plan-window{display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap}',
       '.aup-plan-window-value{color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
-      '.aup-card-head{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex:none}',
+      '.aup-card-head{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex:none}',
+      '.aup-card-head-main{display:inline-flex;align-items:center;gap:6px;min-width:0;justify-content:center}',
+      '.aup-card-head-extra{position:absolute;right:0;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;max-width:45%}',
       '.aup-divider{display:block;height:1px;flex:none;margin:0;background:var(--dsw-alias-border-l2)}',
       '.aup-card-icon{display:inline-flex;flex:none;color:var(--dsw-alias-label-secondary)}',
       '.aup-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}',
@@ -376,7 +378,7 @@ window.__ModuleLoader__.load({
       '.aup-skeleton-value{width:44px;justify-self:end}',
       '@media (prefers-reduced-motion:reduce){.aup-skeleton{animation:none}}',
       '.aup-badge{flex:none;padding:0 6px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:18px;font-weight:500;white-space:nowrap}',
-      '.aup-card-title{margin:0;font-size:12px;font-weight:500;line-height:18px;color:var(--dsw-alias-label-secondary)}',
+      '.aup-card-title{margin:0;font-size:12px;font-weight:500;line-height:18px;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
 
       '.aup-balance{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 16px;margin:0;padding:0}',
       '.aup-balance-item{display:flex;flex-direction:column;gap:2px;min-width:0}',
@@ -631,9 +633,13 @@ window.__ModuleLoader__.load({
       return h(
         'div',
         { className: 'aup-card-head' },
-        icon === undefined ? null : h('span', { className: 'aup-card-icon' }, h(icon, { size: 14 })),
-        h('h3', { className: 'aup-card-title' }, title),
-        extra === undefined ? null : extra
+        h(
+          'span',
+          { className: 'aup-card-head-main' },
+          icon === undefined ? null : h('span', { className: 'aup-card-icon' }, h(icon, { size: 14 })),
+          h('h3', { className: 'aup-card-title' }, title)
+        ),
+        extra === undefined ? null : h('span', { className: 'aup-card-head-extra' }, extra)
       );
     }
 
@@ -1483,7 +1489,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Provider session detail: per-model totals plus context composition. */
-    function SessionDetailCard({ t, useProjection, sessionModels, extraLabel }) {
+    function SessionDetailCard({ t, useProjection, sessionModels }) {
       const usage = useProjection('tokenUsage');
       const sessionStats = useProjection('sessionStats');
       const pressure = useProjection('contextPressure');
@@ -1604,11 +1610,7 @@ window.__ModuleLoader__.load({
       return h(
         'section',
         { className: 'aup-card aup-card-detail' },
-        h(CardHead, {
-          icon: ChartGlyph,
-          title: t('tokens.detail'),
-          extra: typeof extraLabel === 'string' && extraLabel !== '' ? h('span', { className: 'aup-badge' }, extraLabel) : null
-        }),
+        h(CardHead, { icon: ChartGlyph, title: t('tokens.detail') }),
         h('span', { className: 'aup-divider', 'aria-hidden': true }),
         h(
           'div',
@@ -1867,15 +1869,12 @@ window.__ModuleLoader__.load({
       };
 
       const head = [
-        h(CardHead, {
-          icon: WalletGlyph,
-          title: t('account.title'),
-          extra: list.length === 1 && list[0].isAccount !== true ? h('span', { className: 'aup-badge' }, sourceLabel(list[0], t)) : null
-        }),
+        h(CardHead, { icon: WalletGlyph, title: t('account.title') }),
         h('span', { className: 'aup-divider', 'aria-hidden': true })
       ];
+      const showTabs = list.length > 1 || list.some((source) => source.isAccount !== true);
       const tabs =
-        list.length < 2
+        showTabs !== true
           ? null
           : h(
               'div',
@@ -2795,7 +2794,7 @@ window.__ModuleLoader__.load({
           { className: 'aup-cards' },
           settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels, providerMode: offAccountAll === true }) : null,
           settings.cards.stats === true && offAccountAll === true
-            ? h(SessionDetailCard, { t, useProjection, sessionModels, extraLabel: offAccountLabel })
+            ? h(SessionDetailCard, { t, useProjection, sessionModels })
             : null,
           settings.cards.stats === true && offAccountAll !== true
           ? h(UsageSection, {

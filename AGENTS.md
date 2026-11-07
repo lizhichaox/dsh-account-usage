@@ -25,6 +25,9 @@
 
 - 卡片标题：三张卡标题都用**四个中文字符**（会话消耗 / 用量统计 / 账户余额），**居中**，
   标题下方有 `.aup-divider` 细分割线。
+- **标题区只放图标 + 标题**：不放供应商徽标/标记（供应商名只在账户卡的来源 tab 里出现）；
+  标题 `white-space:nowrap`，`aup-card-head` 用绝对定位的 `aup-card-head-extra` 承载必要的小标记，
+  绝不能把标题挤成两行。
 - 卡片高度：
   - 会话消耗卡：**按内容高度**（不拉伸、不留内部大片空白）
   - 用量统计卡：占用剩余高度（自身 7 行数据填满）
@@ -104,7 +107,7 @@
     （`opencode-go` 的凭据引用是 `OPENCODE_GO_API_KEY`；`opencode`/`-zen` 用 `OPENCODE_API_KEY`）
   - 其他不支持的 Provider 显示「暂未开放余额接口」并改为展示本会话 Token/请求数（不给无效重试按钮）；未配置 Key 显示「未配置 … API Key」
   - Provider 卡为大号余额 + 使用率进度条（已用百分比与金额同行，总额只出现一次）+ 更新时间 + 单行说明
-- 混合会话：账户卡用**来源 tab**（`aup-src-tabs`）列出会话里出现的每个来源（DeepSeek API / 各第三方 Provider），
+- 只要出现第三方来源（含单 Provider 会话）账户卡就用**来源 tab**（`aup-src-tabs`）列出每个来源（DeepSeek API / 各第三方 Provider），
   点击切换显示该来源的余额；**禁止**使用「部分 {provider}」这类徽标或说明文字；
   所有 tab 共用一个固定高度内容盒（`aup-account-body`，min-height 132px、内容垂直居中），
   **切换 tab 不允许改变卡片高度**；tab 模式下省略 Provider 说明/更新时间等附加行；
