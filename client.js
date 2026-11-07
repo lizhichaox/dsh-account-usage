@@ -800,6 +800,9 @@ window.__ModuleLoader__.load({
       vertex: 'Vertex AI'
     };
 
+    /** Minimum usable panel width: below this the no-wrap rows would collide. */
+    const PANEL_MIN_WIDTH = 340;
+
     /** Provider id that bills the signed-in DeepSeek account balance. */
     const ACCOUNT_PROVIDER = 'deepseek-account';
 
@@ -2537,6 +2540,25 @@ window.__ModuleLoader__.load({
         writeSettings(settings);
       }, [settings]);
 
+      const rootRef = React.useRef(null);
+      React.useEffect(() => {
+        const node = rootRef.current;
+        if (node === null || node === undefined || typeof ResizeObserver !== 'function') return undefined;
+        let cooling = false;
+        const observer = new ResizeObserver(() => {
+          const width = node.getBoundingClientRect().width;
+          if (!Number.isFinite(width) || width <= 0) return;
+          if (width >= PANEL_MIN_WIDTH - 2 || cooling) return;
+          cooling = true;
+          resizeRightbarTo(PANEL_MIN_WIDTH);
+          setTimeout(() => {
+            cooling = false;
+          }, 600);
+        });
+        observer.observe(node);
+        return () => observer.disconnect();
+      }, []);
+
       React.useEffect(() => {
         if (typeof document === 'undefined') return undefined;
         const root = document.documentElement;
@@ -2577,7 +2599,7 @@ window.__ModuleLoader__.load({
 
       return h(
         'div',
-        { className: 'aup-root' + (offAccountAll === true ? ' aup-provider-mode' : '') },
+        { className: 'aup-root' + (offAccountAll === true ? ' aup-provider-mode' : ''), ref: rootRef },
         h('style', null, CSS),
         h(
           'header',
@@ -2676,10 +2698,16 @@ window.__ModuleLoader__.load({
      * The handle is found by a stable data attribute and every step degrades
      * silently when the host markup or pointer support is unavailable.
      */
-    function requestNarrowRightbar() {
-      if (typeof document === 'undefined') return;
-      const minimum = 300;
+    /**
+     * Drive the host's own right-sidebar resize handle to a target width. The host
+     * exposes no width API, so this replays the pointer gesture it listens for; every
+     * step degrades silently when the host markup or pointer support is unavailable.
+     */
+    function resizeRightbarTo(targetWidth) {
+      if (typeof document === 'undefined') return false;
+      let applied = false;
       const attempt = (tries) => {
+        if (applied) return;
         const handle = document.querySelector('[data-side="rightbar"]');
         if (handle === null || handle === undefined) {
           if (tries < 20 && typeof setTimeout === 'function') setTimeout(() => attempt(tries + 1), 120);
@@ -2690,7 +2718,10 @@ window.__ModuleLoader__.load({
           if (frame === null || frame === undefined) return;
           const frameWidth = frame.getBoundingClientRect().width;
           const left = Number.parseFloat(handle.style.left);
-          if (Number.isFinite(left) && frameWidth > 0 && frameWidth - left <= minimum + 4) return;
+          const current = Number.isFinite(left) && frameWidth > 0 ? frameWidth - left : handle.getBoundingClientRect().left;
+          if (!Number.isFinite(current) || current <= 0) return;
+          const delta = current - targetWidth;
+          if (Math.abs(delta) < 4) return;
           if (typeof PointerEvent !== 'function') return;
           const rect = handle.getBoundingClientRect();
           const startX = rect.left + rect.width / 2;
@@ -2716,16 +2747,18 @@ window.__ModuleLoader__.load({
               })
             );
           fire('pointerdown', startX);
-          fire('pointermove', startX + 600);
-          fire('pointerup', startX + 600);
+          fire('pointermove', startX + delta);
+          fire('pointerup', startX + delta);
           handle.setPointerCapture = setCapture;
           handle.hasPointerCapture = hasCapture;
           handle.releasePointerCapture = releaseCapture;
+          applied = true;
         } catch (error) {
           /* host-internal detail: leave the current width */
         }
       };
       attempt(0);
+      return true;
     }
 
     /** Tab chip: wallet glyph plus the short tab title (never the cached long title). */
@@ -2818,7 +2851,7 @@ window.__ModuleLoader__.load({
         try {
           if (ctx.sidebarRight.mounted.getSnapshot() === undefined) return;
           ctx.sidebarRight.openTab(KIND);
-          requestNarrowRightbar();
+          resizeRightbarTo(PANEL_MIN_WIDTH);
         } catch (error) {
           console.error('[account-usage] opening the account usage tab failed', error);
         }

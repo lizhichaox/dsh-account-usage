@@ -300,12 +300,19 @@ assert.equal(first.registrations.filter((r) => r.definition.name === 'sidebar.ri
   wideRun.run();
   assert.deepEqual(wide.events, ['pointerdown', 'pointermove', 'pointerup'], 'shortcut narrows a wide right sidebar');
 
-  // Already narrow: no synthetic drag happens.
-  const narrow = makeHandle('900px');
+  // Already at the minimum usable width: no synthetic drag happens.
+  const narrow = makeHandle('860px');
   globalThis.document = { querySelector: () => narrow };
   const narrowBoot = bootClient();
   narrowBoot.shortcutRegistrations[0].resolve({ target: null }).run();
-  assert.deepEqual(narrow.events, [], 'no drag when the sidebar is already at the minimum');
+  assert.deepEqual(narrow.events, [], 'no drag when the sidebar is already at the minimum width');
+
+  // Narrower than the minimum: the panel widens itself back to a usable width.
+  const tooNarrow = makeHandle('900px');
+  globalThis.document = { querySelector: () => tooNarrow };
+  const tooNarrowBoot = bootClient();
+  tooNarrowBoot.shortcutRegistrations[0].resolve({ target: null }).run();
+  assert.deepEqual(tooNarrow.events, ['pointerdown', 'pointermove', 'pointerup'], 'a too-narrow sidebar is widened');
 
   delete globalThis.document;
   delete globalThis.PointerEvent;
