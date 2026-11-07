@@ -369,11 +369,11 @@ window.__ModuleLoader__.load({
       '.aup-models-provider{min-width:0;white-space:nowrap;font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-provider{display:block;margin-top:2px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
       '.aup-card-account-provider{flex:0 1 auto;min-height:0;justify-content:flex-start}',
-      '.aup-provider-mode .aup-card-session-fixed{flex:1.5 1 0}',
+      '.aup-provider-mode .aup-card-session-fixed{flex:1.1 1 0}',
       '.aup-provider-mode .aup-session-body{justify-content:space-between}',
       '.aup-card-detail{justify-content:flex-start}',
       '.aup-detail-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:10px;justify-content:space-between}',
-      '.aup-provider-mode .aup-card-detail{flex:1.2 1 0}',
+      '.aup-provider-mode .aup-card-detail{flex:1.6 1 0}',
       '.aup-provider-mode .aup-card-account-provider{flex:1.1 1 0}',
       '.aup-provider-mode .aup-provider-body{flex:1 1 auto;justify-content:space-between}',
       '.aup-card-account-provider .aup-balance{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;align-content:center}',
@@ -1337,11 +1337,56 @@ window.__ModuleLoader__.load({
       };
     }
 
+    /** Derived session statistics for the provider detail card. */
+    function buildDetailStats({ t, usage, sessionStats, requestCount, total }) {
+      const promptTokens = usage ? (usage.uncachedInputTokens || 0) + (usage.cacheReadTokens || 0) + (usage.cacheWriteTokens || 0) : 0;
+      const cacheHit = promptTokens > 0 ? Math.round(((usage.cacheReadTokens || 0) / promptTokens) * 1000) / 10 : undefined;
+      const average = requestCount > 0 ? Math.round(total / requestCount) : undefined;
+      const turns = sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.turns) ? sessionStats.turns : undefined;
+      const steps = sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.steps) ? sessionStats.steps : undefined;
+      const speed =
+        sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.decodeTokens) && Number.isFinite(sessionStats.decodeMs) && sessionStats.decodeMs > 0
+          ? Math.round(sessionStats.decodeTokens / (sessionStats.decodeMs / 1000))
+          : undefined;
+      const duration = (ms) => {
+        if (!Number.isFinite(ms) || ms <= 0) return undefined;
+        if (ms < 1000) return t('tokens.duration.compactMs', { milliseconds: String(Math.round(ms)) });
+        const seconds = ms / 1000;
+        if (seconds < 60) return t('tokens.duration.compactSeconds', { seconds: String(Math.round(seconds * 10) / 10) });
+        const totalSeconds = Math.round(seconds);
+        const minutes = Math.floor(totalSeconds / 60);
+        if (minutes < 60) return t('tokens.duration.compactMinutes', { minutes: String(minutes), seconds: String(totalSeconds % 60) });
+        const hours = Math.floor(minutes / 60);
+        return t('tokens.duration.compactHours', { hours: String(hours), minutes: String(minutes % 60) });
+      };
+      const llmTime = sessionStats === null || sessionStats === undefined ? undefined : duration(sessionStats.llmMs);
+      const toolTime = sessionStats === null || sessionStats === undefined ? undefined : duration(sessionStats.toolMs);
+      const ttft =
+        sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.ttftMs) && Number.isFinite(sessionStats.ttftSteps) && sessionStats.ttftSteps > 0
+          ? duration(sessionStats.ttftMs / sessionStats.ttftSteps)
+          : undefined;
+      return [
+        { key: 'turnsSteps', label: t('tokens.stat.turnsSteps'), value: turns === undefined && steps === undefined ? undefined : (turns === undefined ? '—' : String(turns)) + ' / ' + (steps === undefined ? '—' : String(steps)) },
+        { key: 'requests', label: t('tokens.stat.requests'), value: requestCount > 0 ? String(requestCount) : undefined },
+        { key: 'cacheHit', label: t('tokens.stat.cacheHit'), value: cacheHit === undefined ? undefined : cacheHit + '%' },
+        { key: 'average', label: t('tokens.stat.avg'), value: average === undefined || average <= 0 ? undefined : formatTokens(average) },
+        { key: 'speed', label: t('tokens.stat.speed'), value: speed === undefined || speed <= 0 ? undefined : speed + ' tok/s' },
+        { key: 'llm', label: t('tokens.stat.llm'), value: llmTime },
+        { key: 'tool', label: t('tokens.stat.tool'), value: toolTime },
+        { key: 'ttft', label: t('tokens.stat.ttft'), value: ttft }
+      ].filter((item) => item.value !== undefined);
+    }
+
     /** Provider session detail: per-model totals plus context composition. */
     function SessionDetailCard({ t, useProjection, sessionModels, extraLabel }) {
+      const usage = useProjection('tokenUsage');
+      const sessionStats = useProjection('sessionStats');
       const pressure = useProjection('contextPressure');
       const contextBreakdown = useProjection('contextBreakdown');
       const modelRows = sessionModels !== null && sessionModels !== undefined && Array.isArray(sessionModels.items) ? sessionModels.items : [];
+      const total = usage ? (usage.uncachedInputTokens || 0) + (usage.outputTokens || 0) + (usage.cacheReadTokens || 0) + (usage.cacheWriteTokens || 0) : 0;
+      const requestCount = modelRows.reduce((sum, item) => sum + (Number.isFinite(item.requests) ? item.requests : 0), 0);
+      const detailItems = buildDetailStats({ t, usage, sessionStats, requestCount, total });
       const groups = new Map();
       for (const item of modelRows.slice(0, 3)) {
         const key = typeof item.provider === 'string' ? item.provider : '';
@@ -1449,7 +1494,21 @@ window.__ModuleLoader__.load({
           extra: typeof extraLabel === 'string' && extraLabel !== '' ? h('span', { className: 'aup-badge' }, extraLabel) : null
         }),
         h('span', { className: 'aup-divider', 'aria-hidden': true }),
-        h('div', { className: 'aup-detail-body' }, modelBlock, contextBlock)
+        h(
+          'div',
+          { className: 'aup-detail-body' },
+          detailItems.length === 0
+            ? null
+            : h(
+                'div',
+                { className: 'aup-stat-list' },
+                detailItems.map((item) => h('div', { key: item.key, className: 'aup-stat-row' }, h('span', { className: 'aup-stat-label' }, item.label), h('span', { className: 'aup-stat-value' }, item.value)))
+              ),
+          h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
+          modelBlock,
+          h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
+          contextBlock
+        )
       );
     }
 
@@ -1967,8 +2026,8 @@ window.__ModuleLoader__.load({
                 )
               )
             ),
-        detailItems.length === 0 ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
-        detailItems.length === 0
+        providerMode === true || detailItems.length === 0 ? null : h('span', { className: 'aup-session-sep', 'aria-hidden': true }),
+        providerMode === true || detailItems.length === 0
           ? null
           : h(
               'div',
