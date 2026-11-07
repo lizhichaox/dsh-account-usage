@@ -368,6 +368,10 @@ window.__ModuleLoader__.load({
       '.aup-models-provider{min-width:0;white-space:nowrap;font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-provider{display:block;margin-top:2px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
       '.aup-card-account-provider{flex:0 1 auto;min-height:0;justify-content:flex-start}',
+      '.aup-provider-mode .aup-card-session-fixed{flex:2 1 0}',
+      '.aup-provider-mode .aup-session-body{justify-content:space-between}',
+      '.aup-provider-mode .aup-card-account-provider{flex:1 1 0}',
+      '.aup-provider-mode .aup-provider-body{justify-content:space-between}',
       '.aup-card-account-provider .aup-balance{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;align-content:center}',
       '.aup-card-account-provider .aup-balance-value{font-size:20px;line-height:26px}',
       '.aup-card-account-provider .aup-balance-value.aup-minor{font-size:17px;line-height:22px}',
@@ -2212,7 +2216,7 @@ window.__ModuleLoader__.load({
 
       return h(
         'div',
-        { className: 'aup-root' },
+        { className: 'aup-root' + (offAccountAll === true ? ' aup-provider-mode' : '') },
         h('style', null, CSS),
         h(
           'header',
