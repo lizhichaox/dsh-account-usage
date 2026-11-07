@@ -128,10 +128,8 @@ window.__ModuleLoader__.load({
       'account.providerUnsupported': '{provider} 不支持余额查询。',
       'account.providerNoKey': '未配置 {provider} API Key，无法读取余额。',
       'account.offAccountAll': '本次会话由 {provider} 提供，不消耗 DeepSeek API 余额。',
-      'account.offAccountPartial': '本次会话部分使用 {provider}，该部分不消耗 DeepSeek API 余额。',
       'stats.platformBadge': 'DeepSeek API',
       'stats.sessionScope': '本会话',
-      'account.partialBadge': '部分 {provider}',
       'stats.platformBadgeHint': '平台用量只统计 DeepSeek API，不含第三方 Provider。',
       'balance.bonus': '赠送额度',
       'balance.failed': '余额读取失败',
@@ -238,10 +236,8 @@ window.__ModuleLoader__.load({
       'account.providerUnsupported': '{provider} does not expose a balance API.',
       'account.providerNoKey': 'No {provider} API key is configured.',
       'account.offAccountAll': 'This session runs on {provider}; it does not use your DeepSeek balance.',
-      'account.offAccountPartial': 'Part of this session runs on {provider}; that part does not use your DeepSeek balance.',
       'stats.platformBadge': 'DeepSeek API',
       'stats.sessionScope': 'session',
-      'account.partialBadge': 'partly {provider}',
       'stats.platformBadgeHint': 'Platform usage covers the DeepSeek API only, not third-party providers.',
       'balance.bonus': 'Bonus credit',
       'balance.failed': 'Could not read the balance',
@@ -418,6 +414,11 @@ window.__ModuleLoader__.load({
       '.aup-models-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}',
       '.aup-models-provider{min-width:0;white-space:nowrap;font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary)}',
       '.aup-model-provider{display:block;margin-top:2px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
+      '.aup-src-tabs{flex:none;display:flex;gap:2px;padding:2px;border-radius:8px;background:var(--dsw-alias-bg-skeleton)}',
+      '.aup-src-tab{flex:1 1 0;min-width:0;height:22px;padding:0 6px;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:13px;font-weight:500;line-height:16px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;transition:background-color .12s,color .12s}',
+      '.aup-src-tab[data-active]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 .5px var(--dsw-alias-border-l2)}',
+      '@media (hover:hover){.aup-src-tab:hover:not([data-active]){color:var(--dsw-alias-label-primary)}}',
+      '.aup-src-tab:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-card-account-provider{flex:0 1 auto;min-height:0;justify-content:flex-start}',
       '.aup-provider-mode .aup-card-session-fixed{flex:1.1 1 0}',
       '.aup-provider-mode .aup-session-body{justify-content:space-between}',
@@ -802,6 +803,14 @@ window.__ModuleLoader__.load({
       if (provider === 'deepseek-account') return t('provider.deepseekAccount');
       if (provider === 'deepseek' || (typeof provider === 'string' && provider.startsWith('deepseek-api'))) return t('provider.deepseekApiKey');
       return PROVIDER_NAMES[provider] === undefined ? provider : PROVIDER_NAMES[provider];
+    }
+
+    /** Label for one account source (the DeepSeek wallet or a third-party provider). */
+    function sourceLabel(source, t) {
+      if (source === null || source === undefined) return '';
+      if (source.isAccount === true) return t('stats.platformBadge');
+      const label = providerLabel(source.id, t);
+      return label === source.id && typeof source.fallback === 'string' && source.fallback !== '' ? source.fallback : label;
     }
 
     /** Short display name for a model id: the last path segment without routing prefixes. */
@@ -1629,142 +1638,73 @@ window.__ModuleLoader__.load({
       return h('p', { className: 'aup-error', title: typeof children === 'string' ? children : undefined }, children);
     }
 
-    /** Signed-in identity and wallet balances. */
-    function AccountSection({ state, t, onRetry, offAccountLabel, offAccountAll, providerBalances, sessionUsage, locale: uiLocale }) {
+    /** Signed-in identity and wallet balances, with one tab per source in mixed sessions. */
+    function AccountSection({ state, t, onRetry, offAccountAll, providerBalances, sessionUsage, sources, locale: uiLocale }) {
+      const [picked, setPicked] = React.useState(null);
       const result = state.result;
       const accountLocale = result === undefined ? undefined : result.locale;
       const locale = uiLocale === undefined ? accountLocale : uiLocale;
-      const head = [
-        h(CardHead, {
-          icon: WalletGlyph,
-          title: t('account.title'),
-          extra:
-            offAccountAll === true
-              ? typeof offAccountLabel === 'string' && offAccountLabel !== ''
-                ? h('span', { className: 'aup-badge' }, offAccountLabel)
-                : null
-              : typeof offAccountLabel === 'string' && offAccountLabel !== ''
-                ? h('span', { className: 'aup-badge', title: t('account.offAccountPartial', { provider: offAccountLabel }) }, t('account.partialBadge', { provider: offAccountLabel }))
-                : null
-        }),
-        h('span', { className: 'aup-divider', 'aria-hidden': true })
-      ];
 
-      if (offAccountAll === true) {
-        const providerHead = [
-          h(CardHead, {
-            icon: WalletGlyph,
-            title: t('account.title'),
-            extra: offAccountLabel === '' ? null : h('span', { className: 'aup-badge' }, offAccountLabel)
-          }),
-          h('span', { className: 'aup-divider', 'aria-hidden': true })
-        ];
-        const phase = providerBalances === null || providerBalances === undefined ? 'loading' : providerBalances.phase;
-        const rows = phase === 'ready' && Array.isArray(providerBalances.items) ? providerBalances.items : [];
-        if (phase !== 'ready') return h('section', { className: 'aup-card aup-card-account aup-card-account-provider' }, providerHead, h(Hint, null, t('loading')));
-        if (rows.length === 0) {
-          const code = providerBalances.error;
-          if (code === 'unsupported_provider') {
-            const usageRows = Array.isArray(sessionUsage)
-              ? sessionUsage.filter((row) => row !== null && row !== undefined && Number.isFinite(row.tokens) && row.tokens > 0)
-              : [];
-            return h(
-              'section',
-              { className: 'aup-card aup-card-account aup-card-account-provider' },
-              providerHead,
-              h(
-                'div',
-                { className: 'aup-provider-body' },
-                h('p', { className: 'aup-provider-note' }, t('account.providerNoBalance', { provider: offAccountLabel })),
-                usageRows.length === 0
-                  ? null
-                  : h(
-                      'div',
-                      { className: 'aup-provider-figures' },
-                      usageRows.map((row) =>
-                        h(
-                          'div',
-                          { key: row.provider, className: 'aup-provider-figure' },
-                          h('span', { className: 'aup-provider-figure-label' }, row.label === '' ? t('tokens.sessionUsage') : row.label + ' · ' + t('tokens.sessionUsage')),
-                          h('span', { className: 'aup-provider-figure-value' }, formatTokens(row.tokens)),
-                          h('span', { className: 'aup-provider-figure-meta' }, t('tokens.requestsCount', { count: String(row.requests) }))
-                        )
-                      )
-                    )
-              )
-            );
-          }
-          const messageKey = code === 'no_credential' ? 'account.providerNoKey' : 'account.providerUnavailable';
-          return h(
-            'section',
-            { className: 'aup-card aup-card-account aup-card-account-provider' },
-            providerHead,
-            h(Hint, null, t(messageKey, { provider: offAccountLabel })),
-            h('div', { className: 'aup-actions' }, h('button', { type: 'button', className: 'aup-retry', onClick: onRetry }, t('retry')))
-          );
-        }
-        const currencyOf = (entry) => (typeof entry.currency === 'string' ? entry.currency : 'USD');
-        const updatedAt = Number.isFinite(singleFetchedAt(rows)) ? new Date(singleFetchedAt(rows)) : undefined;
-        const updatedTime = updatedAt === undefined ? '' : new Intl.DateTimeFormat(locale || undefined, { hour: '2-digit', minute: '2-digit' }).format(updatedAt);
-        const note = h('p', { className: 'aup-provider-note' }, t('account.providerNote', { provider: offAccountLabel }));
-        const updated = updatedTime === '' ? null : h('p', { className: 'aup-provider-updated' }, t('account.providerUpdated', { time: updatedTime }));
-        if (rows.length > 1) {
-          const items = [];
-          for (const entry of rows) {
-            const currency = currencyOf(entry);
-            const prefix = providerLabel(entry.provider, t) + ' ';
-            if (Number.isFinite(entry.remaining)) items.push(h('div', { key: entry.provider + '-remaining', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.recharge')), h('span', { className: 'aup-balance-value' }, formatMoney(String(entry.remaining), currency, locale))));
-            if (Number.isFinite(entry.used)) items.push(h('div', { key: entry.provider + '-used', className: 'aup-balance-item' }, h('span', { className: 'aup-balance-label' }, prefix + t('balance.used')), h('span', { className: 'aup-balance-value aup-minor' }, formatMoney(String(entry.used), currency, locale))));
-          }
-          return h('section', { className: 'aup-card aup-card-account aup-card-account-provider' }, providerHead, h('div', { className: 'aup-provider-body' }, h('div', { className: 'aup-balance' }, items), updated, note));
-        }
+      const list = (Array.isArray(sources) ? sources : []).filter(
+        (source) => source !== null && source !== undefined && typeof source.id === 'string' && source.id !== ''
+      );
+      const activeId = picked !== null && list.some((source) => source.id === picked) ? picked : list.length > 0 ? list[0].id : 'account';
+      const active = list.find((source) => source.id === activeId);
+      const isProviderCard = active !== undefined && active.isAccount !== true;
+      const activeLabel = active === undefined ? '' : sourceLabel(active, t);
 
-        const single = rows[0];
-        if (single.kind === 'opencode-plan' && Array.isArray(single.windows) && single.windows.length > 0) {
-          const monthly = single.windows.find((window) => window.id === 'monthly') || single.windows[single.windows.length - 1];
-          const used = Number.isFinite(monthly.usedPercent) ? monthly.usedPercent : 0;
-          const remaining = Math.round((100 - used) * 10) / 10;
-          return h(
-            'section',
-            { className: 'aup-card aup-card-account aup-card-account-provider' },
-            providerHead,
+      const providerPhase = providerBalances === null || providerBalances === undefined ? 'loading' : providerBalances.phase;
+      const providerRows = providerPhase === 'ready' && Array.isArray(providerBalances.items) ? providerBalances.items : [];
+      const currencyOf = (entry) => (typeof entry.currency === 'string' ? entry.currency : 'USD');
+
+      const planBody = (entry) => {
+        const monthly = entry.windows.find((window) => window.id === 'monthly') || entry.windows[entry.windows.length - 1];
+        const used = Number.isFinite(monthly.usedPercent) ? monthly.usedPercent : 0;
+        const remaining = Math.round((100 - used) * 10) / 10;
+        const labelFor = (id) => (id === 'rolling' ? t('account.planRolling') : id === 'weekly' ? t('account.planWeekly') : t('account.planMonthly'));
+        return h(
+          'div',
+          { className: 'aup-provider-body' },
+          h(
+            'div',
+            { className: 'aup-provider-hero' },
+            h('span', { className: 'aup-provider-hero-label' }, t('account.planRemaining')),
+            h('span', { className: 'aup-provider-hero-value' }, remaining + '%')
+          ),
+          h(
+            'div',
+            { className: 'aup-provider-progress' },
             h(
               'div',
-              { className: 'aup-provider-body' },
-              h(
-                'div',
-                { className: 'aup-provider-hero' },
-                h('span', { className: 'aup-provider-hero-label' }, t('account.planRemaining')),
-                h('span', { className: 'aup-provider-hero-value' }, remaining + '%')
-              ),
-              h(
-                'div',
-                { className: 'aup-provider-progress' },
-                h('div', { className: 'aup-provider-rate' }, h('span', null, t('account.planUsed', { percent: String(used) })), h('span', null, monthly.id === undefined ? '' : t('account.planMonthly'))),
-                h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: used + '%' } }))
-              ),
-              h(
-                'div',
-                { className: 'aup-provider-meta' },
-                single.windows
-                  .filter((window) => window.id !== monthly.id)
-                  .map((window) =>
-                    h(
-                      'div',
-                      { key: window.id, className: 'aup-provider-meta-item' },
-                      h('span', { className: 'aup-provider-meta-label' }, window.id === 'rolling' ? t('account.planRolling') : window.id === 'weekly' ? t('account.planWeekly') : t('account.planMonthly')),
-                      h('span', { className: 'aup-provider-meta-value' }, t('account.planUsed', { percent: String(window.usedPercent) }))
-                    )
-                  )
+              { className: 'aup-provider-rate' },
+              h('span', null, t('account.planUsed', { percent: String(used) })),
+              h('span', null, labelFor(monthly.id))
+            ),
+            h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: used + '%' } }))
+          ),
+          h(
+            'div',
+            { className: 'aup-provider-meta' },
+            entry.windows
+              .filter((window) => window.id !== monthly.id)
+              .map((window) =>
+                h(
+                  'div',
+                  { key: window.id, className: 'aup-provider-meta-item' },
+                  h('span', { className: 'aup-provider-meta-label' }, labelFor(window.id)),
+                  h('span', { className: 'aup-provider-meta-value' }, t('account.planUsed', { percent: String(window.usedPercent) }))
+                )
               )
-            )
-          );
-        }
-        const currency = currencyOf(single);
-        const remaining = Number.isFinite(single.remaining) ? single.remaining : undefined;
-        const used = Number.isFinite(single.used) ? single.used : undefined;
-        const total = Number.isFinite(single.total) ? single.total : undefined;
-        const granted = Number.isFinite(single.granted) ? single.granted : undefined;
+          )
+        );
+      };
+
+      const moneyBody = (entry, providerName) => {
+        const currency = currencyOf(entry);
+        const remaining = Number.isFinite(entry.remaining) ? entry.remaining : undefined;
+        const used = Number.isFinite(entry.used) ? entry.used : undefined;
+        const total = Number.isFinite(entry.total) ? entry.total : undefined;
+        const granted = Number.isFinite(entry.granted) ? entry.granted : undefined;
         const heroLabel = remaining !== undefined ? t('balance.recharge') : used !== undefined ? t('balance.used') : total !== undefined ? t('balance.total') : t('balance.recharge');
         const heroValue = remaining !== undefined ? remaining : used !== undefined ? used : total !== undefined ? total : 0;
         const totalKnown = total !== undefined ? total : remaining !== undefined && used !== undefined ? remaining + used : undefined;
@@ -1776,131 +1716,167 @@ window.__ModuleLoader__.load({
           if (total !== undefined && heroLabel !== t('balance.total')) meta.push({ key: 'total', label: t('balance.total'), value: total });
         }
         if (granted !== undefined) meta.push({ key: 'granted', label: t('balance.bonus'), value: granted });
+        const fetchedAt = singleFetchedAt([entry]);
+        const updatedTime = Number.isFinite(fetchedAt) ? new Intl.DateTimeFormat(locale || undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(fetchedAt)) : '';
         return h(
-          'section',
-          { className: 'aup-card aup-card-account aup-card-account-provider' },
-          providerHead,
+          'div',
+          { className: 'aup-provider-body' },
           h(
             'div',
-            { className: 'aup-provider-body' },
-            h(
-              'div',
-              { className: 'aup-provider-hero' },
-              h('span', { className: 'aup-provider-hero-label' }, heroLabel),
-              (() => {
-                const text = formatMoney(String(heroValue), currency, locale);
-                return h('span', { className: 'aup-provider-hero-value' + valueClass(text) }, text);
-              })()
-            ),
-            usedPercent === undefined
-              ? null
-              : h(
+            { className: 'aup-provider-hero' },
+            h('span', { className: 'aup-provider-hero-label' }, heroLabel),
+            (() => {
+              const text = formatMoney(String(heroValue), currency, locale);
+              return h('span', { className: 'aup-provider-hero-value' + valueClass(text) }, text);
+            })()
+          ),
+          usedPercent === undefined
+            ? null
+            : h(
+                'div',
+                { className: 'aup-provider-progress' },
+                h(
                   'div',
-                  { className: 'aup-provider-progress' },
+                  { className: 'aup-provider-rate' },
+                  h('span', null, t('account.providerUsedRate', { percent: String(usedPercent) }) + (used === undefined ? '' : ' · ' + formatMoney(String(used), currency, locale))),
+                  h('span', null, totalKnown === undefined ? '' : formatMoney(String(totalKnown), currency, locale))
+                ),
+                h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: usedPercent + '%' } }))
+              ),
+          updatedTime === ''
+            ? null
+            : h('p', { className: 'aup-provider-updated' }, t('account.providerUpdated', { time: updatedTime })),
+          meta.length === 0
+            ? null
+            : h(
+                'div',
+                { className: 'aup-provider-meta' },
+                meta.map((item) =>
                   h(
                     'div',
-                    { className: 'aup-provider-rate' },
-                    h('span', null, t('account.providerUsedRate', { percent: String(usedPercent) }) + (used === undefined ? '' : ' · ' + formatMoney(String(used), currency, locale))),
-                    h('span', null, totalKnown === undefined ? '' : formatMoney(String(totalKnown), currency, locale))
-                  ),
-                  h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: usedPercent + '%' } }))
-                ),
-            updated,
-            meta.length === 0
-              ? null
-              : h(
-                  'div',
-                  { className: 'aup-provider-meta' },
-                  meta.map((item) => h('div', { key: item.key, className: 'aup-provider-meta-item' }, h('span', { className: 'aup-provider-meta-label' }, item.label), (() => {
-                    const text = formatMoney(String(item.value), currency, locale);
-                    return h('span', { className: 'aup-provider-meta-value' + valueClass(text) }, text);
-                  })()))
-                ),
-            note
-          )
+                    { key: item.key, className: 'aup-provider-meta-item' },
+                    h('span', { className: 'aup-provider-meta-label' }, item.label),
+                    (() => {
+                      const text = formatMoney(String(item.value), currency, locale);
+                      return h('span', { className: 'aup-provider-meta-value' + valueClass(text) }, text);
+                    })()
+                  )
+                )
+              ),
+          h('p', { className: 'aup-provider-note' }, t('account.providerNote', { provider: providerName }))
         );
-      }
+      };
 
-      if (state.phase === 'loading') {
-        return h('section', { className: 'aup-card aup-card-account' }, head, h(Hint, null, t('loading')));
-      }
-      if (state.phase === 'error' || !result || result.ok !== true) {
-        const code = result && typeof result.code === 'string' ? result.code : '';
-        const reasonKey = code === '' ? '' : 'stats.reason.' + code;
-        const reason = reasonKey !== '' && t(reasonKey) !== reasonKey ? t(reasonKey) : '';
-        const rawDetail = result && result.message ? String(result.message) : '';
-        const chinese = String(locale || '').toLowerCase().startsWith('zh');
-        const detail = reason !== '' ? reason : chinese ? rawDetail : '';
+      const providerBody = (source) => {
+        const providerName = sourceLabel(source, t);
+        if (providerPhase !== 'ready') return h(Hint, null, t('loading'));
+        const entry = providerRows.find((row) => row !== null && row !== undefined && (row.provider === source.id || row.provider === source.alias));
+        if (entry === undefined) {
+          const code = providerBalances.error;
+          if (code === 'unsupported_provider') {
+            const usageRows = Array.isArray(sessionUsage)
+              ? sessionUsage.filter((row) => row !== null && row !== undefined && Number.isFinite(row.tokens) && row.tokens > 0)
+              : [];
+            return h(
+              'div',
+              { className: 'aup-provider-body' },
+              h('p', { className: 'aup-provider-note' }, t('account.providerNoBalance', { provider: providerName })),
+              usageRows.length === 0
+                ? null
+                : h(
+                    'div',
+                    { className: 'aup-provider-figures' },
+                    usageRows.map((row) =>
+                      h(
+                        'div',
+                        { key: row.provider, className: 'aup-provider-figure' },
+                        h('span', { className: 'aup-provider-figure-label' }, t('tokens.sessionUsage')),
+                        h('span', { className: 'aup-provider-figure-value' }, formatTokens(row.tokens)),
+                        h('span', { className: 'aup-provider-figure-meta' }, t('tokens.requestsCount', { count: String(row.requests) }))
+                      )
+                    )
+                  )
+            );
+          }
+          const messageKey = code === 'no_credential' ? 'account.providerNoKey' : 'account.providerUnavailable';
+          return [
+            h(Hint, { key: 'hint' }, t(messageKey, { provider: providerName })),
+            h('div', { key: 'actions', className: 'aup-actions' }, h('button', { type: 'button', className: 'aup-retry', onClick: onRetry }, t('retry')))
+          ];
+        }
+        if (entry.kind === 'opencode-plan' && Array.isArray(entry.windows) && entry.windows.length > 0) return planBody(entry);
+        return moneyBody(entry, providerName);
+      };
+
+      const accountBody = () => {
+        if (state.phase === 'loading') return h(Hint, null, t('loading'));
+        if (state.phase === 'error' || !result || result.ok !== true) {
+          const code = result && typeof result.code === 'string' ? result.code : '';
+          const reasonKey = code === '' ? '' : 'stats.reason.' + code;
+          const reason = reasonKey !== '' && t(reasonKey) !== reasonKey ? t(reasonKey) : '';
+          const rawDetail = result && result.message ? String(result.message) : '';
+          const chinese = String(locale || '').toLowerCase().startsWith('zh');
+          const detail = reason !== '' ? reason : chinese ? rawDetail : '';
+          return [
+            h(ErrorText, { key: 'error' }, t('error')),
+            detail === '' ? null : h(Hint, { key: 'detail' }, detail),
+            h('div', { key: 'actions', className: 'aup-actions' }, h('button', { type: 'button', className: 'aup-retry', onClick: onRetry }, t('retry')))
+          ];
+        }
+        const view = result.view || {};
+        if (view.status !== 'credential-stored') {
+          return [h(Hint, { key: 'out' }, t('account.signedOut')), h(Hint, { key: 'hint' }, t('account.signedOutHint'))];
+        }
+        const balance = result.balance;
+        const wallets = balance && balance.status === 'ready' ? balance.value || [] : [];
+        const bonusWallets = balance && balance.status === 'ready' ? balance.bonusWallets || [] : [];
+        if (!balance || balance.status === 'failed') return h(Hint, null, t('balance.failed'));
+        if (wallets.length === 0 && bonusWallets.length === 0) return h(Hint, null, t('balance.empty'));
         return h(
-          'section',
-          { className: 'aup-card aup-card-account' },
-          head,
-          h(ErrorText, null, t('error')),
-          detail === '' ? null : h(Hint, null, detail),
-          h('div', { className: 'aup-actions' }, h('button', { type: 'button', className: 'aup-retry', onClick: onRetry }, t('retry')))
+          'div',
+          { className: 'aup-balance' },
+          wallets.map((wallet, index) => h(WalletItem, { key: 'w' + index, label: t('balance.recharge'), wallet, locale, major: index === 0 })),
+          bonusWallets.map((wallet, index) => h(WalletItem, { key: 'b' + index, label: t('balance.bonus'), wallet, locale, major: false }))
         );
-      }
+      };
 
-      const view = result.view || {};
-      if (view.status !== 'credential-stored') {
-        return h(
-          'section',
-          { className: 'aup-card aup-card-account' },
-          head,
-          h(Hint, null, t('account.signedOut')),
-          h(Hint, null, t('account.signedOutHint'))
-        );
-      }
-
-      const balance = result.balance;
-      const wallets = balance && balance.status === 'ready' ? balance.value || [] : [];
-      const bonusWallets = balance && balance.status === 'ready' ? balance.bonusWallets || [] : [];
-      const walletItems = wallets.map((wallet, index) =>
-        h(WalletItem, { key: 'w' + index, label: t('balance.recharge'), wallet, locale, major: index === 0 })
-      );
-      const bonusItems = bonusWallets.map((wallet, index) =>
-        h(WalletItem, { key: 'b' + index, label: t('balance.bonus'), wallet, locale, major: false })
-      );
-      const providerItems = [];
-      if (providerBalances !== null && providerBalances !== undefined && providerBalances.phase === 'ready' && Array.isArray(providerBalances.items)) {
-        for (const entry of providerBalances.items) {
-          if (entry === null || entry === undefined) continue;
-          if (entry.kind === 'opencode-plan' && Array.isArray(entry.windows) && entry.windows.length > 0) {
-            const monthly = entry.windows.find((window) => window.id === 'monthly') || entry.windows[entry.windows.length - 1];
-            const used = Number.isFinite(monthly.usedPercent) ? monthly.usedPercent : 0;
-            providerItems.push(
-              h(
-                'div',
-                { key: 'provider-' + String(entry.provider), className: 'aup-balance-item' },
-                h('span', { className: 'aup-balance-label' }, providerLabel(entry.provider, t) + ' ' + t('account.planRemaining')),
-                h('span', { className: 'aup-balance-value aup-minor' }, String(Math.round((100 - used) * 10) / 10) + '%')
+      const head = [
+        h(CardHead, {
+          icon: WalletGlyph,
+          title: t('account.title'),
+          extra: list.length === 1 && list[0].isAccount !== true ? h('span', { className: 'aup-badge' }, sourceLabel(list[0], t)) : null
+        }),
+        h('span', { className: 'aup-divider', 'aria-hidden': true })
+      ];
+      const tabs =
+        list.length < 2
+          ? null
+          : h(
+              'div',
+              { className: 'aup-src-tabs', role: 'tablist', 'aria-label': t('account.title') },
+              list.map((source) =>
+                h(
+                  'button',
+                  {
+                    key: source.id,
+                    type: 'button',
+                    role: 'tab',
+                    className: 'aup-src-tab',
+                    'data-active': source.id === activeId ? true : undefined,
+                    'aria-selected': source.id === activeId,
+                    onClick: () => setPicked(source.id)
+                  },
+                  sourceLabel(source, t)
+                )
               )
             );
-            continue;
-          }
-          if (!Number.isFinite(entry.remaining)) continue;
-          const entryCurrency = typeof entry.currency === 'string' ? entry.currency : 'USD';
-          const text = formatMoney(String(entry.remaining), entryCurrency, locale);
-          providerItems.push(
-            h(
-              'div',
-              { key: 'provider-' + String(entry.provider), className: 'aup-balance-item' },
-              h('span', { className: 'aup-balance-label' }, providerLabel(entry.provider, t) + ' ' + t('balance.recharge')),
-              h('span', { className: 'aup-balance-value aup-minor' + valueClass(text) }, text)
-            )
-          );
-        }
-      }
 
       return h(
         'section',
-        { className: 'aup-card aup-card-account' },
+        { className: 'aup-card aup-card-account' + (isProviderCard ? ' aup-card-account-provider' : '') },
         head,
-        !balance || balance.status === 'failed'
-          ? h(Hint, null, t('balance.failed'))
-          : walletItems.length === 0 && bonusItems.length === 0
-            ? h(Hint, null, t('balance.empty'))
-            : h('div', { className: 'aup-balance' }, walletItems, bonusItems, providerItems),
+        tabs,
+        isProviderCard ? providerBody(active) : accountBody()
       );
     }
 
@@ -2424,6 +2400,12 @@ window.__ModuleLoader__.load({
       const offAccountProviders = sessionProviders.filter((provider) => !isAccountProvider(provider));
       const offAccountLabel = [...new Set(offAccountProviders.map((provider) => providerLabel(provider, t)))].join(' / ');
       const offAccountAll = sessionProviders.length > 0 && offAccountProviders.length === sessionProviders.length;
+      const accountSources = [
+        ...sessionProviders
+          .filter((provider) => isAccountProvider(provider))
+          .map((provider) => ({ id: 'account', isAccount: true, provider })),
+        ...offAccountProviders.map((provider) => ({ id: provider, isAccount: false, provider }))
+      ];
       const providerSessionUsage = offAccountProviders.map((provider) => {
         const items = (sessionModels.items || []).filter((item) => item !== null && item !== undefined && item.provider === provider);
         return {
@@ -2803,10 +2785,10 @@ window.__ModuleLoader__.load({
               state: account,
               t,
               onRetry: refresh,
-              offAccountLabel,
               offAccountAll,
               providerBalances,
               sessionUsage: providerSessionUsage,
+              sources: accountSources,
               locale: displayLocale
             })
           : null,

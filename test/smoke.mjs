@@ -639,8 +639,10 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const mixedWallet = walk(mixedWalletTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const mixedWalletText = flat(mixedWallet);
   assert.ok(mixedWalletText.includes('542.52'), 'DeepSeek wallet still renders in a mixed session');
-  assert.ok(mixedWalletText.includes('11.04'), 'third-party balance renders next to it');
-  assert.ok(mixedWalletText.includes('OpenRouter'), 'third-party balance is labelled');
+  const sourceTabs = walk(mixedWallet, (node) => hasClass(node, 'aup-src-tab')).map(flat);
+  assert.deepEqual(sourceTabs, ['DeepSeek API', 'OpenRouter'], 'one tab per source: ' + JSON.stringify(sourceTabs));
+  assert.equal(walk(mixedWallet, (node) => hasClass(node, 'aup-badge')).length, 0, 'no partial badge once tabs exist');
+  assert.ok(!mixedWalletText.includes('部分'), 'no 部分 prefix anywhere');
 }
 
 // --------------------------------------------------------------- english --

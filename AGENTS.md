@@ -104,8 +104,9 @@
     （`opencode-go` 的凭据引用是 `OPENCODE_GO_API_KEY`；`opencode`/`-zen` 用 `OPENCODE_API_KEY`）
   - 其他不支持的 Provider 显示「暂未开放余额接口」并改为展示本会话 Token/请求数（不给无效重试按钮）；未配置 Key 显示「未配置 … API Key」
   - Provider 卡为大号余额 + 使用率进度条（已用百分比与金额同行，总额只出现一次）+ 更新时间 + 单行说明
-- 混合会话：保留 DeepSeek 余额，并在账户卡标题右侧显示「部分 {provider}」徽标（**不要**再占用底部说明行）；
-  同时读取并显示第三方 Provider 余额（金额并进同一个余额网格）；
+- 混合会话：账户卡用**来源 tab**（`aup-src-tabs`）列出会话里出现的每个来源（DeepSeek API / 各第三方 Provider），
+  点击切换显示该来源的余额；**禁止**使用「部分 {provider}」这类徽标或说明文字；
+  第三方余额与 DeepSeek 钱包一样实时读取（opencode 走套餐百分比）；
   用量统计卡顶部按来源分两行：DeepSeek API（本期 Token/金额）+ 每个第三方 Provider（本会话 Token）；
   卡标题**不要**再挂「DeepSeek API」徽标（内容已经是多来源）
 - 用量统计默认是**紧凑趋势柱 + 来源汇总**（不逐期铺文字行）；柱悬浮显示「日期 · Token · 金额」，
