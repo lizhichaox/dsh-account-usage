@@ -580,6 +580,28 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(sourceRows[1].includes('2.5M'), 'third-party row shows its session tokens');
   const mixedAccount = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   assert.equal(walk(mixedAccount, (node) => hasClass(node, 'aup-account-note')).length, 0, 'no bottom note line on the account card');
+  const mixedStats = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0];
+  assert.equal(walk(mixedStats, (node) => hasClass(node, 'aup-badge') && flat(node).includes('DeepSeek 平台')).length, 0, 'no misleading platform badge once the card holds several sources');
+
+  // Mixed sessions also read the third-party balance and show it next to the DeepSeek wallet.
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [{ date: '2026-11-07', tokens: 1_000_000, cost: 1.5, count: 10 }], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 }, { provider: 'openrouter', model: 'deepseek-flash', tokens: 2_500_000, requests: 250 }], totalTokens: 3_500_000 },
+    { phase: 'ready', items: [{ provider: 'openrouter', kind: 'openrouter', currency: 'USD', remaining: 11.04, used: 8.96 }], error: undefined },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const mixedWalletTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
+  stateQueue.length = 0;
+  const mixedWallet = walk(mixedWalletTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
+  const mixedWalletText = flat(mixedWallet);
+  assert.ok(mixedWalletText.includes('542.52'), 'DeepSeek wallet still renders in a mixed session');
+  assert.ok(mixedWalletText.includes('11.04'), 'third-party balance renders next to it');
+  assert.ok(mixedWalletText.includes('OpenRouter'), 'third-party balance is labelled');
 }
 
 // --------------------------------------------------------------- english --

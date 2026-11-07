@@ -1805,6 +1805,22 @@ window.__ModuleLoader__.load({
       const bonusItems = bonusWallets.map((wallet, index) =>
         h(WalletItem, { key: 'b' + index, label: t('balance.bonus'), wallet, locale, major: false })
       );
+      const providerItems = [];
+      if (providerBalances !== null && providerBalances !== undefined && providerBalances.phase === 'ready' && Array.isArray(providerBalances.items)) {
+        for (const entry of providerBalances.items) {
+          if (entry === null || entry === undefined || !Number.isFinite(entry.remaining)) continue;
+          const entryCurrency = typeof entry.currency === 'string' ? entry.currency : 'USD';
+          const text = formatMoney(String(entry.remaining), entryCurrency, locale);
+          providerItems.push(
+            h(
+              'div',
+              { key: 'provider-' + String(entry.provider), className: 'aup-balance-item' },
+              h('span', { className: 'aup-balance-label' }, providerLabel(entry.provider, t) + ' ' + t('balance.recharge')),
+              h('span', { className: 'aup-balance-value aup-minor' + valueClass(text) }, text)
+            )
+          );
+        }
+      }
 
       return h(
         'section',
@@ -1814,12 +1830,12 @@ window.__ModuleLoader__.load({
           ? h(Hint, null, t('balance.failed'))
           : walletItems.length === 0 && bonusItems.length === 0
             ? h(Hint, null, t('balance.empty'))
-            : h('div', { className: 'aup-balance' }, walletItems, bonusItems),
+            : h('div', { className: 'aup-balance' }, walletItems, bonusItems, providerItems),
       );
     }
 
     /** Date-dimension statistics over real platform usage (local estimates as fallback). */
-    function UsageSection({ state, dimension, onDimension, onRetry, t, fallbackCurrency, locale, showCost, thirdPartyLabel, categories }) {
+    function UsageSection({ state, dimension, onDimension, onRetry, t, fallbackCurrency, locale, showCost, categories }) {
       const moveDimension = (event) => {
         const index = DIMENSIONS.findIndex((entry) => entry.id === dimension);
         let next = null;
@@ -1833,6 +1849,30 @@ window.__ModuleLoader__.load({
         const buttons = event.currentTarget.querySelectorAll('[role="tab"]');
         if (buttons[next] !== undefined) buttons[next].focus();
       };
+      const seriesRef = React.useRef(null);
+      const [fitCount, setFitCount] = React.useState(0);
+      React.useEffect(() => {
+        const node = seriesRef.current;
+        if (node === null || node === undefined) return undefined;
+        const measure = () => {
+          const height = typeof node.clientHeight === 'number' ? node.clientHeight : 0;
+          if (height <= 0) return;
+          const next = Math.max(1, Math.floor((height + 4) / 20));
+          setFitCount((previous) => (previous === next ? previous : next));
+        };
+        measure();
+        if (typeof ResizeObserver === 'function') {
+          const observer = new ResizeObserver(measure);
+          observer.observe(node);
+          return () => observer.disconnect();
+        }
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+          window.addEventListener('resize', measure);
+          return () => window.removeEventListener('resize', measure);
+        }
+        return undefined;
+      }, [dimension, state.phase, state.days]);
+
       const dimensions = h(
         'div',
         {
@@ -1859,15 +1899,11 @@ window.__ModuleLoader__.load({
         )
       );
 
-      const platformBadge =
-        state.source !== 'local' && typeof thirdPartyLabel === 'string' && thirdPartyLabel !== ''
-          ? h('span', { className: 'aup-badge', title: t('stats.platformBadgeHint') }, t('stats.platformBadge'))
-          : null;
       const head = [
         h(CardHead, {
           icon: ChartGlyph,
           title: t('stats.title'),
-          extra: state.source === 'local' ? h('span', { className: 'aup-badge' }, t('stats.localBadge')) : platformBadge
+          extra: state.source === 'local' ? h('span', { className: 'aup-badge' }, t('stats.localBadge')) : null
         }),
         h('span', { className: 'aup-divider', 'aria-hidden': true }),
         dimensions
@@ -1916,11 +1952,17 @@ window.__ModuleLoader__.load({
       const estimate = source !== 'platform';
       const currency = typeof state.currency === 'string' && state.currency !== '' ? state.currency : fallbackCurrency || 'CNY';
       const series = buildSeries(state.days || [], dimension);
+      // Rows that no longer fit are dropped (never clipped); the totals follow what is shown.
+      const visibleCells =
+        fitCount > 0 && fitCount < series.cells.length ? series.cells.slice(series.cells.length - fitCount) : series.cells;
+      const shownTotal = visibleCells.reduce((sum, cell) => sum + cell.total, 0);
+      const shownCost = visibleCells.reduce((sum, cell) => sum + cell.cost, 0);
+      const shownCount = visibleCells.reduce((sum, cell) => sum + (Number.isFinite(cell.count) ? cell.count : 0), 0);
       const summary = t(source === 'platform' ? 'stats.summary.requests' : 'stats.summary.sessions', {
-        total: formatTokens(series.total),
-        count: String(series.count)
+        total: formatTokens(shownTotal),
+        count: String(shownCount)
       });
-      const rows = series.cells.map((cell) => {
+      const rows = visibleCells.map((cell) => {
         const detail =
           showCost !== false && cell.cost > 0
             ? cell.label + ' · ' + formatTokens(cell.total) + ' tokens · ' + formatCost(cell.cost, currency, locale, estimate)
@@ -1972,10 +2014,10 @@ window.__ModuleLoader__.load({
                 'div',
                 { key: 'account', className: 'aup-source-row aup-source-row-account' },
                 h('span', { className: 'aup-source-label' }, t('stats.platformBadge')),
-                h('span', { className: 'aup-source-tokens' }, formatTokens(series.total)),
+                h('span', { className: 'aup-source-tokens' }, formatTokens(shownTotal)),
                 showCost === false
                   ? null
-                  : h('span', { className: 'aup-source-cost' }, formatCost(series.cost, currency, locale, estimate))
+                  : h('span', { className: 'aup-source-cost' }, formatCost(shownCost, currency, locale, estimate))
               ),
               extraSources.map((row) =>
                 h(
@@ -2004,7 +2046,7 @@ window.__ModuleLoader__.load({
           : sourceBlock,
         series.total === 0
           ? h(Hint, null, t('stats.empty'))
-          : h('div', { className: 'aup-series' }, rows)
+          : h('div', { className: 'aup-series', ref: seriesRef }, rows)
       );
     }
 
@@ -2459,7 +2501,7 @@ window.__ModuleLoader__.load({
 
       React.useEffect(() => {
         let cancelled = false;
-        if (offAccountAll !== true || offAccountProviders.length === 0) {
+        if (offAccountProviders.length === 0) {
           setProviderBalances({ phase: 'idle', items: [], error: undefined });
           return undefined;
         }
@@ -2653,7 +2695,6 @@ window.__ModuleLoader__.load({
               fallbackCurrency: currency,
               locale: displayLocale,
               showCost: settings.showCost,
-              thirdPartyLabel: offAccountLabel,
               categories: providerSessionUsage
             })
           : null,
