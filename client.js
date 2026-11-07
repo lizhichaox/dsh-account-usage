@@ -496,10 +496,7 @@ window.__ModuleLoader__.load({
       '.aup-series-cost{font-size:13px;line-height:16px;color:var(--dsw-alias-label-secondary);font-variant-numeric:tabular-nums}',
       '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-value{color:var(--dsw-alias-label-primary);font-weight:500}',
       '.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary)}',
-      '.aup-tab-title{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:0;flex:none}',
-      '.aup-tab-glyph{flex:none;display:inline-flex;width:14px;height:14px;color:var(--dsw-alias-label-secondary)}',
-      '.aup-tab-glyph svg{width:100%;height:100%;flex:none}',
-      '.aup-tab-title-text{min-width:0;white-space:nowrap}',
+      '.aup-tab-icon{flex:none;width:14px;height:14px;margin-right:5px;vertical-align:-2px;color:var(--dsw-alias-label-secondary)}',
       // ---- one shared type scale: every Chinese text is 13px, only numbers vary by role ----
       '.aup-card{gap:6px;padding:10px}',
       '.aup-card-title{font-size:13px;line-height:16px;font-weight:500}',
@@ -542,7 +539,7 @@ window.__ModuleLoader__.load({
     // --------------------------------------------------------------- glyphs --
 
     /** Wallet glyph used by the panel header, the guide card, and the foot action. */
-    function WalletGlyph({ size = 16 }) {
+    function WalletGlyph({ size = 16, className }) {
       return h(
         'svg',
         {
@@ -551,7 +548,8 @@ window.__ModuleLoader__.load({
           height: size,
           fill: 'none',
           'aria-hidden': true,
-          focusable: 'false'
+          focusable: 'false',
+          className
         },
         h('rect', {
           x: 2.25,
@@ -2862,12 +2860,7 @@ window.__ModuleLoader__.load({
     function AccountUsageTitle({ useTabInfo, t }) {
       const info = useTabInfo();
       const label = typeof t === 'function' ? t('tab.title') : info.tab.title;
-      return h(
-        'span',
-        { className: 'aup-tab-title' },
-        h('span', { className: 'aup-tab-glyph' }, h(WalletGlyph, { size: 14 })),
-        h('span', { className: 'aup-tab-title-text' }, label)
-      );
+      return h(React.Fragment, null, h(WalletGlyph, { size: 14, className: 'aup-tab-icon' }), label);
     }
 
     // ----------------------------------------------------------------- apply --
