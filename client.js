@@ -180,6 +180,9 @@ window.__ModuleLoader__.load({
       'tokens.breakdown.messages': '消息',
       'balance.total': '总额',
       'account.providerNote': '余额由 {provider} 提供',
+      'account.providerNoBalance': '{provider} 暂未开放余额接口，显示本会话用量。',
+      'tokens.sessionUsage': '本会话用量',
+      'tokens.requestsCount': '{count} 次请求',
       'account.providerUpdated': '更新于 {time}',
       'account.providerUsedRate': '已用 {percent}%',
     };
@@ -279,6 +282,9 @@ window.__ModuleLoader__.load({
       'tokens.breakdown.messages': 'Messages',
       'balance.total': 'Total',
       'account.providerNote': 'Balance provided by {provider}',
+      'account.providerNoBalance': '{provider} has no balance API yet; showing this session.',
+      'tokens.sessionUsage': 'Session usage',
+      'tokens.requestsCount': '{count} requests',
       'account.providerUpdated': 'Updated {time}',
       'account.providerUsedRate': '{percent}% used',
     };
@@ -425,6 +431,11 @@ window.__ModuleLoader__.load({
       '.aup-provider-meta-value{font-size:16px;line-height:22px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.aup-provider-rate{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-provider-note{margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
+      '.aup-provider-figures{display:flex;flex-direction:column;gap:6px;min-width:0}',
+      '.aup-provider-figure{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:2px 10px;min-width:0}',
+      '.aup-provider-figure-label{min-width:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
+      '.aup-provider-figure-value{font-size:20px;line-height:26px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
+      '.aup-provider-figure-meta{grid-column:1/-1;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
       '.aup-card-session .aup-session-label{display:flex;align-items:center;gap:5px;margin:0;font-size:13px;line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary);white-space:nowrap}',
       '.aup-card-session .aup-session-value{margin:0;font-size:13px;line-height:18px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
       '.aup-card-session .aup-bar{height:8px}',
@@ -750,6 +761,9 @@ window.__ModuleLoader__.load({
       xai: 'xAI',
       groq: 'Groq',
       mistral: 'Mistral',
+      opencode: 'OpenCode',
+      'opencode-go': 'OpenCode Go',
+      'opencode-zen': 'OpenCode Zen',
       ollama: 'Ollama',
       azure: 'Azure',
       bedrock: 'AWS Bedrock',
@@ -1591,7 +1605,7 @@ window.__ModuleLoader__.load({
     }
 
     /** Signed-in identity and wallet balances. */
-    function AccountSection({ state, t, onRetry, offAccountLabel, offAccountAll, providerBalances, locale: uiLocale }) {
+    function AccountSection({ state, t, onRetry, offAccountLabel, offAccountAll, providerBalances, sessionUsage, locale: uiLocale }) {
       const result = state.result;
       const accountLocale = result === undefined ? undefined : result.locale;
       const locale = uiLocale === undefined ? accountLocale : uiLocale;
@@ -1611,7 +1625,37 @@ window.__ModuleLoader__.load({
         if (phase !== 'ready') return h('section', { className: 'aup-card aup-card-account aup-card-account-provider' }, providerHead, h(Hint, null, t('loading')));
         if (rows.length === 0) {
           const code = providerBalances.error;
-          const messageKey = code === 'unsupported_provider' ? 'account.providerUnsupported' : code === 'no_credential' ? 'account.providerNoKey' : 'account.providerUnavailable';
+          if (code === 'unsupported_provider') {
+            const usageRows = Array.isArray(sessionUsage)
+              ? sessionUsage.filter((row) => row !== null && row !== undefined && Number.isFinite(row.tokens) && row.tokens > 0)
+              : [];
+            return h(
+              'section',
+              { className: 'aup-card aup-card-account aup-card-account-provider' },
+              providerHead,
+              h(
+                'div',
+                { className: 'aup-provider-body' },
+                h('p', { className: 'aup-provider-note' }, t('account.providerNoBalance', { provider: offAccountLabel })),
+                usageRows.length === 0
+                  ? null
+                  : h(
+                      'div',
+                      { className: 'aup-provider-figures' },
+                      usageRows.map((row) =>
+                        h(
+                          'div',
+                          { key: row.provider, className: 'aup-provider-figure' },
+                          h('span', { className: 'aup-provider-figure-label' }, row.label === '' ? t('tokens.sessionUsage') : row.label + ' · ' + t('tokens.sessionUsage')),
+                          h('span', { className: 'aup-provider-figure-value' }, formatTokens(row.tokens)),
+                          h('span', { className: 'aup-provider-figure-meta' }, t('tokens.requestsCount', { count: String(row.requests) }))
+                        )
+                      )
+                    )
+              )
+            );
+          }
+          const messageKey = code === 'no_credential' ? 'account.providerNoKey' : 'account.providerUnavailable';
           return h(
             'section',
             { className: 'aup-card aup-card-account aup-card-account-provider' },
@@ -2188,6 +2232,15 @@ window.__ModuleLoader__.load({
       const offAccountProviders = sessionProviders.filter((provider) => !isAccountProvider(provider));
       const offAccountLabel = [...new Set(offAccountProviders.map((provider) => providerLabel(provider, t)))].join(' / ');
       const offAccountAll = sessionProviders.length > 0 && offAccountProviders.length === sessionProviders.length;
+      const providerSessionUsage = offAccountProviders.map((provider) => {
+        const items = (sessionModels.items || []).filter((item) => item !== null && item !== undefined && item.provider === provider);
+        return {
+          provider,
+          label: providerLabel(provider, t),
+          tokens: items.reduce((sum, item) => sum + (Number.isFinite(item.tokens) ? item.tokens : 0), 0),
+          requests: items.reduce((sum, item) => sum + (Number.isFinite(item.requests) ? item.requests : 0), 0)
+        };
+      });
       const cachedUsage = dimensionResults.get(dimension);
       /** Render the selected dimension's own data immediately; never bucket another dimension's days. */
       const displayedUsage =
@@ -2560,6 +2613,7 @@ window.__ModuleLoader__.load({
               offAccountLabel,
               offAccountAll,
               providerBalances,
+              sessionUsage: providerSessionUsage,
               locale: displayLocale
             })
           : null,

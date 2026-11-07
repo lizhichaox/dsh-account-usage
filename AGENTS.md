@@ -97,7 +97,7 @@
   - **隐藏 DeepSeek 账户余额与 DeepSeek 平台用量**
   - 账户卡改为显示对应 Provider 的余额（OpenRouter `/api/v1/credits`，失败回退 `/api/v1/key`；
     DeepSeek API Key 用 `/user/balance`）
-  - 不支持的 Provider 显示「不支持余额查询」，未配置 Key 显示「未配置 … API Key」
+  - 不支持的 Provider（如 OpenCode Go）显示「暂未开放余额接口」并改为展示本会话 Token/请求数（不给无效重试按钮）；未配置 Key 显示「未配置 … API Key」
   - Provider 卡为大号余额 + 使用率进度条（已用百分比与金额同行，总额只出现一次）+ 更新时间 + 单行说明
 - 混合会话：保留 DeepSeek 余额 + 提示「部分使用 …」，平台用量卡加「DeepSeek 平台」标记
 - Provider 余额缓存 60 秒；手动刷新强制重新查询

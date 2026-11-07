@@ -536,6 +536,28 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(!providerText.includes('542.52'), 'DeepSeek wallet never renders in provider mode');
   assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 0, 'platform stats stay hidden in provider mode');
   assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-session')).length, 1, 'session card still renders');
+
+  // Providers without a balance API (for example OpenCode Go) fall back to the
+  // session totals instead of showing a dead retry button.
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [{ provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 7_500_000, requests: 1234 }], totalTokens: 7_500_000 },
+    { phase: 'ready', items: [], error: 'unsupported_provider' },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const unsupportedTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
+  stateQueue.length = 0;
+  const unsupportedCard = walk(unsupportedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
+  const unsupportedText = flat(unsupportedCard);
+  assert.ok(unsupportedText.includes('OpenCode Go'), 'unknown providers get a readable label: ' + unsupportedText);
+  assert.ok(unsupportedText.includes('7.5M'), 'unsupported provider card shows this session usage');
+  assert.ok(unsupportedText.includes('1234'), 'unsupported provider card shows the request count');
+  assert.equal(walk(unsupportedCard, (node) => hasClass(node, 'aup-retry')).length, 0, 'no dead retry for a provider without a balance API');
 }
 
 // --------------------------------------------------------------- english --

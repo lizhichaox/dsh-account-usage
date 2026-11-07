@@ -230,7 +230,8 @@ DSH 输入框底部原有一行会话统计（轮数/步数 · tok/s · Token ·
 |---|---|---|
 | `openrouter` | `GET /api/v1/credits`（失败回退 `/api/v1/key`） | 剩余额度、已用（USD） |
 | `deepseek` / `deepseek-api`（API Key 路线） | `GET https://api.deepseek.com/user/balance` | 余额、赠送额度（响应币种） |
-| 其他 Provider | 无公开余额接口 | 显示「不支持余额查询」说明 |
+| `opencode` / `opencode-go` | 暂无公开余额接口 | 显示「暂未开放余额接口」+ 本会话 Token 与请求数（不显示无效的重试） |
+| 其他 Provider | 无公开余额接口 | 同上：说明 + 本会话用量 |
 
 - 凭据只在 **Host** 侧读取：`ctx.credentials.resolve('OPENROUTER_API_KEY')` 或 `llm-pi-ai/<provider>`
   的存储记录，**API Key 不会返回给浏览器**
