@@ -309,7 +309,7 @@ window.__ModuleLoader__.load({
       '.aup-empty{padding:12px;color:var(--dsw-alias-label-secondary);font-size:13px;line-height:18px;font-weight:500;text-align:center}',      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
-      '.aup-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden;container-type:size;container-name:aup-card}',
+      '.aup-card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}',
       '.aup-card-session{flex:4 1 0;justify-content:flex-start}',
       '.aup-card-stats{flex:1 1 0;justify-content:space-between}',
       '.aup-card-account{flex:0 0 auto;min-height:96px;justify-content:flex-start}',
