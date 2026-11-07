@@ -87,7 +87,7 @@ window.__ModuleLoader__.load({
 
     /** Simplified Chinese dictionary (the key-set source of truth). */
     const zh = {
-      'tab.title': '账号用量',
+      'tab.title': '用量',
       'panel.title': '账号用量',
       'guide.title': '账号用量',
       'guide.description': '余额与按日、周、月、季、年统计的用量',
@@ -183,7 +183,7 @@ window.__ModuleLoader__.load({
 
     /** English dictionary, checked against the Chinese key set. */
     const en = {
-      'tab.title': 'Account usage',
+      'tab.title': 'Usage',
       'panel.title': 'Account usage',
       'guide.title': 'Account usage',
       'guide.description': 'Balance and usage grouped by day, week, month, quarter, or year',

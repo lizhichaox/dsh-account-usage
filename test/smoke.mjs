@@ -229,7 +229,7 @@ assert.equal(first.tabTypes.length, 1, 'one tab type registered');
 {
   const type = first.tabTypes[0];
   assert.equal(type.kind, 'account-usage');
-  assert.equal(type.title('x'), '账号用量');
+  assert.equal(type.title('x'), '用量', 'short tab title avoids truncation');
   assert.equal(type.guide.length, 1);
   assert.equal(type.guide[0].title(), '账号用量');
   assert.equal(typeof type.guide[0].icon, 'function');
