@@ -11,11 +11,11 @@ Harness 的「插件市场」（Discover）不是中心化商店，而是**索�
 | GitHub 仓库 | <https://github.com/lizhichaox/dsh-account-usage>（public，`main`） |
 | 市场索引 | <https://lizhichaox.github.io/dsh-account-usage/market/index.json> |
 | 索引托管 | GitHub Pages（仓库根目录；`.nojekyll` 保证 JSON 原样输出，无重定向） |
-| 当前安装源 | **npm**：`dsh-account-usage@1.0.9`（索引 `source.type = npm`） |
-| 包名 / 版本 | `dsh-account-usage` / **1.0.9** |
+| 当前安装源 | **npm**：`dsh-account-usage@1.0.10`（索引 `source.type = npm`） |
+| 包名 / 版本 | `dsh-account-usage` / **1.0.10** |
 | 兼容性 | `engines.dsh: ^0.2.2-rc.1`（与当前 runtime 匹配） |
-| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.9`，2026-11-08 11:34:39Z，本地 19:34） |
-| 校验 | `npm run verify` + `npm run verify:ui` 全绿（含 340px 单行断言）；npm 包 15 个文件 / 62.7 kB（shasum `f7560dde`，与本地 `npm pack` 逐字节一致）；CI `verify` 全绿（含 macOS 真机几何任务）；Pages 索引已切到 1.0.9，并用官方 `parseMarketIndex` 复核通过（本地 + 线上） |
+| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.10`，2026-11-08 11:52:40Z，本地 19:52） |
+| 校验 | `npm run verify` + `npm run verify:ui` 全绿（50 个状态，含 330/300px 窄屏单行断言）；npm 包 15 个文件 / 63.0 kB（shasum `0d32a07e`，与本地 `npm pack` 逐字节一致）；CI `verify` 全绿（含 macOS 真机几何任务）；Pages 索引已切到 1.0.10，并用官方 `parseMarketIndex` 复核通过（本地 + 线上） |
 
 安装侧使用：
 
