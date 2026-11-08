@@ -4,18 +4,18 @@ Harness 的「插件市场」（Discover）不是中心化商店，而是**索�
 索引 URL（format 1 JSON），DSH 读取索引、展示条目，并用 `plugin_manager.installBundle`
 按条目里的**精确版本**安装。发布 = **可安装的公开源（npm 或 Git commit）+ 一条索引记录**。
 
-## 当前状态（2026-11-07）
+## 当前状态（2026-11-08）
 
 | 项 | 值 |
 |---|---|
 | GitHub 仓库 | <https://github.com/lizhichaox/dsh-account-usage>（public，`main`） |
 | 市场索引 | <https://lizhichaox.github.io/dsh-account-usage/market/index.json> |
 | 索引托管 | GitHub Pages（仓库根目录；`.nojekyll` 保证 JSON 原样输出，无重定向） |
-| 当前安装源 | **npm**：`dsh-account-usage@1.0.2`（索引 `source.type = npm`） |
-| 包名 / 版本 | `dsh-account-usage` / **1.0.2** |
+| 当前安装源 | **npm**：`dsh-account-usage@1.0.3`（索引 `source.type = npm`） |
+| 包名 / 版本 | `dsh-account-usage` / **1.0.3** |
 | 兼容性 | `engines.dsh: ^0.2.2-rc.1`（与当前 runtime 匹配） |
-| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.2`，2026-11-07 06:00:42Z） |
-| 校验 | `npm run verify` 全绿；npm 包 15 个文件 / 49.3 kB；CI 全绿；Pages 索引已切到 1.0.2 |
+| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.3`，2026-11-08 12:58:59Z） |
+| 校验 | `npm run verify` + `npm run verify:ui` 全绿；npm 包 15 个文件 / 58.3 kB（shasum `15fb8d4a`）；CI 全绿；Pages 索引已切到 1.0.3，并用官方 `parseMarketIndex` 复核通过 |
 
 安装侧使用：
 
@@ -26,11 +26,11 @@ Harness 的「插件市场」（Discover）不是中心化商店，而是**索�
 ## 更新发布流程
 
 ```sh
-# 1. 改完代码 + 升版本号后自检
-npm run verify
+# 1. 改完代码 + 升版本号后自检（动过布局必须再跑真机几何测试）
+npm run verify && npm run verify:ui
 
 # 2. 提交并推送代码
-git add -A && git commit -m "feat: ... v1.0.2" && git push
+git add -A && git commit -m "feat: ... v1.0.3" && git push
 
 # 3. 发布 npm（需要 npm 登录；2FA 账号用带 bypass 2FA 的 granular token）
 npm publish
@@ -42,7 +42,7 @@ npm run market:index:npm
 git add market/index.json && git commit -m "chore: update market index" && git push
 
 # 6. tag / GitHub Release
-git tag -a v1.0.2 -m "dsh-account-usage v1.0.2" && git push --tags
+git tag -a v1.0.3 -m "dsh-account-usage v1.0.3" && git push --tags
 ```
 
 > 每次更新都必须重新生成 `market/index.json`；市场按 **精确版本** 安装。
