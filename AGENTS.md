@@ -310,10 +310,10 @@
 - **英文（拉丁）文字墨色与中文对齐**：字体栈拉丁优先、根 500 基线、次要色 `--aup-label-2`（color-mix 30% 主色）；
   取代了此前「次要文字直接用 `label-secondary`、字重从默认 400 继承」的写法（那样英文会明显发浅）
 - **切维度零抖动**：卡片 `flex-basis` 必须是 `0`（不是 auto，auto 会让内容变化移动卡片边界）、
-- **放不下就少放点，绝不遮挡**：明细行数 = floor(面板算出的可用高度 / 23)，可为 0；
-  短面板隐藏 Token 构成彩条与上下文百分比图例；卡片保留 `min-height:auto` 兜底（宁可滚动也不叠字）
   列表用固定行距而非 space-between、骨架行数对齐 `DIMENSION_ROW_CAP`、后台预热全部维度；
   取代了此前「卡片 `flex:1 1 auto` + 明细用 space-between 摊开」的写法
+- **放不下就少放点，绝不遮挡**：明细行数 = floor(面板算出的可用高度 / 23)，可为 0；
+  短面板隐藏 Token 构成彩条与上下文百分比图例；卡片保留 `min-height:auto` 兜底（宁可滚动也不叠字）
 - 面板最小宽度 340px，低于它会被自动纠正；万一纠正失败，模型行 `Provider - 模型名` 换行显示（不降字号）
   （`.aup-model-row` 用 `flex-wrap`），token 数值 `margin-left:auto`，绝不压到文字上
 - 底栏 dock + ContextMeter 一起隐藏（只隐藏 slot 不够）
