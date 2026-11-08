@@ -38,7 +38,7 @@
 | 2 | 只用真实数据，不许假估算 | 平台 usage / 余额接口，失败才回退并带 `≈` | `account reader does not fetch the profile` |
 | 3 | 三张卡、四字中文标题、居中、**不许改名、不许第四张** | 会话消耗 / 用量统计 / 账户余额 | `four-character card titles` |
 | 4 | **标题上不许挂 provider 标记** | 供应商只出现在账户卡来源 tab | `no provider badge inside a card head` / `no provider name inside a card head` |
-| 5 | **面板充满右侧栏整高整宽，底部不留白** | 卡片按内容撑开 + 最后一张卡 `flex:1 1 auto` 吸收剩余 | `cards size to their content and are never squeezed` / `the last card absorbs the leftover pane height` |
+| 5 | **面板充满右侧栏整高整宽、底部不留白，且空间按信息密度分配** | 会话卡吸收剩余并均匀摊开；余额卡按内容收紧 | `cards size to their content and are never squeezed` / `the dense session card absorbs the leftover height` / `the balance card hugs its content` / layout-check 的 `space allocation` 断言 |
 | 6 | **卡内不许大块空白** | 底部块 `margin-top:auto`、拉伸块 `flex:1` | `session footer sits on the card bottom` / `stats footer sits on the card bottom` |
 | 7 | 宽度也必须撑满 | 不写 `scrollbar-gutter`、不留右侧内边距 | `the card column spans the full pane width` |
 | 8 | **内容不要被遮挡 / 裁切 / 省略** | `overflow:visible`、`min-height:auto`、无 ellipsis | `card text never uses ellipsis` |
@@ -100,8 +100,16 @@
 - **布局只用确定性 CSS，任何高度都不许靠运行时测量决定**（2026-11-08 反复踩坑后的最终架构）：
   1. **卡片高度 = 内容高度（`flex:0 0 auto`）**：卡片永远按内容撑开，**绝不可能被压缩到内容以下**，
      因此卡内文字不可能互相遮挡——遮挡的唯一成因就是卡片被挤小，此条从结构上杜绝。
-  2. **最后一张卡吸收剩余高度**：`.aup-cards>.aup-card:last-child{flex:1 1 auto}`，
-     面板底部不会出现空白带；账户卡内部的余额/套餐块用 `flex:1` + 均匀分布填满这块空间。
+  2. **剩余高度按信息密度分配，不是按位置分配**（用户 2026-11-08：
+     「最不该占用空间的卡片占了大片空间…信息量多的地方多占点」）：
+     - **会话卡吸收剩余高度**：`.aup-cards>.aup-card-session-fixed{flex:1 1 auto;min-height:auto}`，
+       内部 `.aup-session-body{flex:1 1 auto;justify-content:space-evenly}`，多出来的高度被均匀摊在
+       会话卡的各段之间，**不会在面板底部留白带**。
+     - **账户余额卡按内容高度收紧**：`flex:0 0 auto`，内部 `.aup-account-body` / `.aup-provider-body` /
+       `.aup-balance` 一律 `flex:0 0 auto` + `justify-content:flex-start`，
+       **禁止**再用 `space-evenly` / `flex:1 1 auto` 把自己的几行数字撑成一大片空白。
+     - 历史教训：曾让「最后一张卡」吸收高度，结果信息最少的余额卡吃掉了整屏空白，
+       被用户点名骂——**分配空间要看卡片内容量，不要看它在 DOM 里的位置**。
   3. **明细列表固定槽位**：`SERIES_ROW_SLOTS = 4`，按维度渲染 1..N 行，剩余用**不可见占位行**
      （`.aup-series-slot`，`min-height:19px`）补齐；这样**切维度时列表高度恒定**，下面的卡片一动不动。
   4. **绝不允许滚动、绝不出现滚动条，并且尽量把信息全部显示出来**
@@ -311,8 +319,10 @@
 - 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
 - **卡片**不使用 `container-type: size`（内容高度会塌陷成 0）；但**面板根节点必须用**
   `container-type:size;container-name:aup-panel`，让收窄阶梯按面板真实高度判定（见 §2）
-- 面板充满右侧栏整高整宽：**卡片按内容撑开（`flex:0 0 auto`）+ 最后一张卡 `flex:1 1 auto` 吸收剩余高度**；
-  取代了此前「三张卡都 `flex:1 1 0` 平分高度」的写法——平分会把卡片压到内容以下，这是所有叠字的根因
+- 面板充满右侧栏整高整宽、**剩余高度按信息密度分配**：会话卡（8 项指标）`flex:1 1 auto` 吸收并
+  `justify-content:space-evenly` 摊开；余额卡（3 行数字）`flex:0 0 auto` 收紧；
+  取代了「三张卡都 `flex:1 1 0` 平分」（会把卡片压到内容以下 → 叠字根因）
+  和「最后一张卡吸收」（信息最少的余额卡吃掉整屏空白，被用户点名）两种写法
 - 按模型统计：无冗余小标题，每行 `Provider - 模型短名    Tokens`（最多 3 行，过长换行，绝不降字号）
 - 统计区为**对齐两列表格**（标签列 `max-content`、值列右对齐，行高 18px、列间距 16px）；
   数值过长时只允许收紧字距（`statValueClass` → letter-spacing），**绝不能改字号、也不能与相邻列重叠**；时长使用紧凑格式（如 1时44分 / 2分57秒 / 1.7秒）；用量统计每日行单行显示 Token · 金额，行高有下限，禁止重叠

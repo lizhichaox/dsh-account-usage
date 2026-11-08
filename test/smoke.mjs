@@ -100,7 +100,7 @@ assert.ok(source.includes("root.setAttribute('data-account-usage-hide-stats'"), 
 // height so the panel never shows a dead band; the detail list always occupies
 // the same number of slots so a dimension switch cannot move the cards below it.
 assert.ok(source.includes('.aup-card{flex:0 0 auto;min-height:auto;'), 'cards size to their content and are never squeezed');
-assert.ok(source.includes('.aup-cards>.aup-card:last-child{flex:1 1 auto}'), 'the last card absorbs the leftover pane height');
+assert.ok(source.includes('.aup-cards>.aup-card-session-fixed{flex:1 1 auto;min-height:auto}'), 'the dense session card absorbs the leftover height');
 assert.ok(source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:grid;'), 'the detail list is content sized');
 assert.ok(source.includes('const SERIES_ROW_SLOTS = 4'), 'the list keeps a constant slot count');
 assert.ok(source.includes('Math.max(0, SERIES_ROW_SLOTS - periodRows.length)'), 'spare slots pad the list in quarter/year');
@@ -165,12 +165,17 @@ assert.ok(source.includes("const summaryCells = dimension === 'all' ? series.cel
 // The panel fills the right sidebar: cards grow with the pane instead of leaving a
 // blank band, the column never reserves a scrollbar gutter, and invisible padding
 // rows are gone now that growth (not filler) keeps the height constant.
-assert.ok(source.includes('.aup-cards>.aup-card:last-child{flex:1 1 auto}'), 'the panel fills the pane height');
+assert.ok(source.includes('.aup-cards>.aup-card-session-fixed{flex:1 1 auto;min-height:auto}'), 'the panel fills the pane height');
 assert.ok(source.includes('.aup-card-account-provider{flex:0 0 auto;min-height:auto;'), 'the provider account card sizes to its content');
-assert.ok(source.includes('.aup-card-session-fixed{flex:0 0 auto}'), 'the session card sizes to its content');
+// Space follows information density: the session card (eight metrics) takes the
+// slack and the balance card (three rows) hugs its content instead of stretching.
+assert.ok(source.includes('.aup-card-session .aup-session-body{flex:1 1 auto;min-height:auto;display:flex;flex-direction:column;gap:6px;justify-content:space-evenly}'), 'the session content spreads evenly over the space it gets');
+assert.ok(source.includes("'.aup-card-account{flex:0 0 auto;min-height:auto;justify-content:flex-start}'"), 'the balance card hugs its content');
+assert.ok(source.includes("'.aup-provider-body{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;gap:8px;justify-content:flex-start}'"), 'the plan rows do not stretch inside the balance card');
+assert.ok(!source.includes('.aup-cards>.aup-card:last-child{flex:1 1 auto}'), 'no card earns space just for being last');
 assert.ok(!source.includes('scrollbar-gutter'), 'the card column spans the full pane width');
 assert.ok(source.includes('aup-series-slot'), 'invisible slot rows keep the list height constant');
-assert.ok(source.includes('.aup-card-session .aup-session-body>.aup-context{margin-top:auto}'), 'session footer sits on the card bottom');
+assert.ok(source.includes('.aup-card-session .aup-session-body>.aup-context{margin-top:0}'), 'the context block rides the even spread, not a bottom anchor');
 assert.ok(source.includes('.aup-stat-list::before{content:""'), 'a hairline separates the two stat columns');
 assert.ok(!source.includes('buildDetailStats'), 'the dead provider-detail stat builder is gone');
 assert.ok(source.includes('.aup-stats-summary{margin-top:auto;'), 'stats footer sits on the card bottom');

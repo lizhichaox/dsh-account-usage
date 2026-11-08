@@ -251,6 +251,19 @@ function measure(css, dir, height, testCase, extraCss = '', width = 420) {
   return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
 }
 
+// `--shot <paneHeight> [dimension] [width]` writes one ready-to-look-at page so a
+// human (or an agent with an image viewer) can see the real rendering.
+if (process.argv.includes('--shot')) {
+  const index = process.argv.indexOf('--shot');
+  const shotHeight = Number(process.argv[index + 1]) || 1080;
+  const shotCase = caseOf(process.argv[index + 2] || 'day');
+  const shotWidth = Number(process.argv[index + 3]) || 420;
+  const file = join(tmpdir(), 'aup-shot-' + shotHeight + '-' + shotCase.id + '-' + shotWidth + '.html');
+  writeFileSync(file, page(css, shotHeight, shotCase, '', shotWidth));
+  console.log(file);
+  process.exit(0);
+}
+
 // `--tiers` prints the panel's content height at every shedding tier so the
 // media-query thresholds are chosen from measurements instead of guesses.
 if (process.argv.includes('--tiers')) {
@@ -299,7 +312,7 @@ for (const sweep of SWEEPS) {
         failures.push(`${label}: no measurement returned`);
         continue;
       }
-      rows.push(result);
+      rows.push({ ...result, caseId: testCase.id, requested: height, requestedWidth: sweep.width });
       if (result.overlaps.length > 0) failures.push(`${label}: overlapping text -> ${result.overlaps.join(' | ')}`);
       if (result.cardOverflow.length > 0) failures.push(`${label}: card content overflows -> ${result.cardOverflow.join(' | ')}`);
       if (result.horizontal.length > 0) failures.push(`${label}: horizontal overflow -> ${result.horizontal.join(' | ')}`);
@@ -311,6 +324,32 @@ for (const sweep of SWEEPS) {
       for (const [name, offset] of Object.entries(result.centring ?? {})) {
         if (offset > 1) failures.push(`${label}: ${name} is not vertically centred -> off by ${offset}px`);
       }
+    }
+  }
+}
+
+// Space allocation: the leftover height must go to the information-dense card, so
+// the session card grows with the pane while the two-row balance card stays put.
+const heightOf = (result, className) => {
+  const card = result.cards.find((entry) => String(entry.classes).includes(className));
+  return card === undefined ? undefined : card.height;
+};
+const pick = (requested) => rows.find((row) => row.requested === requested && row.requestedWidth === 420 && row.caseId === 'day');
+const small = pick(1000);
+const large = pick(1200);
+if (small !== undefined && large !== undefined) {
+  const smallAccount = heightOf(small, 'aup-card-account');
+  const largeAccount = heightOf(large, 'aup-card-account');
+  const smallSession = heightOf(small, 'aup-card-session');
+  const largeSession = heightOf(large, 'aup-card-session');
+  if (smallAccount === undefined || largeAccount === undefined || smallSession === undefined || largeSession === undefined) {
+    failures.push('space allocation: could not find the session and balance cards');
+  } else {
+    if (Math.abs(largeAccount - smallAccount) > 1) {
+      failures.push(`space allocation: the balance card stretches with the pane (${smallAccount}px -> ${largeAccount}px) instead of hugging its content`);
+    }
+    if (largeSession - smallSession < 50) {
+      failures.push(`space allocation: the dense session card does not grow with the pane (${smallSession}px -> ${largeSession}px)`);
     }
   }
 }
