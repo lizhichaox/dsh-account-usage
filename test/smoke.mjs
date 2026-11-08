@@ -63,9 +63,10 @@ const source = fs.readFileSync(path.join(root, 'client.js'), 'utf8');
   const rawSizes = source.match(/font-size:[0-9.]+px/g) || [];
   assert.equal(rawSizes.length, 0, 'every font size goes through a token: ' + JSON.stringify(rawSizes));
   const css = source;
-  for (const token of ['--aup-font-ui', '--aup-fs-text', '--aup-fs-num-lg', '--aup-fs-num-md', '--aup-fs-num-sm', '--aup-fs-num-xs', '--aup-fs-num-xxs']) {
+  for (const token of ['--aup-font-ui', '--aup-fs-text']) {
     assert.ok(source.includes(token + ':'), 'declares ' + token);
   }
+  assert.ok(!source.includes('--aup-fs-num'), 'exactly one font size token exists');
 }
 assert.equal((source.match(/text-overflow:ellipsis/g) || []).length, 0, 'card text never uses ellipsis');
 
