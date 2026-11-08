@@ -94,24 +94,26 @@ assert.equal((source.match(/text-overflow:ellipsis/g) || []).length, 0, 'card te
 assert.ok(/document\.head\.appendChild\(tag\)/.test(source), 'the stylesheet is injected into document.head');
 assert.ok(source.includes("root.setAttribute('data-account-usage-hide-stats'"), 'the composer dock stats are hidden by default');
 
-// A dimension switch must not move anything: card heights come from the pane
-// (flex-basis 0), rows keep a fixed pitch instead of re-spreading, and the
-// loading frame uses the target dimension's row count (not a taller 7-row
-// placeholder), while every dimension is warmed in the background.
-assert.ok(source.includes('.aup-card{flex:1 1 0;min-height:auto;'), 'card heights do not follow their content');
-assert.ok(source.includes('.aup-card-stats .aup-series{flex:1 1 0;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}'), 'period rows keep a fixed pitch across dimensions');
+// Layout is deterministic CSS only: no runtime measurement may decide heights.
+// Cards size to their content, so none of them can ever be squeezed below it and
+// no text can be painted over another text; the last card absorbs the leftover
+// height so the panel never shows a dead band; the detail list always occupies
+// the same number of slots so a dimension switch cannot move the cards below it.
+assert.ok(source.includes('.aup-card{flex:0 0 auto;min-height:auto;'), 'cards size to their content and are never squeezed');
+assert.ok(source.includes('.aup-cards>.aup-card:last-child{flex:1 1 auto}'), 'the last card absorbs the leftover pane height');
+assert.ok(source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}'), 'the detail list is content sized');
+assert.ok(source.includes('const SERIES_ROW_SLOTS = 4'), 'the list keeps a constant slot count');
+assert.ok(source.includes('Math.max(0, SERIES_ROW_SLOTS - periodRows.length)'), 'spare slots pad the list in quarter/year');
+assert.ok(source.includes('.aup-series-slot{min-height:21px;pointer-events:none}'), 'the padding rows stay invisible');
+assert.ok(!source.includes('rowBudget') && !source.includes('ROW_PITCH_PX'), 'no measured row budget remains');
+assert.ok(!source.includes('data-aup-compact'), 'no height-driven compact attribute remains');
+assert.ok(source.includes('@media (max-height:900px){.aup-compose{display:none}}'), 'short windows shed the decorative token bar via CSS only');
+assert.ok(!source.includes('@container aup-card'), 'no dead container queries remain');
+assert.ok(!/\.aup-stats-summary\{[^}]*position:/.test(source), 'the summary is in normal flow, never positioned over the rows');
+assert.ok(!/\.aup-card\{[^}]*overflow:hidden/.test(source), 'cards never clip their content');
 // The period list may never overflow its box: the row count is derived from the
 // pane height (cards split it evenly), so rows can never paint over the summary.
 // The measurement reads only pane/flex geometry, so it cannot feed back.
-assert.ok(source.includes('const ROW_PITCH_PX = 23'), 'the row pitch is a named constant');
-assert.ok(source.includes('const share = (cardsEl.clientHeight - gaps) / cardCount'), 'the row budget comes from the pane, not from content');
-assert.ok(source.includes('const chrome = cardEl.clientHeight - seriesEl.clientHeight'), 'fixed card chrome is measured once');
-assert.ok(source.includes('const rowCap = Math.min(dimensionRowCap, rowBudget)'), 'rendered rows are clamped by the measured budget');
-assert.ok(source.includes('rowCap > 0 ? periodRows : null'), 'no row is drawn when not even one fits, but the list box stays measurable');
-assert.ok(source.includes('Math.min(share, cardEl.clientHeight) - chrome'), 'a squeezed card uses its real height, an inflated one earns no extra rows');
-assert.ok(source.includes('.aup-root[data-aup-compact="1"] .aup-compose{display:none}'), 'short panes shed the decorative token bar');
-assert.ok(source.includes('height >= 900 ? 0 : height >= 820 ? 1 : 2'), 'the compact level is a pure function of the pane height');
-assert.ok(!/\.aup-card-stats \.aup-series\{min-height:0\}/.test(source.replace('.aup-card-stats .aup-series{flex:1 1 0;min-height:0;', '')), 'the series box has a single min-height rule');
 assert.ok(!source.includes('justify-content:space-between;gap:2px}'), 'period rows are not re-spread when their count changes');
 assert.ok(source.includes('grid-template-columns:minmax(7ch,max-content) minmax(0,1fr)'), 'the period label column is pinned to 7ch so the bar never shifts sideways');
 assert.ok(source.includes('const skeletonCount = DIMENSION_ROW_CAP[dimension]'), 'the loading frame matches the target row count');
@@ -122,11 +124,11 @@ assert.ok(source.includes('for (const warmId of WARM_ORDER)'), 'the warm-up loop
 // The panel fills the right sidebar: cards grow with the pane instead of leaving a
 // blank band, the column never reserves a scrollbar gutter, and invisible padding
 // rows are gone now that growth (not filler) keeps the height constant.
-assert.ok(source.includes('.aup-card{flex:1 1 0;min-height:auto;'), 'cards grow to fill the pane height');
-assert.ok(source.includes('.aup-card-account-provider{flex:1 1 0;min-height:auto;'), 'the provider account card fills too');
-assert.ok(source.includes('.aup-card-session-fixed{flex:1 1 0}'), 'the session card is not pinned to content height');
+assert.ok(source.includes('.aup-cards>.aup-card:last-child{flex:1 1 auto}'), 'the panel fills the pane height');
+assert.ok(source.includes('.aup-card-account-provider{flex:0 0 auto;min-height:auto;'), 'the provider account card sizes to its content');
+assert.ok(source.includes('.aup-card-session-fixed{flex:0 0 auto}'), 'the session card sizes to its content');
 assert.ok(!source.includes('scrollbar-gutter'), 'the card column spans the full pane width');
-assert.ok(!source.includes('aup-series-slot'), 'no invisible padding rows remain');
+assert.ok(source.includes('aup-series-slot'), 'invisible slot rows keep the list height constant');
 assert.ok(source.includes('.aup-card-session .aup-session-body>.aup-context{margin-top:auto}'), 'session footer sits on the card bottom');
 assert.ok(source.includes('.aup-stats-summary{margin-top:auto;'), 'stats footer sits on the card bottom');
 

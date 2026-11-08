@@ -38,12 +38,12 @@
 | 2 | 只用真实数据，不许假估算 | 平台 usage / 余额接口，失败才回退并带 `≈` | `account reader does not fetch the profile` |
 | 3 | 三张卡、四字中文标题、居中、**不许改名、不许第四张** | 会话消耗 / 用量统计 / 账户余额 | `four-character card titles` |
 | 4 | **标题上不许挂 provider 标记** | 供应商只出现在账户卡来源 tab | `no provider badge inside a card head` / `no provider name inside a card head` |
-| 5 | **面板充满右侧栏整高整宽，底部不留白** | 卡片 `flex:1 1 0` + `min-height:auto` | `cards grow to fill the pane height` / `the provider account card fills too` |
+| 5 | **面板充满右侧栏整高整宽，底部不留白** | 卡片按内容撑开 + 最后一张卡 `flex:1 1 auto` 吸收剩余 | `cards size to their content and are never squeezed` / `the last card absorbs the leftover pane height` |
 | 6 | **卡内不许大块空白** | 底部块 `margin-top:auto`、拉伸块 `flex:1` | `session footer sits on the card bottom` / `stats footer sits on the card bottom` |
 | 7 | 宽度也必须撑满 | 不写 `scrollbar-gutter`、不留右侧内边距 | `the card column spans the full pane width` |
 | 8 | **内容不要被遮挡 / 裁切 / 省略** | `overflow:visible`、`min-height:auto`、无 ellipsis | `card text never uses ellipsis` |
 | 9 | **所有文字同一个字号，只能加粗** | 单一 `--aup-fs-text`，层级靠 font-weight | `exactly one font size token exists` |
-| 10 | **切 tab / 切维度不许闪动** | 卡片高度由 flex 决定（`flex:1 1 0`），样式进 head｜详见第 20 行 | `no invisible padding rows remain` |
+| 10 | **切 tab / 切维度不许闪动** | 固定槽位补齐列表高度 + 样式进 head｜详见第 20 行 | `the detail list is content sized` / `the list keeps a constant slot count` |
 | 11 | tab chip 切走后不许变形 | 样式表注入 `document.head` | `the stylesheet is injected into document.head` |
 | 12 | 快捷键开栏 **绝不擅自改宽度** | 只在实测 < 340px 时纠正，松手后才动 | `opening never resizes a wide sidebar on its own` |
 | 13 | 开始页要显示键位 | guide entry 带 `commandId` = `SHORTCUT_ID` | `guide card links to the shortcut for its key hint` |
@@ -53,8 +53,8 @@
 | 17 | 不显示身份信息、不放跳转链接 | 不读用户资料、无外链 | `account reader does not fetch the profile` |
 | 18 | **要求写进 AGENTS.md，别让人重复** | 本节 §0 | 见各条 |
 | 19 | **英文文本不许看着浅** | 拉丁字体栈优先 + 根 500 基线 + `--aup-label-2` 混色 | `Latin families precede CJK ones in the stack` / `secondary text is darkened from theme tokens` / `the panel root sets a 500 baseline weight` |
-| 20 | **切维度不许抖动** | `flex:1 1 0` + 固定行距 + 骨架行数对齐 + 全维度预热 | `card heights do not follow their content` / `period rows keep a fixed pitch across dimensions` / `the loading frame matches the target row count` / `every dimension is warmed widest-first` |
-| 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 行数按面板高度算（`rowBudget`，可为 0）+ 短面板去装饰块 + 卡片 `min-height:auto` 安全阀 | `the row budget comes from the pane, not from content` / `rendered rows are clamped by the measured budget` / `no row is drawn when not even one fits, but the list box stays measurable` / `short panes shed the decorative token bar` |
+| 20 | **切维度不许抖动** | 固定槽位 `SERIES_ROW_SLOTS=4` + 固定行距 + 骨架行数对齐 + 全维度预热 | `the list keeps a constant slot count` / `spare slots pad the list in quarter/year` / `period rows keep a fixed pitch across dimensions` / `the loading frame matches the target row count` / `every dimension is warmed widest-first` |
+| 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 媒体查询按窗口高度减内容 + 超长时卡片列滚动 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
 
 ## 1. 产品定位
 
@@ -95,43 +95,19 @@
 - **标题区只放图标 + 标题**：不放供应商徽标/标记（供应商名只在账户卡的来源 tab 里出现）；
   标题 `white-space:nowrap`，`aup-card-head` 用绝对定位的 `aup-card-head-extra` 承载必要的小标记，
   绝不能把标题挤成两行。
-- **面板必须充满右侧栏的整高整宽**（用户 2026-11-08 明确要求，取代旧的「卡片按内容自适应、剩余留底部」）：
-  - `.aup-root` / `.aup-cards` 都是 `width:100%`，卡片按比例拉伸填满剩余高度：
-    `.aup-card{flex:1 1 0;min-height:auto}`（`flex-basis:0` 让高度只由面板决定、内容变化不移动卡片；
-    `min-height:auto` 是防裁切的安全阀，别改回 0）
-  - 卡内**不许出现大块空白**：把「底部那行」锚到卡片底边吸收剩余高度——
-    会话卡的 `.aup-context`、用量卡的 `.aup-stats-summary` 用 `margin-top:auto`；
-    用量卡的 `.aup-series`、账户卡的 `.aup-balance` / `.aup-provider-body` 用 `flex:1 1 0` 拉伸吸收
-  - 卡片列**不许留滚动条槽**（不写 `scrollbar-gutter`），否则右侧会多出一条空带、卡片撑不满整宽
-  - **任何会话都只有三张卡**（会话消耗 / 用量统计 / 账户余额）
-- **切换维度（日/周/月/季/年）和切换来源 tab 时，任何元素都不许移动**（用户 2026-11-08：
-  「从日周月切到季和年还是有抖动」，反复强调过多次）。四条同时生效：
-  1. **卡片高度只能由面板决定，不能由内容决定**：三张卡一律 `flex:1 1 0`（**basis 必须是 0**）。
-     `flex-basis:auto` 会让「内容变高 → 重新分配剩余空间 → 三张卡边界一起移动」，
-     这就是抖动的根因；`min-height:auto` 保留，作为内容过大时防裁切的安全阀。
-  2. **列表行固定行距**：`.aup-series` 用 `justify-content:flex-start` + 固定 gap，
-     **禁止 `space-between`**——行数从 4 变 3 时它会把所有行重新摊开，看起来整块在跳。
-     行数变化时只允许「少一行」，已经在位的那几行位置绝不能变。
-     另外**标签列宽必须固定**：日期标签在五个维度里最长 7 个字符（`11-08` / `2026-11` / `2026 Q4` / `2026`），
-     网格第一列写 `minmax(7ch,max-content)`，否则切维度时进度条会左右横移（横向抖动）。
-  3. **加载骨架的行数必须等于目标维度的 `DIMENSION_ROW_CAP`**，禁止写死行数：
-     骨架比真实内容高，会在切换瞬间把卡片撑高再缩回，肉眼就是一次闪动。
-  4. **切换前就该有数据**：首次平台数据成功后，后台按 `WARM_ORDER`
-     （year → quarter → month → week → day，宽窗口优先，年窗口会顺带填满月份缓存）
-     把所有维度预热进 `dimensionResults`，之后切维度直接命中缓存、不出现加载帧。
-- **放不下就少放点：任何情况下卡内内容都不许互相遮挡/压字**（用户 2026-11-08 连说六次「不要遮挡」）。
-  实现方式（**先减内容，再谈滚动，绝不动裁切**）：
-  1. **明细行数由面板高度算出，不由数据量决定**：`ROW_PITCH_PX = 23`，
-     `rowBudget = floor(可用高度 / 23)`，其中「可用高度」=
-     `min(卡片均分高度, 卡片实际高度) - 卡片固定部分高度`；
-     渲染行数 = `min(DIMENSION_ROW_CAP[维度], rowBudget)`，**算出 0 行就一行都不画**。
-     测量只读面板/弹性几何（`.aup-cards` 高度、卡片高度差），
-     **不读内容高度、不用 ResizeObserver 观察内容**，所以不会形成布局→setState 的自反馈环。
-  2. **卡片高度不够时先去掉装饰性内容**：面板高度 < 900px 隐藏 Token 构成彩条（`.aup-compose`），
-     < 820px 再隐藏上下文百分比图例（`.aup-context-breakdown`）。
-     级别是**面板高度的纯函数**（写在根节点 `data-aup-compact`），隐藏内容不会改变面板高度，因此不可能抖动。
-  3. 卡片仍保留 `min-height:auto` 作为最后安全阀：万一算错，卡片会长高、卡片列滚动，**绝不允许叠字**。
-  4. 禁止用 `overflow:hidden` / 省略号「解决」放不下——那是遮挡，用户明确禁止。
+- **布局只用确定性 CSS，任何高度都不许靠运行时测量决定**（2026-11-08 反复踩坑后的最终架构）：
+  1. **卡片高度 = 内容高度（`flex:0 0 auto`）**：卡片永远按内容撑开，**绝不可能被压缩到内容以下**，
+     因此卡内文字不可能互相遮挡——遮挡的唯一成因就是卡片被挤小，此条从结构上杜绝。
+  2. **最后一张卡吸收剩余高度**：`.aup-cards>.aup-card:last-child{flex:1 1 auto}`，
+     面板底部不会出现空白带；账户卡内部的余额/套餐块用 `flex:1` + 均匀分布填满这块空间。
+  3. **明细列表固定槽位**：`SERIES_ROW_SLOTS = 4`，按维度渲染 1..N 行，剩余用**不可见占位行**
+     （`.aup-series-slot`，`min-height:21px`）补齐；这样**切维度时列表高度恒定**，下面的卡片一动不动。
+  4. **列高不够时用媒体查询减内容**（纯 CSS，不测量）：
+     `@media (max-height:900px)` 隐藏 Token 构成彩条、`(max-height:820px)` 隐藏上下文百分比图例、
+     `(max-height:760px)` 隐藏按模型明细。窗口再矮就由卡片列滚动（`.aup-cards{overflow-y:auto}`），
+     **滚动可以，遮挡不行**。
+  5. 明令禁止：用 `ResizeObserver`/`getBoundingClientRect` 的内容高度去反推行数并 `setState`
+     （09:29 崩溃的成因）、用 `overflow:hidden` 或省略号假装解决放不下。
 - **卡内不允许滚动**，但**卡片列可以滚动**：`.aup-cards` 允许 `overflow-y:auto`（细滚动条），
   作为最后一道保险——内容再高也不会把「账户余额」卡顶出可视区、更不会被裁切。
   优先级：先减内容（明细行封顶）→ 再让卡片列滚动，绝不裁切。
@@ -231,10 +207,9 @@
   第三方余额与 DeepSeek 钱包一样实时读取（opencode 走套餐百分比）；
   用量统计卡统一为「按来源一行 + 占比条 + 合计」（见 §13），卡标题不挂任何徽标
 - 设置里的「用量明细列表」打开后，在来源行下方追加逐期 `Token · 金额` 明细（悬浮可看完整日期/Token/金额）
-- 明细列表**高度恒定由「卡片拉伸填满面板」保证**：卡片高度由 flex 决定、与行数无关，
-  所以切维度（日↔季↔年）时卡片总高不变、下方卡片与 tab 行不闪动；
-  **不再使用不可见占位行**（`.aup-series-slot` 已删除，它会在拉伸后变成多余的空白）；
-  行高只设 `min-height` 不设死高度，内容变长时行会长高而不是被压住。
+- 明细列表**高度恒定由固定槽位保证**：`SERIES_ROW_SLOTS = 4`，不足的槽位用不可见占位行补齐，
+  切维度（日↔季↔年）时列表高度不变、下方卡片与 tab 行不闪动；行高只设 `min-height` 不设死高度，
+  内容变长时行会长高而不是被压住。
 - 明细列表模式下，期数按维度**固定封顶**（`DIMENSION_ROW_CAP`：日/周/月 4、季 3、年 3），
   只丢弃**最旧的**期数、保留最新的；合计跟随实际显示的行。
   **禁止用 ResizeObserver + setState 做「按高度动态减行」**：那会形成
@@ -302,18 +277,19 @@
 ## 13. 已完成的关键决策（避免回退）
 
 - 会话卡不再使用 `container-type: size`（会让内容高度塌陷成 0）
-- 面板充满右侧栏整高整宽：卡片 `flex:1 1 0` 拉伸（basis 0），卡内底部块 `margin-top:auto` 吸收剩余高度，绝不在面板底部留空白带
+- 面板充满右侧栏整高整宽：**卡片按内容撑开（`flex:0 0 auto`）+ 最后一张卡 `flex:1 1 auto` 吸收剩余高度**；
+  取代了此前「三张卡都 `flex:1 1 0` 平分高度」的写法——平分会把卡片压到内容以下，这是所有叠字的根因
 - 按模型统计：无冗余小标题，每行 `Provider - 模型短名    Tokens`（最多 3 行，过长换行，绝不降字号）
 - 统计区为**对齐两列表格**（标签列 `max-content`、值列右对齐，行高 20px、列间距 16px）；
   数值过长时只允许收紧字距（`statValueClass` → letter-spacing），**绝不能改字号、也不能与相邻列重叠**；时长使用紧凑格式（如 1时44分 / 2分57秒 / 1.7秒）；用量统计每日行单行显示 Token · 金额，行高有下限，禁止重叠
 - 卡片文本无省略号；长文本换行、长金额只收紧字距（字号恒 13px）
 - **英文（拉丁）文字墨色与中文对齐**：字体栈拉丁优先、根 500 基线、次要色 `--aup-label-2`（color-mix 30% 主色）；
   取代了此前「次要文字直接用 `label-secondary`、字重从默认 400 继承」的写法（那样英文会明显发浅）
-- **切维度零抖动**：卡片 `flex-basis` 必须是 `0`（不是 auto，auto 会让内容变化移动卡片边界）、
-  列表用固定行距而非 space-between、骨架行数对齐 `DIMENSION_ROW_CAP`、后台预热全部维度；
-  取代了此前「卡片 `flex:1 1 auto` + 明细用 space-between 摊开」的写法
-- **放不下就少放点，绝不遮挡**：明细行数 = floor(面板算出的可用高度 / 23)，可为 0；
-  短面板隐藏 Token 构成彩条与上下文百分比图例；卡片保留 `min-height:auto` 兜底（宁可滚动也不叠字）
+- **切维度零抖动**：明细列表固定 `SERIES_ROW_SLOTS=4` 槽位（不足补不可见行）、固定行距而非 space-between、
+  骨架行数对齐 `DIMENSION_ROW_CAP`、后台预热全部维度
+- **绝不遮挡**：卡片按内容撑开、永不被压缩（遮挡从结构上不可能）；窗口矮时用 `@media (max-height:…)`
+  依次隐藏 Token 构成彩条 / 上下文百分比图例 / 按模型明细；再矮就让卡片列滚动；
+  **禁止**任何基于运行时测量的行数调整（09:29 崩溃成因），也禁止 `overflow:hidden` 假装修好
 - 面板最小宽度 340px，低于它会被自动纠正；万一纠正失败，模型行 `Provider - 模型名` 换行显示（不降字号）
   （`.aup-model-row` 用 `flex-wrap`），token 数值 `margin-left:auto`，绝不压到文字上
 - 底栏 dock + ContextMeter 一起隐藏（只隐藏 slot 不够）

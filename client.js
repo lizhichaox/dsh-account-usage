@@ -343,19 +343,21 @@ window.__ModuleLoader__.load({
       '.aup-toggle[data-on] .aup-toggle-knob{transform:translateX(14px)}',
       '.aup-toggle:focus-visible,.aup-pop-link:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob{transition:none}}',
-      '.aup-root[data-aup-compact="1"] .aup-compose{display:none}',
-      '.aup-root[data-aup-compact="2"] .aup-compose,.aup-root[data-aup-compact="2"] .aup-context-breakdown{display:none}',
+      '@media (max-height:900px){.aup-compose{display:none}}',
+      '@media (max-height:820px){.aup-context-breakdown{display:none}}',
+      '@media (max-height:760px){.aup-card-session .aup-models{display:none}}',
       '.aup-empty{padding:12px;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:18px;font-weight:500;text-align:center}',      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
       '.aup-cards{flex:1 1 auto;min-height:0;width:100%;display:flex;flex-direction:column;justify-content:flex-start;gap:8px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}',
+      '.aup-cards>.aup-card:last-child{flex:1 1 auto}',
       '.aup-cards::-webkit-scrollbar{width:6px}',
       '.aup-cards::-webkit-scrollbar-thumb{border-radius:999px;background:var(--dsw-alias-bg-skeleton)}',
       '.aup-cards::-webkit-scrollbar-track{background:transparent}',
-      '.aup-card{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:visible}',
+      '.aup-card{flex:0 0 auto;min-height:auto;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:visible}',
       '.aup-card-session{justify-content:flex-start}',
       '.aup-card-stats{justify-content:flex-start}',
-      '.aup-stats-body{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;justify-content:flex-start;gap:10px}',
+      '.aup-stats-body{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:10px}',
       '.aup-srcs{flex:none;display:flex;flex-direction:column;gap:8px}',
       '.aup-src{display:grid;grid-template-columns:max-content minmax(0,1fr) auto auto;align-items:center;gap:8px;min-width:0;font-size:var(--aup-fs-text);line-height:18px;font-variant-numeric:tabular-nums}',
       '.aup-src-label{min-width:0;color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
@@ -364,8 +366,8 @@ window.__ModuleLoader__.load({
       '.aup-src-track{min-width:24px;height:4px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
       '.aup-src-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary);opacity:.75}',
       '.aup-stats-head{flex:none;display:flex;flex-direction:column;gap:6px}',
-      '.aup-card-account{flex:1 1 0;min-height:auto;justify-content:flex-start}',
-      '.aup-account-body{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}',
+      '.aup-card-account{flex:0 0 auto;min-height:auto;justify-content:flex-start}',
+      '.aup-account-body{flex:1 1 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}',
       '.aup-plan-windows{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 12px;font-size:var(--aup-fs-text);line-height:16px;font-weight:500;color:var(--aup-label-2)}',
       '.aup-plan-window{display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap}',
       '.aup-plan-window-value{color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
@@ -395,8 +397,8 @@ window.__ModuleLoader__.load({
       '.aup-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
       '.aup-retry{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:var(--aup-fs-text);line-height:18px;cursor:pointer}',
       '.aup-retry:hover{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.aup-card-session-fixed{flex:1 1 0}',
-      '.aup-card-session .aup-session-body{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;gap:10px;justify-content:flex-start}',
+      '.aup-card-session-fixed{flex:0 0 auto}',
+      '.aup-card-session .aup-session-body{flex:0 0 auto;display:flex;flex-direction:column;gap:10px;justify-content:flex-start}',
       '.aup-card-session .aup-session-grid{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;align-content:space-evenly;justify-items:stretch;margin:0;padding:0;width:100%}',
       '.aup-card-session .aup-session-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}',
       '.aup-card-session .aup-session-cell:nth-child(even){align-items:flex-end;text-align:right}',
@@ -427,11 +429,11 @@ window.__ModuleLoader__.load({
       '.aup-src-tab[data-active]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 .5px var(--dsw-alias-border-l2)}',
       '@media (hover:hover){.aup-src-tab:hover:not([data-active]){color:var(--dsw-alias-label-primary)}}',
       '.aup-src-tab:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
-      '.aup-card-account-provider{flex:1 1 0;min-height:auto;justify-content:flex-start}',
+      '.aup-card-account-provider{flex:0 0 auto;min-height:auto;justify-content:flex-start}',
       '.aup-card-account-provider .aup-balance{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;align-content:center}',
       '.aup-card-account-provider .aup-balance-value{font-size:var(--aup-fs-text);line-height:22px}',
       '.aup-card-account-provider .aup-balance-value.aup-minor{font-size:var(--aup-fs-text);line-height:22px}',
-                  '.aup-provider-body{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;gap:8px;justify-content:space-evenly}',
+                  '.aup-provider-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px;justify-content:space-evenly}',
       '.aup-provider-hero{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}',
       '.aup-value-long{letter-spacing:-.02em}',
       '.aup-value-longer{letter-spacing:-.04em}',
@@ -471,7 +473,8 @@ window.__ModuleLoader__.load({
       '.aup-stats-summary{margin-top:auto;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-variant-numeric:tabular-nums;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2)}',
       '.aup-stats-summary>span{min-width:0;white-space:normal;overflow-wrap:anywhere}',
       '.aup-stats-total{flex:none;font-size:var(--aup-fs-text);line-height:26px;font-weight:600;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
-      '.aup-card-stats .aup-series{flex:1 1 0;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}',
+      '.aup-card-stats .aup-series{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}',
+      '.aup-series-slot{min-height:21px;pointer-events:none}',,
       '.aup-card-session .aup-session-body>.aup-context{margin-top:auto}',
       '.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:21px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
       '.aup-card-stats .aup-series-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
@@ -515,20 +518,14 @@ window.__ModuleLoader__.load({
       '.aup-card-stats .aup-series-label,.aup-card-stats .aup-series-tokens{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-card-stats .aup-series-cost{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-card-account .aup-balance-item{flex-direction:row;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}',
-      '.aup-card-account .aup-balance{flex:1 1 0;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 16px;align-content:space-evenly;padding:2px 0}',
+      '.aup-card-account .aup-balance{flex:1 1 auto;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 16px;align-content:space-evenly;padding:2px 0}',
       '.aup-card-account .aup-balance-value{font-size:var(--aup-fs-text);line-height:22px;letter-spacing:0}',
       '.aup-card-account .aup-balance-value.aup-minor{font-size:var(--aup-fs-text);line-height:22px;font-weight:500;color:var(--dsw-alias-label-primary)}',
       '.aup-card-account .aup-balance-value.aup-value-long{font-size:var(--aup-fs-text)}',
       '.aup-card-account .aup-balance-value.aup-value-longer{font-size:var(--aup-fs-text)}',
       '.aup-card-account .aup-balance-label{font-size:var(--aup-fs-text);line-height:16px;font-weight:500}',
       '.aup-hint{font-size:var(--aup-fs-text);line-height:16px}',
-      // ---- content shedding at short card heights (no scrolling) ----
-      '@container aup-card (max-height:380px){.aup-card-session .aup-compose{display:none}}',
-      '@container aup-card (max-height:330px){.aup-card-session .aup-stat-list{display:none}}',
-      '@container aup-card (max-height:260px){.aup-card-session .aup-models{display:none}}',
-      '@container aup-card (max-height:250px){.aup-card-session .aup-context{display:none}}',
-      '@container aup-card (max-height:150px){.aup-card-session .aup-session-grid{display:none}}',
-      '@container aup-card (max-height:180px){.aup-card-stats .aup-stats-summary{display:none}}'
+      // ---- content shedding on short windows: pure media queries, no measurement ----
     ].join('\n');
 
     // --------------------------------------------------------------- glyphs --
@@ -796,8 +793,8 @@ window.__ModuleLoader__.load({
     /** Maximum periods rendered in the detail list per dimension (older ones are dropped). */
     const DIMENSION_ROW_CAP = { day: 4, week: 4, month: 4, quarter: 3, year: 3 };
 
-    /** One period row plus the list gap: the pitch the row budget divides by. */
-    const ROW_PITCH_PX = 23;
+    /** Slots the detail list always occupies: identical height in every dimension. */
+    const SERIES_ROW_SLOTS = 4;
 
     /** Minimum usable panel width: below this the no-wrap rows would collide. */
     const PANEL_MIN_WIDTH = 340;
@@ -1807,53 +1804,6 @@ window.__ModuleLoader__.load({
         if (buttons[next] !== undefined) buttons[next].focus();
       };
       const sectionRef = React.useRef(null);
-      const seriesRef = React.useRef(null);
-      // How many period rows actually fit in the card's share of the pane. The
-      // number is derived from the pane height alone (the cards split it evenly),
-      // never from the rendered content, so growing or shrinking the list can
-      // never feed back into the measurement that produced it.
-      const fallbackRowCap = DIMENSION_ROW_CAP[dimension] === undefined ? 4 : DIMENSION_ROW_CAP[dimension];
-      const [rowBudget, setRowBudget] = React.useState(fallbackRowCap);
-      const useLayoutEffect = React.useLayoutEffect === undefined ? React.useEffect : React.useLayoutEffect;
-      useLayoutEffect(() => {
-        if (listMode !== true || sessionOnly === true || state.phase !== 'ready') return undefined;
-        const measure = () => {
-          const rootEl = document.querySelector('.aup-root');
-          const cardsEl = rootEl === null ? null : rootEl.querySelector('.aup-cards');
-          const cardEl = sectionRef.current;
-          const seriesEl = seriesRef.current;
-          if (cardsEl === null || cardEl === null || seriesEl === null) return;
-          const cardCount = cardsEl.children.length;
-          if (cardCount < 1) return;
-          const gaps = 8 * (cardCount - 1);
-          const share = (cardsEl.clientHeight - gaps) / cardCount;
-          // Everything in the card except the period list has a content-fixed height.
-          const chrome = cardEl.clientHeight - seriesEl.clientHeight;
-          // A squeezed card gets its real height; an inflated one never earns extra
-          // rows, so one card's overflow can never inflate another card's budget.
-          const available = Math.min(share, cardEl.clientHeight) - chrome;
-          const fit = Math.max(0, Math.floor(available / ROW_PITCH_PX));
-          setRowBudget((previous) => (previous === fit ? previous : fit));
-        };
-        let frame = 0;
-        const schedule = () => {
-          if (frame !== 0) return;
-          if (typeof requestAnimationFrame !== 'function') {
-            measure();
-            return;
-          }
-          frame = requestAnimationFrame(() => {
-            frame = 0;
-            measure();
-          });
-        };
-        measure();
-        window.addEventListener('resize', schedule);
-        return () => {
-          if (frame !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
-          window.removeEventListener('resize', schedule);
-        };
-      }, [listMode, sessionOnly, state.phase, dimension]);
 
       const dimensions = h(
         'div',
@@ -1937,10 +1887,7 @@ window.__ModuleLoader__.load({
       const series = buildSeries(state.days || [], dimension);
       // Keep the card compact with a fixed cap: drop the OLDEST periods, keep the newest.
       // No measurement and no observer, so this can never feed back into layout.
-      const dimensionRowCap = DIMENSION_ROW_CAP[dimension] === undefined ? 5 : DIMENSION_ROW_CAP[dimension];
-      // The pane, not the data, decides how many rows fit: never overflow the card
-      // (which would paint rows over the summary), never render a phantom gap.
-      const rowCap = Math.min(dimensionRowCap, rowBudget);
+      const rowCap = DIMENSION_ROW_CAP[dimension] === undefined ? SERIES_ROW_SLOTS : DIMENSION_ROW_CAP[dimension];
       const visibleCells = series.cells.slice(Math.max(0, series.cells.length - rowCap));
       const shownTotal = visibleCells.reduce((sum, cell) => sum + cell.total, 0);
       const shownCost = visibleCells.reduce((sum, cell) => sum + cell.cost, 0);
@@ -2041,8 +1988,14 @@ window.__ModuleLoader__.load({
               listMode === true && sessionOnly !== true && series.total > 0
                 ? h(
                     'div',
-                    { className: 'aup-series', ref: seriesRef },
-                    rowCap > 0 ? periodRows : null
+                    { className: 'aup-series' },
+                    periodRows,
+                    // Invisible slots keep the list - and therefore every card below it -
+                    // exactly the same height in all five dimensions: quarter/year leave
+                    // the spare slots empty instead of collapsing the card.
+                    Array.from({ length: Math.max(0, SERIES_ROW_SLOTS - periodRows.length) }, (unused, index) =>
+                      h('div', { key: 'row-slot-' + String(index), className: 'aup-series-row aup-series-slot', 'aria-hidden': true })
+                    )
                   )
                 : null,
               h(
@@ -2630,16 +2583,7 @@ window.__ModuleLoader__.load({
           window.addEventListener('pointerup', onPointerUp, true);
           window.addEventListener('pointercancel', onPointerUp, true);
         }
-        // Short panes shed the two purely decorative blocks (the token mix bar and the
-        // context percentage legend). The level is a pure function of the pane height,
-        // and hiding them never changes that height, so this cannot feed back.
-        const applyCompact = (height) => {
-          const level = height >= 900 ? 0 : height >= 820 ? 1 : 2;
-          if (node.getAttribute('data-aup-compact') !== String(level)) node.setAttribute('data-aup-compact', String(level));
-        };
-        applyCompact(node.getBoundingClientRect().height);
         const observer = new ResizeObserver(() => {
-          applyCompact(node.getBoundingClientRect().height);
           if (pressed) return;
           if (tooNarrow()) schedule();
         });
