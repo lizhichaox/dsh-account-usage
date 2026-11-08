@@ -11,11 +11,11 @@ Harness 的「插件市场」（Discover）不是中心化商店，而是**索�
 | GitHub 仓库 | <https://github.com/lizhichaox/dsh-account-usage>（public，`main`） |
 | 市场索引 | <https://lizhichaox.github.io/dsh-account-usage/market/index.json> |
 | 索引托管 | GitHub Pages（仓库根目录；`.nojekyll` 保证 JSON 原样输出，无重定向） |
-| 当前安装源 | **npm**：`dsh-account-usage@1.0.3`（索引 `source.type = npm`） |
-| 包名 / 版本 | `dsh-account-usage` / **1.0.3** |
+| 当前安装源 | **npm**：`dsh-account-usage@1.0.4`（索引 `source.type = npm`） |
+| 包名 / 版本 | `dsh-account-usage` / **1.0.4** |
 | 兼容性 | `engines.dsh: ^0.2.2-rc.1`（与当前 runtime 匹配） |
-| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.3`，2026-11-08 12:58:59Z） |
-| 校验 | `npm run verify` + `npm run verify:ui` 全绿；npm 包 15 个文件 / 58.3 kB（shasum `15fb8d4a`）；CI 全绿；Pages 索引已切到 1.0.3，并用官方 `parseMarketIndex` 复核通过 |
+| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.4`，2026-11-08 14:45:45Z） |
+| 校验 | `npm run verify` + `npm run verify:ui` 全绿；npm 包 15 个文件 / 60.5 kB（shasum `67ab8812`，与仓库 `client.js`/`index.js` 逐字节一致）；CI 全绿（含 macOS 真机几何任务）；Pages 索引已切到 1.0.4，并用官方 `parseMarketIndex` 复核通过 |
 
 安装侧使用：
 
@@ -42,7 +42,7 @@ npm run market:index:npm
 git add market/index.json && git commit -m "chore: update market index" && git push
 
 # 6. tag / GitHub Release
-git tag -a v1.0.3 -m "dsh-account-usage v1.0.3" && git push --tags
+git tag -a v1.0.4 -m "dsh-account-usage v1.0.4" && git push --tags
 ```
 
 > 每次更新都必须重新生成 `market/index.json`；市场按 **精确版本** 安装。
