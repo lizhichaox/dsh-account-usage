@@ -34,8 +34,8 @@
         "zh": "\u8d26\u53f7\u7528\u91cf"
       },
       "description": {
-        "en": "Balances + tokens by day/week/month/quarter/year.",
-        "zh": "\u4f59\u989d\u4e0e Token \u7528\u91cf\uff0c\u6309\u65e5/\u5468/\u6708/\u5b63/\u5e74\u6c47\u603b"
+        "en": "Balances + tokens.",
+        "zh": "\u4f59\u989d\u4e0e Token \u7528\u91cf"
       },
       "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IkFjY291bnQgdXNhZ2UiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJhdXAtdXNhZ2UiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjM2I4MmY2Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzFkNGVkOCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3QgeD0iMi41IiB5PSIyLjUiIHdpZHRoPSIxOSIgaGVpZ2h0PSIxOSIgcng9IjUiIGZpbGw9InVybCgjYXVwLXVzYWdlKSIvPgogIDxyZWN0IHg9IjUuOSIgeT0iMTIuOSIgd2lkdGg9IjMiIGhlaWdodD0iNS4xIiByeD0iMS4zIiBmaWxsPSIjYzdkZGZmIi8+CiAgPHJlY3QgeD0iMTAuNSIgeT0iOS45IiB3aWR0aD0iMyIgaGVpZ2h0PSI4LjEiIHJ4PSIxLjMiIGZpbGw9IiNlNmVmZmYiLz4KICA8cmVjdCB4PSIxNS4xIiB5PSI2LjkiIHdpZHRoPSIzIiBoZWlnaHQ9IjExLjEiIHJ4PSIxLjMiIGZpbGw9IiNmZmZmZmYiLz4KPC9zdmc+Cg==",
       "author": "chaox",

@@ -19,12 +19,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // ---------------------------------------------------------------- manifest --
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 {
-  // The plugin-list intro is one short line (user 2026-11-08: within 50 characters);
-  // it must still say balance + token usage + the date periods.
+  // The plugin-list intro is one short line (user 2026-11-08: within 20 characters)
+  // that still names balances and tokens.
   const description = String(manifest.description || '');
-  assert.ok(description.length > 0 && description.length <= 50, 'the plugin intro stays within 50 characters: ' + description);
+  assert.ok(description.length > 0 && description.length <= 20, 'the plugin intro stays within 20 characters: ' + description);
   assert.ok(/balance/i.test(description) && /token/i.test(description), 'the intro names balances and tokens: ' + description);
-  assert.ok((description.match(/day|week|month|quarter|year/gu) || []).length >= 5, 'the intro keeps every date period: ' + description);
 }
 {
   assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'bundle patch declared');

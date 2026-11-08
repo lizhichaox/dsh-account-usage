@@ -68,8 +68,8 @@ const index = {
       name: manifest.name,
       title: { en: 'Account usage', zh: '账号用量' },
       description: {
-        en: 'Balances + tokens by day/week/month/quarter/year.',
-        zh: '余额与 Token 用量，按日/周/月/季/年汇总'
+        en: 'Balances + tokens.',
+        zh: '余额与 Token 用量'
       },
       icon,
       author: typeof manifest.author === 'string' ? manifest.author : 'chaox',

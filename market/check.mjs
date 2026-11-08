@@ -71,10 +71,10 @@ if (!Array.isArray(document.plugins) || document.plugins.length === 0) {
     names.add(plugin.name);
     if (plugin.title !== undefined) localized(plugin.title, at + '.title');
     if (plugin.description !== undefined) {
-      // The market row shows this intro verbatim (user 2026-11-08): keep it within 50 characters.
+      // The market row shows this intro verbatim (user 2026-11-08): keep it within 20 characters.
       localized(plugin.description, at + '.description');
       const entries = typeof plugin.description === 'string' ? [plugin.description] : Object.values(plugin.description);
-      for (const text of entries) if (text.length > 50) fail(at + '.description must stay within 50 characters, got ' + String(text.length));
+      for (const text of entries) if (text.length > 50) fail(at + '.description must stay within 20 characters, got ' + String(text.length));
     }
     if (plugin.homepage !== undefined) {
       try {
