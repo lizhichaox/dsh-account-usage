@@ -346,7 +346,10 @@ window.__ModuleLoader__.load({
       '.aup-empty{padding:12px;color:var(--dsw-alias-label-secondary);font-size:var(--aup-fs-text);line-height:18px;font-weight:500;text-align:center}',      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
-      '.aup-cards{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:8px}',
+      '.aup-cards{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:8px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-right:2px}',
+      '.aup-cards::-webkit-scrollbar{width:6px}',
+      '.aup-cards::-webkit-scrollbar-thumb{border-radius:999px;background:var(--dsw-alias-bg-skeleton)}',
+      '.aup-cards::-webkit-scrollbar-track{background:transparent}',
       '.aup-card{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}',
       '.aup-card-session{justify-content:flex-start}',
       '.aup-card-stats{justify-content:flex-start}',
@@ -786,7 +789,7 @@ window.__ModuleLoader__.load({
     const SHORTCUT_ID = 'accountUsage.open';
 
     /** Maximum periods rendered in the detail list per dimension (older ones are dropped). */
-    const DIMENSION_ROW_CAP = { day: 5, week: 5, month: 5, quarter: 4, year: 3 };
+    const DIMENSION_ROW_CAP = { day: 4, week: 4, month: 4, quarter: 3, year: 3 };
 
     /** Minimum usable panel width: below this the no-wrap rows would collide. */
     const PANEL_MIN_WIDTH = 340;
