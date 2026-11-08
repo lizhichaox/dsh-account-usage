@@ -70,6 +70,12 @@ const source = fs.readFileSync(path.join(root, 'client.js'), 'utf8');
 }
 assert.equal((source.match(/text-overflow:ellipsis/g) || []).length, 0, 'card text never uses ellipsis');
 
+// The stylesheet must live in document.head: tab chips render outside the panel
+// body, so a body-scoped sheet disappears (and deforms the chip) once the panel
+// is switched away.
+assert.ok(/document\.head\.appendChild\(tag\)/.test(source), 'the stylesheet is injected into document.head');
+assert.ok(source.includes("root.setAttribute('data-account-usage-hide-stats'"), 'the composer dock stats are hidden by default');
+
 // The panel fills the right sidebar: cards grow with the pane instead of leaving a
 // blank band, the column never reserves a scrollbar gutter, and invisible padding
 // rows are gone now that growth (not filler) keeps the height constant.
@@ -752,6 +758,11 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
     const head = walk(node, (n) => hasClass(n, 'aup-card-head'))[0];
     if (head === undefined) continue;
     assert.equal(walk(head, (n) => hasClass(n, 'aup-badge')).length, 0, 'no provider badge inside a card head');
+  }
+  for (const node of walk(mixedWalletTree, (n) => n.type === 'section' && hasClass(n, 'aup-card'))) {
+    const head = walk(node, (n) => hasClass(n, 'aup-card-head'))[0];
+    if (head === undefined) continue;
+    assert.ok(!/OpenCode|OpenRouter|Anthropic|OpenAI|DeepSeek/.test(flat(head)), 'no provider name inside a card head: ' + flat(head));
   }
   assert.equal(walk(mixedWallet, (node) => hasClass(node, 'aup-account-body')).length, 1, 'tab bodies share one fixed-height box');
   assert.ok(!mixedWalletText.includes('部分'), 'no 部分 prefix anywhere');

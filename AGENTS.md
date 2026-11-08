@@ -10,6 +10,49 @@
 - npm：<https://www.npmjs.com/package/dsh-account-usage>（包名 `dsh-account-usage`，作者 `chaox`）
 - 市场索引：<https://lizhichaox.github.io/dsh-account-usage/market/index.json>
 
+## 0. 元规则：用户说过一次的要求，绝不让他说第二次
+
+用户 2026-11-08 明确要求：「要把我对你的要求写入 AGENTS.md，不要总让我重复」。
+这是一条**工作方式的硬要求**，和具体样式同等重要：
+
+1. **同一轮落盘**：任何一轮对话里用户提出的新要求，必须在**这一轮**同时完成三件事——
+   ① 实现；② 写进本文件（落到具体小节，写清「要什么 / 为什么 / 怎么验证」）；
+   ③ 在 `test/smoke.mjs` 补一条**会失败**的断言。
+   只写代码不写文件 = 没做完；只答应不落盘 = 没做完。
+2. **先查后问**：用户提出任何要求前，先在本文件和 `test/smoke.mjs` 里找是否已有对应条目。
+   已写过就按文件执行，不要反问、不要要求用户重述。
+3. **冲突以当次为准**：新要求与本文件冲突时，改实现 + 改本文件（并在 §13 记一句「取代了哪条」），
+   不要两条规则并存。历史上的「卡片按内容自适应、剩余留底部」就是这样被「充满整高整宽」取代的。
+4. **交付前自查**：逐条对照 §0.1 速查表。任何一条既没有实现、也没有断言，就是没交付。
+5. **无法自动验证的**（真机像素、字体渲染、动画手感）：如实说明是靠 CSS/契约测试，
+   并写清「需要用户肉眼确认的具体是哪几处」，不许假装验证过。
+6. **用户重复同一句话，是我们失职**，不是用户啰嗦——重复发生时，把漏掉的那条补进本文件并为它补断言。
+
+### 0.1 硬性要求速查表（每次交付前逐条勾）
+
+> 断言名就是 `test/smoke.mjs` 里那句 `assert` 的说明文字；改实现时这些断言必须继续通过。
+
+| # | 要求（用户原话要点） | 实现要点 | 冒烟断言 |
+|---|---|---|---|
+| 1 | 右侧栏能看到额度 / 费用 / tokens | Host 读真实平台接口，三卡面板 | `real platform amount shown` |
+| 2 | 只用真实数据，不许假估算 | 平台 usage / 余额接口，失败才回退并带 `≈` | `account reader does not fetch the profile` |
+| 3 | 三张卡、四字中文标题、居中、**不许改名、不许第四张** | 会话消耗 / 用量统计 / 账户余额 | `four-character card titles` |
+| 4 | **标题上不许挂 provider 标记** | 供应商只出现在账户卡来源 tab | `no provider badge inside a card head` / `no provider name inside a card head` |
+| 5 | **面板充满右侧栏整高整宽，底部不留白** | 卡片 `flex:1 1 auto` + `min-height:auto` | `cards grow to fill the pane height` / `the provider account card fills too` |
+| 6 | **卡内不许大块空白** | 底部块 `margin-top:auto`、拉伸块 `flex:1` | `session footer sits on the card bottom` / `stats footer sits on the card bottom` |
+| 7 | 宽度也必须撑满 | 不写 `scrollbar-gutter`、不留右侧内边距 | `the card column spans the full pane width` |
+| 8 | **内容不要被遮挡 / 裁切 / 省略** | `overflow:visible`、`min-height:auto`、无 ellipsis | `card text never uses ellipsis` |
+| 9 | **所有文字同一个字号，只能加粗** | 单一 `--aup-fs-text`，层级靠 font-weight | `exactly one font size token exists` |
+| 10 | **切 tab / 切维度不许闪动** | 卡片高度由 flex 决定，删掉占位行，样式进 head | `no invisible padding rows remain` |
+| 11 | tab chip 切走后不许变形 | 样式表注入 `document.head` | `the stylesheet is injected into document.head` |
+| 12 | 快捷键开栏 **绝不擅自改宽度** | 只在实测 < 340px 时纠正，松手后才动 | `opening never resizes a wide sidebar on its own` |
+| 13 | 开始页要显示键位 | guide entry 带 `commandId` = `SHORTCUT_ID` | `guide card links to the shortcut for its key hint` |
+| 14 | **不许把 DSH 搞崩** | 禁止 ResizeObserver+setState 自反馈布局 | `row trimming never feeds back from a resize observer` |
+| 15 | 底栏会话统计默认隐藏 | `<html data-account-usage-hide-stats>` | `the composer dock stats are hidden by default` |
+| 16 | 头部齿轮设置（7 项） | `.aup-pop` 弹层 + localStorage | `settings button` |
+| 17 | 不显示身份信息、不放跳转链接 | 不读用户资料、无外链 | `account reader does not fetch the profile` |
+| 18 | **要求写进 AGENTS.md，别让人重复** | 本节 §0 | 见各条 |
+
 ## 1. 产品定位
 
 - DeepSeek Harness 右侧边栏插件，名称固定为 **「账号用量」**（四个中文）。
