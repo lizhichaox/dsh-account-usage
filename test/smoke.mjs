@@ -70,6 +70,17 @@ const source = fs.readFileSync(path.join(root, 'client.js'), 'utf8');
 }
 assert.equal((source.match(/text-overflow:ellipsis/g) || []).length, 0, 'card text never uses ellipsis');
 
+// The panel fills the right sidebar: cards grow with the pane instead of leaving a
+// blank band, the column never reserves a scrollbar gutter, and invisible padding
+// rows are gone now that growth (not filler) keeps the height constant.
+assert.ok(source.includes('.aup-card{flex:1 1 auto;min-height:auto;'), 'cards grow to fill the pane height');
+assert.ok(source.includes('.aup-card-account-provider{flex:1 1 auto;min-height:auto;'), 'the provider account card fills too');
+assert.ok(source.includes('.aup-card-session-fixed{flex:1 1 auto}'), 'the session card is not pinned to content height');
+assert.ok(!source.includes('scrollbar-gutter'), 'the card column spans the full pane width');
+assert.ok(!source.includes('aup-series-slot'), 'no invisible padding rows remain');
+assert.ok(source.includes('.aup-card-session .aup-session-body>.aup-context{margin-top:auto}'), 'session footer sits on the card bottom');
+assert.ok(source.includes('.aup-stats-summary{margin-top:auto;'), 'stats footer sits on the card bottom');
+
 // Theme contract: only tokens the installed UI theme defines in both light and dark.
 // Values resolved from the shipped theme bundle (light | dark):
 //   bg-layer-1 #fff | #232324, bg-skeleton #0000000a | #ffffff14,
