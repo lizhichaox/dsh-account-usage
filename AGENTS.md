@@ -3,7 +3,7 @@
 > 这是用户对本插件的**长期要求清单**。接手前先读本文件，不要重复询问已经写在这里的偏好；
 > 用户不想反复重申。若实现与本文件冲突，以用户当次明确指示为准，并在完成后回写本文件。
 
-最后更新：2026-11-08 · 插件版本：`1.0.3`
+最后更新：2026-11-08 · 插件版本：`1.0.4`
 
 - 插件目录：`/Users/lizhichao/vc/macos/dsh/dsh-preset/account-usage-panel`
 - GitHub：<https://github.com/lizhichaox/dsh-account-usage>

@@ -91,9 +91,6 @@ window.__ModuleLoader__.load({
     const zh = {
       'tab.title': '用量',
       'panel.title': '账号用量',
-      'header.trend': '近 7 天',
-      'header.trendTitle': '最近 7 天 Token 趋势',
-      'header.live': '实时',
       'guide.title': '账号用量',
       'guide.description': '余额与按日、周、月、季、年统计的用量',
       'shortcut.open': '打开账号用量统计',
@@ -129,9 +126,7 @@ window.__ModuleLoader__.load({
       'account.providerNoKey': '未配置 {provider} API Key，无法读取余额。',
       'account.offAccountAll': '本次会话由 {provider} 提供，不消耗 DeepSeek API 余额。',
       'stats.platformBadge': 'DeepSeek API',
-      'stats.sessionScope': '本会话',
       'stats.subscriptionScope': '套餐',
-      'stats.platformBadgeHint': '平台用量只统计 DeepSeek API，不含第三方 Provider。',
       'balance.bonus': '赠送额度',
       'balance.failed': '余额读取失败',
       'balance.empty': '暂无余额数据',
@@ -165,8 +160,6 @@ window.__ModuleLoader__.load({
       'tokens.context': '上下文占用',
       'tokens.contextValue': '{used} / {window}（{percent}%）',
       'tokens.contextUnknown': '暂无上下文数据',
-      'tokens.modelMeta': '{requests} 次请求 · 占比 {share}%',
-      'tokens.byModel': '按模型',
       'tokens.moreModels': '另有 {count} 个模型',
       'tokens.stat.requests': '请求次数',
       'tokens.stat.cacheHit': '缓存命中',
@@ -201,9 +194,6 @@ window.__ModuleLoader__.load({
     const en = {
       'tab.title': 'Usage',
       'panel.title': 'Account usage',
-      'header.trend': 'Last 7 days',
-      'header.trendTitle': 'Token trend over the last 7 days',
-      'header.live': 'Live',
       'guide.title': 'Account usage',
       'guide.description': 'Balance and usage grouped by day, week, month, quarter, or year',
       'shortcut.open': 'Open account usage',
@@ -239,9 +229,7 @@ window.__ModuleLoader__.load({
       'account.providerNoKey': 'No {provider} API key is configured.',
       'account.offAccountAll': 'This session runs on {provider}; it does not use your DeepSeek balance.',
       'stats.platformBadge': 'DeepSeek API',
-      'stats.sessionScope': 'session',
       'stats.subscriptionScope': 'PLAN',
-      'stats.platformBadgeHint': 'Platform usage covers the DeepSeek API only, not third-party providers.',
       'balance.bonus': 'Bonus credit',
       'balance.failed': 'Could not read the balance',
       'balance.empty': 'No balance data yet',
@@ -275,8 +263,6 @@ window.__ModuleLoader__.load({
       'tokens.context': 'Context usage',
       'tokens.contextValue': '{used} / {window} ({percent}%)',
       'tokens.contextUnknown': 'No context data yet',
-      'tokens.modelMeta': '{requests} calls · {share}%',
-      'tokens.byModel': 'By model',
       'tokens.moreModels': '{count} more models',
       'tokens.stat.requests': 'Requests',
       'tokens.stat.cacheHit': 'Cache',
@@ -317,8 +303,6 @@ window.__ModuleLoader__.load({
       '.aup-root *{box-sizing:border-box}',
       '.aup-head{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;height:var(--aup-head-h,44px);margin:0 -8px 0;padding:0 8px;border-bottom:.5px solid var(--dsw-alias-border-l3)}',
       '.aup-head-greeting{min-width:0;text-align:center;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:16px;font-weight:500;white-space:nowrap}',
-      '.aup-glyph{flex:none;color:var(--dsw-alias-label-secondary);display:inline-flex}',
-      '.aup-title{flex:1;min-width:0;margin:0;font-size:var(--aup-fs-text);font-weight:500;line-height:20px;white-space:nowrap}',
       '.aup-icon-button{flex:none;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:background-color .12s,color .12s}',
       '.aup-icon-button:hover:not(:disabled){background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}',
       '.aup-icon-button:disabled{opacity:.4;cursor:default}',
@@ -408,10 +392,6 @@ window.__ModuleLoader__.load({
       '.aup-card-session .aup-session-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}',
       '.aup-card-session .aup-session-cell:nth-child(even){align-items:flex-end;text-align:right}',
       '.aup-models{display:flex;flex-direction:column;gap:0;flex:none;min-height:0}',
-      '.aup-model-item{display:flex;flex-direction:column;gap:2px;min-width:0}',
-      '.aup-model-track{height:4px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
-      '.aup-model-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary)}',
-      '.aup-model-meta{display:flex;justify-content:space-between;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-model-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 10px;min-width:0;font-size:var(--aup-fs-text);line-height:17px;font-variant-numeric:tabular-nums}',
       '.aup-model-name{flex:1 1 auto;min-width:0;font-size:var(--aup-fs-text);line-height:18px;white-space:normal;overflow-wrap:anywhere;color:var(--aup-label-2)}',
                   '.aup-model-tokens{flex:none;margin-left:auto;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
@@ -496,11 +476,9 @@ window.__ModuleLoader__.load({
       '.aup-series-cost{white-space:nowrap}',
       '.aup-series-track{height:6px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
       '.aup-series-fill{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--dsw-alias-brand-primary),color-mix(in srgb,var(--dsw-alias-brand-primary) 55%,var(--dsw-alias-bg-layer-1)))}',
-      '.aup-series-value{display:flex;flex-direction:row;align-items:baseline;justify-content:flex-end;gap:6px;font-weight:500;line-height:16px;font-variant-numeric:tabular-nums;color:var(--aup-label-2)}',
       '.aup-series-tokens{font-size:var(--aup-fs-text);line-height:16px;font-variant-numeric:tabular-nums}',
       '.aup-series-cost{justify-self:end;font-size:var(--aup-fs-text);line-height:16px;color:var(--aup-label-2);font-variant-numeric:tabular-nums}',
-      '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-value{color:var(--dsw-alias-label-primary);font-weight:500}',
-      '.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary)}',
+      '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-tokens,.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary);font-weight:500}',
       '.aup-tab-icon{flex:none;width:14px;height:14px;vertical-align:-2px;color:var(--dsw-alias-label-secondary)}',
       // ---- one shared type scale: every Chinese text is 13px, only numbers vary by role ----
       '.aup-card{gap:4px;padding:8px}',
@@ -900,8 +878,13 @@ window.__ModuleLoader__.load({
     const moneyFormatters = new Map();
 
     /** Localized currency text for one already-settled amount. */
+    /** Symbol cache: one formatter per currency+locale instead of one per row. */
+    const currencySymbols = new Map();
+
     /** Symbol for one currency, used when the amount is printed symbol-last. */
     function currencySymbol(currency, locale) {
+      const key = String(currency) + '|' + String(locale === undefined ? '' : locale);
+      if (currencySymbols.has(key)) return currencySymbols.get(key);
       try {
         const parts = new Intl.NumberFormat(locale === undefined ? undefined : locale, {
           style: 'currency',
@@ -909,14 +892,17 @@ window.__ModuleLoader__.load({
           currencyDisplay: 'narrowSymbol'
         }).formatToParts(0);
         const found = parts.find((part) => part.type === 'currency');
-        if (found !== undefined) return found.value;
+        if (found !== undefined) {
+          currencySymbols.set(key, found.value);
+          return found.value;
+        }
       } catch (error) {
         /* fall through to the static table */
       }
-      if (currency === 'CNY') return '¥';
-      if (currency === 'USD') return '$';
-      if (currency === 'EUR') return '€';
-      return '';
+      currencySymbols.set(key, '');
+      const fallback = currency === 'CNY' ? '¥' : currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '';
+      currencySymbols.set(key, fallback);
+      return fallback;
     }
 
     function moneyText(amount, currency, locale) {

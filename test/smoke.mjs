@@ -187,6 +187,11 @@ assert.ok(!source.includes('scrollbar-gutter'), 'the card column spans the full 
 assert.ok(source.includes('aup-series-slot'), 'invisible slot rows keep the list height constant');
 assert.ok(source.includes('.aup-card-session .aup-session-body>.aup-context{margin-top:0}'), 'the context block rides the even spread, not a bottom anchor');
 assert.ok(source.includes('.aup-stat-list::before{content:""'), 'a hairline separates the two stat columns');
+// Housekeeping: no dead selectors or stale dictionary entries survive a cleanup pass.
+for (const gone of ['.aup-series-value{', '.aup-model-track{', '.aup-model-fill{', "'.aup-glyph{", "'stats.sessionScope'"]) {
+  assert.ok(!source.includes(gone), 'dead code is gone: ' + gone);
+}
+assert.ok(source.includes('const currencySymbols = new Map()'), 'currency symbols are cached per currency+locale');
 assert.ok(!source.includes('buildDetailStats'), 'the dead provider-detail stat builder is gone');
 assert.ok(source.includes('.aup-stats-summary{grid-column:1/-1;margin-top:2px;'), 'the total row spans the whole table');
 
