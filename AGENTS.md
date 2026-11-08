@@ -54,7 +54,7 @@
 | 18 | **要求写进 AGENTS.md，别让人重复** | 本节 §0 | 见各条 |
 | 19 | **英文文本不许看着浅** | 拉丁字体栈优先 + 根 500 基线 + `--aup-label-2` 混色 | `Latin families precede CJK ones in the stack` / `secondary text is darkened from theme tokens` / `the panel root sets a 500 baseline weight` |
 | 20 | **切维度不许抖动** | 固定槽位 `SERIES_ROW_SLOTS=4` + 固定行距 + 骨架行数对齐 + 全维度预热 | `the list keeps a constant slot count` / `spare slots pad the list in quarter/year` / `period rows keep a fixed pitch across dimensions` / `the loading frame matches the target row count` / `every dimension is warmed widest-first` |
-| 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 媒体查询按窗口高度减内容 + 超长时卡片列滚动 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
+| 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 媒体查询按窗口高度减内容 + 超长时卡片列滚动 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
 
 ## 1. 产品定位
 
@@ -102,12 +102,16 @@
      面板底部不会出现空白带；账户卡内部的余额/套餐块用 `flex:1` + 均匀分布填满这块空间。
   3. **明细列表固定槽位**：`SERIES_ROW_SLOTS = 4`，按维度渲染 1..N 行，剩余用**不可见占位行**
      （`.aup-series-slot`，`min-height:21px`）补齐；这样**切维度时列表高度恒定**，下面的卡片一动不动。
-  4. **列高不够时用媒体查询减内容**（纯 CSS，不测量）：
-     `@media (max-height:900px)` 隐藏 Token 构成彩条、`(max-height:820px)` 隐藏上下文百分比图例、
-     `(max-height:760px)` 隐藏按模型明细。窗口再矮就由卡片列滚动（`.aup-cards{overflow-y:auto}`），
-     **滚动可以，遮挡不行**。
+  4. **列高不够时用媒体查询减内容**（纯 CSS，不测量），按此顺序：
+     `max-height:900px` 隐藏 Token 构成彩条 → `920px` 隐藏按模型明细 → `840px` 隐藏统计表 →
+     `820px` 隐藏上下文百分比图例。窗口再矮就由卡片列滚动（`.aup-cards{overflow-y:auto}`），
+     **滚动可以，遮挡不行**。阈值是用真机浏览器量出来的（见下条）。
   5. 明令禁止：用 `ResizeObserver`/`getBoundingClientRect` 的内容高度去反推行数并 `setState`
      （09:29 崩溃的成因）、用 `overflow:hidden` 或省略号假装解决放不下。
+  6. **必须用真机浏览器验证几何**：`npm run verify:ui`（`test/layout-check.mjs`）用本机 Chrome
+     无头模式在 700/810/900/1000/1080/1200px 六种窗口高度下测量真实布局，断言
+     **任意两个文本叶子不重叠、卡片内容不溢出、无横向溢出、最后一张卡贴住面板底部（无空白带）**。
+     几何承诺不能只靠字符串断言——这就是「改了却没生效」反复发生的原因。
 - **卡内不允许滚动**，但**卡片列可以滚动**：`.aup-cards` 允许 `overflow-y:auto`（细滚动条），
   作为最后一道保险——内容再高也不会把「账户余额」卡顶出可视区、更不会被裁切。
   优先级：先减内容（明细行封顶）→ 再让卡片列滚动，绝不裁切。
@@ -268,6 +272,7 @@
 ## 12. 工程习惯
 
 - 改完必须跑：`node --check index.js && node --check client.js && npm run verify`
+- 动布局/几何必须再跑 `npm run verify:ui`（真机 Chrome 无头测量，不是字符串断言）
 - 视觉/交互改动要补冒烟测试；Host 折叠逻辑要有单元测试
 - 无法用浏览器验证时，如实说明「基于 CSS/契约测试，非真机像素比对」
 - 本地是 link 安装；改 `index.js` 需要 Plugin Manager 停用/启用一次，改 `client.js` 等 HMR
@@ -276,6 +281,7 @@
 
 ## 13. 已完成的关键决策（避免回退）
 
+- 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
 - 会话卡不再使用 `container-type: size`（会让内容高度塌陷成 0）
 - 面板充满右侧栏整高整宽：**卡片按内容撑开（`flex:0 0 auto`）+ 最后一张卡 `flex:1 1 auto` 吸收剩余高度**；
   取代了此前「三张卡都 `flex:1 1 0` 平分高度」的写法——平分会把卡片压到内容以下，这是所有叠字的根因
