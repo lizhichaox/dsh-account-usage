@@ -1,7 +1,7 @@
 {
   "name": "dsh-account-usage",
-  "version": "1.0.6",
-  "description": "Shows account balances and token usage grouped by day, week, month, quarter, or year in the right sidebar.",
+  "version": "1.0.7",
+  "description": "Balances + tokens by day/week/month/quarter/year.",
   "author": "chaox",
   "license": "MIT",
   "publishConfig": {

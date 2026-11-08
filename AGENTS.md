@@ -3,7 +3,7 @@
 > 这是用户对本插件的**长期要求清单**。接手前先读本文件，不要重复询问已经写在这里的偏好；
 > 用户不想反复重申。若实现与本文件冲突，以用户当次明确指示为准，并在完成后回写本文件。
 
-最后更新：2026-11-08 · 插件版本：`1.0.6`
+最后更新：2026-11-08 · 插件版本：`1.0.7`
 
 - 插件目录：`/Users/lizhichao/vc/macos/dsh/dsh-preset/account-usage-panel`
 - GitHub：<https://github.com/lizhichaox/dsh-account-usage>
@@ -73,6 +73,7 @@
 | 37 | **不需要 Retry 按钮，获取不到就算了**（2026-11-08） | 所有卡片失败只显示状态，不显示重试按钮、不添加失败后自动重试；保留既有顶部刷新及定时刷新 | `failed reads never render Retry buttons` / provider-client 全部错误态无按钮、顶部刷新和旧响应回归 |
 | 38 | **上架图标要体现 usage**（2026-11-08：「一点也没体现出来 usage 的概念」） | `icon.svg` = 蓝色圆角块 + 三条递增白色柱状条；设置里的已安装列表与市场 Discover 共用这份图 | `the icon draws three usage bars` / `the wallet artwork is gone` |
 | 39 | **当前会话在用的 Account 要凸显**（2026-11-08） | 最新 assistant 消息的 provider 对应的那一行：整行淡品牌色背景 + 名称加粗；无圆点、无胶囊、不改变列宽与左右边缘；`aria-current` 暴露给读屏 | `exactly one account row is highlighted` / `the row in use is the highlighted one` / `the highlight is exposed to assistive tech` / `the highlight is a background tint, not a pill` |
+| 40 | **介绍语 50 字以内**（2026-11-08） | 插件列表/市场 Discover 共用一句短介绍：`Balances + tokens by day/week/month/quarter/year.`（49 字符）/「余额与 Token 用量，按日/周/月/季/年汇总」（25 字）；`package.json.description`、`scripts/finalize-release.mjs`、`market/index.json` 三处同步，`market/check.mjs` 强制 ≤50 | `the plugin intro stays within 50 characters` / `the intro names balances and tokens` / market check 的 `description must stay within 50 characters` |
 
 ## 1. 产品定位
 
@@ -108,6 +109,11 @@
   蓝色圆角应用块 + **三条递增的白色柱状条**，一眼读成 usage / statistics；
   **不要**再用钱包、时钟、问号这类「余额」隐喻。24px 设计，缩到 16px 仍要能分辨。
   这份 `icon.svg` 同时用于设置里的「已安装插件」列表和市场 `market/index.json` 的 data URI，两处不能各画一套。
+- **介绍语一句话、50 字以内**（2026-11-08 用户：「优化一下介绍语 50 字以内」）：
+  设置里的已安装列表与市场 Discover 用的是同一句：英文 `Balances + tokens by day/week/month/quarter/year.`（49 字符）、
+  中文「余额与 Token 用量，按日/周/月/季/年汇总」（25 字）。必须同时点到**余额**和**Token 用量**，
+  并保留日/周/月/季/年五个周期；**禁止**再写成长句。三处来源（`package.json.description`、
+  `scripts/finalize-release.mjs` 的索引文案、生成后的 `market/index.json`）必须一致，`market/check.mjs` 会卡 50 字上限。
 - 不放置「查看用量 / 充值」等跳转链接。
 
 ## 2. 卡片与布局
@@ -411,12 +417,13 @@
 - **账户卡来源行**（§7、§7.1）：取代「来源 tab + 共享网格等高 pane」（tab 换行、短 pane 留白，被用户点名不美观）。独立原始身份与状态保留。
 - **获取不到就算了，不提供 Retry 按钮**：取代「余额失败时定向重试」，并移除统计卡错误态的重试按钮；只保留既有顶部刷新及定时刷新，不新增失败重试循环。
 - **图标从钱包换成用量柱状图**（1.0.6）：取代「钱包 + 时钟」图标，已安装列表与市场索引共用 `icon.svg`。
+- **介绍语压到 50 字以内**（1.0.7）：取代原来 130 字符的长句；只说「余额 + Token 用量 + 五个周期」。
 - **当前 Account 用整行背景凸显**（1.0.6）：取代「当前来源小圆点」（当时被判为无信息量而删除）；
   现在这条信息有意义，但只用**背景 + 字重**表达，不加任何新元素、不产生布局位移。
 - **余额卡只写剩余**：取代「OpenRouter 显示已用」「OpenAI/Anthropic 显示本月花费 + 需管理员密钥」；也取代「当前来源小圆点」。
 - **只有会话卡保留进度条**：取代「用量统计四列表含胶囊条」「账户卡胶囊条」。
 - 793px/851px 是三来源、420px 宽夹具基准，多来源追加 `16 + (n-3)×52`，英文窄栏的长状态会换行增高（因此英文状态都用短词）。
-- 本轮 1.0.6 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
+- 本轮 1.0.7 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
 
 - 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
 - **卡片**不使用 `container-type: size`（内容高度会塌陷成 0）；但**面板根节点必须用**

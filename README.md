@@ -296,6 +296,12 @@ npm 页面：<https://www.npmjs.com/package/dsh-account-usage>（也可用 Git �
 - 平台「用量」接口是网页私有接口，非官方公开 API；平台改版时可能失效，届时自动回退本地估算
 - 平台按 UTC 切分每日数据，面板按平台给出的日期直接分桶（与平台「用量」页日期一致）
 
+## 1.0.7 更新摘要
+
+- **介绍语压到 50 字以内**：已安装列表与市场 Discover 显示同一句短介绍——
+  英文 `Balances + tokens by day/week/month/quarter/year.`（49 字符）、
+  中文「余额与 Token 用量，按日/周/月/季/年汇总」（25 字），不再是一长句
+
 ## 1.0.6 更新摘要
 
 - **上架图标改成「用量」图示**：蓝色圆角块 + 三条递增的柱状条，一眼看出是 usage / statistics，

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.7 — 2026-11-08
+
+### 介绍语
+
+- 插件列表 / 市场 Discover 的介绍语压到 50 字以内：
+  英文 `Balances + tokens by day/week/month/quarter/year.`（49 字符），
+  中文「余额与 Token 用量，按日/周/月/季/年汇总」（25 字）；
+  `package.json`、索引生成器与 `market/index.json` 三处同步，`market/check.mjs` 强制 ≤50。
+
 ## 1.0.6 — 2026-11-08
 
 ### 图标
