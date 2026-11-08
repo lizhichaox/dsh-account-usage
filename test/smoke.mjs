@@ -58,6 +58,15 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'ut
 
 // ------------------------------------------------------------- client boot --
 const source = fs.readFileSync(path.join(root, 'client.js'), 'utf8');
+{
+  // One family + one size per text category: every declaration goes through the tokens.
+  const rawSizes = source.match(/font-size:[0-9.]+px/g) || [];
+  assert.equal(rawSizes.length, 0, 'every font size goes through a token: ' + JSON.stringify(rawSizes));
+  const css = source;
+  for (const token of ['--aup-font-ui', '--aup-fs-text', '--aup-fs-num-lg', '--aup-fs-num-md', '--aup-fs-num-sm', '--aup-fs-num-xs', '--aup-fs-num-xxs']) {
+    assert.ok(source.includes(token + ':'), 'declares ' + token);
+  }
+}
 assert.equal((source.match(/text-overflow:ellipsis/g) || []).length, 0, 'card text never uses ellipsis');
 
 // Theme contract: only tokens the installed UI theme defines in both light and dark.

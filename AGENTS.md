@@ -58,8 +58,13 @@
 
 ## 3. 文本与排版（重点，多次强调）
 
+- **字体与字号必须走令牌，禁止写死像素**（`font-size:NNpx` 在 CSS 里已清零）：
+  - 字族：`--aup-font-ui`（`-apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif`），
+    中文、英文、符号共用同一字族；数字在需要的容器上加 `font-variant-numeric:tabular-nums`
+  - 文本（中文/英文/符号）：**只有一个字号 `--aup-fs-text: 13px`**，不再有 11/12/14px 的文本
+  - 数字：固定四档 `--aup-fs-num-lg(20) / md(16) / sm(13) / xs(12) / xxs(11)`，
+    只允许按用途选档，不允许临时造新字号
 - 中文正文/标签统一 **13px、500 字重**；标题也是 13px/500，金额数字可以层级不同。
-- 金额数字可大小不同；中文文本字号/字重必须一致。
 - 数字层级固定三级：`20px`（会话合计 / 统计合计 / Provider 主余额）、`16px`（账户余额 / Provider 已用总额）、`13px`（其余明细）；统一 500 字重与 `tabular-nums`。
 - **右侧卡片内所有文本禁止折叠、遮挡、省略、截断**。允许：
   - 自动换行（长模型名、Provider 名、说明、标签）
