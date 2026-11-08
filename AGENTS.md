@@ -3,7 +3,7 @@
 > 这是用户对本插件的**长期要求清单**。接手前先读本文件，不要重复询问已经写在这里的偏好；
 > 用户不想反复重申。若实现与本文件冲突，以用户当次明确指示为准，并在完成后回写本文件。
 
-最后更新：2026-11-08 · 插件版本：`1.0.8`
+最后更新：2026-11-08 · 插件版本：`1.0.9`
 
 - 插件目录：`/Users/lizhichao/vc/macos/dsh/dsh-preset/account-usage-panel`
 - GitHub：<https://github.com/lizhichaox/dsh-account-usage>
@@ -58,7 +58,7 @@
 | 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（三来源夹具内容 793px）+ 面板容器查询阶梯（850/838/771/680/615，按来源数追加预算）+ 阶梯末尾带 `!important` + `scrollbar-width:none` | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 4` / `the card column never shows a scrollbar` |
 | 23 | **同一组行左右对齐 + 行内垂直居中** | 父级网格 + 行 `grid-template-columns:subgrid` + 行 `align-items:center` | `the source rows share one grid` / `rows take their columns from the shared grid` / `the period rows share one grid` / `subgrid rows centre their cells vertically` / layout-check 的 `srcLabelLeft`、`acctValueRight`、`srcLabel`（居中）断言 |
 | 24 | **用量统计是三列严格对齐的表（无胶囊条）** | 描述 / 用量 / 金额共用一个网格；每行 3 格；第三方行第 3 列写短标记 `PLAN`（中文「套餐」） | `one shared table` / `the card declares the three columns once` / `the English marker stays short: PLAN` / layout-check 的 `table` 断言（labelLeft、tokensRight、amountRight 唯一） |
-| 25 | **金额只留货币符号，¥ 后置** | `Intl.formatToParts` 重排；仅 CNY 后置，其它货币按惯例 | `amounts use the narrow currency symbol` / `the spend row ends with the ¥ symbol` / `only the ¥ moves behind the amount` |
+| 25 | **金额只留货币符号，且一律后置**（2026-11-08 扩展：所有货币） | `Intl.formatToParts` 重排，任何货币都是「数字 + 符号」：`23.28¥`、`9.50$`、`12.00€`；不显示货币代码 | `amounts use the narrow currency symbol` / `the spend row ends with the ¥ symbol` / `every currency keeps its symbol after the amount` / `no currency keeps the prefix form` |
 | 26 | **期数标签带年份** | 日/周 `YYYY-MM-DD`、月 `YYYY-MM`、季 `YYYY Qn`、年「全」`YYYY` | `day and week labels carry the year` / `day rows show YYYY-MM-DD` |
 | 27 | **无障碍与动效是原则** | reduced-motion 全量关闭；装饰条 `aria-hidden`；所有控件有 focus 环 | `reduced motion covers every transition and animation` / `the refresh button keeps a keyboard ring` / `no capsule bar outside the session card: …` |
 | 28 | **两处卡片页脚统一左中右结构** | 图例与合计行共用三列网格；合计行恒 3 格 | `the two footers share one left/centre/right grid` / `the third cell is pinned to the right edge` / layout-check 的 `footer` 断言（首格贴左、中格居中、末格贴右） |
@@ -74,6 +74,7 @@
 | 38 | **上架图标要体现 usage**（2026-11-08：「一点也没体现出来 usage 的概念」） | `icon.svg` = 蓝色圆角块 + 三条递增白色柱状条；设置里的已安装列表与市场 Discover 共用这份图 | `the icon draws three usage bars` / `the wallet artwork is gone` |
 | 39 | **当前会话在用的 Account 要凸显**（2026-11-08） | 最新 assistant 消息的 provider 对应的那一行：整行淡品牌色背景 + 名称加粗；无圆点、无胶囊、不改变列宽与左右边缘；`aria-current` 暴露给读屏 | `exactly one account row is highlighted` / `the row in use is the highlighted one` / `the highlight is exposed to assistive tech` / `the highlight is a background tint, not a pill` |
 | 40 | **介绍语 20 字以内**（2026-11-08，先要 50 再收紧到 20） | 插件列表/市场 Discover 共用一句短介绍：`Balances + tokens.`（18 字符）/「余额与 Token 用量」（12 字）；`package.json.description`、`scripts/finalize-release.mjs`、`market/index.json` 三处同步，`market/check.mjs` 强制 ≤20 | `the plugin intro stays within 20 characters` / `the intro names balances and tokens` / market check 的 `description must stay within 20 characters` |
+| 41 | **账户行在最小宽度也不许换行**（2026-11-08：「不允许缩到换行」） | 余额卡的行在 340px 面板仍单行：把「短标签 数值」对的间距收到 `gap:2px 2px`、对列 `column-gap:6px`、字距 `-0.4px`（名称 `-0.1px`），worst case 三个 `100%` 也放得下；`verify:ui` 用 340px + 全 `100%` 夹具断言 `lines === 1` 且不裁切 | layout-check `single-line minimum-width check` / `balance figures wrapped` 失败即回归 |
 
 ## 1. 产品定位
 
@@ -237,11 +238,13 @@
   - 列宽按内容自适应（日期列用 `max-content`）
 - 不允许出现 `text-overflow: ellipsis`（当前全文件已清零）。
 - Token 单位自动 `K → M → B → T`，最多两位小数；金额固定两位小数（正数按平台规则截断）。
-- **金额只显示货币符号、不显示货币代码，且 `¥` 放在数字后面**（用户 2026-11-08：
-  「留个¥就行 CN 没必要」→「金额符号放在价格后面吧¥ 这样看着更协调」）：
-  - 人民币一律 `23.28¥`（`Intl.formatToParts` 重排，保留千分位/小数点/负号），**不写 `CN¥` / `CNY`**
-  - 其它货币保持自身惯例（`$11.04` 而不是 `11.04$`，否则和 Provider 余额放一起很别扭）
-  - 判定逻辑在 `moneyText()`：`String(currency) === 'CNY'` 时才后置符号
+- **金额只显示货币符号、不显示货币代码，且符号一律放在数字后面**（用户 2026-11-08：
+  「留个¥就行 CN 没必要」→「金额符号放在价格后面吧¥」→「货币符号都放到金额后面」）：
+  - 统一规则：`23.28¥`、`9.50$`、`12.00€`、`-5.00¥`；**不写** `CN¥` / `CNY` / `$11.04`
+  - 实现：`Intl.NumberFormat({style:'currency', currencyDisplay:'narrowSymbol'})` 的
+    `formatToParts` 里**丢掉 currency part，其余照原样拼起来再追加窄符号**，
+    这样千分位/小数点/正负号/本地化分组都不受破坏
+  - **禁止**再按货币判断分支（旧代码 `String(currency) === 'CNY'` 的特例已删除）
 - 主题：只用 DSH 主题 token（`--dsw-alias-*`，图表色可用 `--dsw-static-*` + 十六进制 fallback），
   禁止硬编码普通颜色；浅色/深色都要验证对比度（当前主文本 18.9:1 / 15.0:1）。
 - 禁止使用 `--dsw-alias-bg-layer-2`（浅色下等于 bg-layer-1，会看不见）；
@@ -318,6 +321,11 @@
   `aria-current="true"` 暴露给读屏。
   **禁止**为此加圆点 / 胶囊 / 徽标，**禁止**改内边距或列宽——背景不会移动左右边缘，`verify:ui` 的
   `acctLabelLeft` / `acctValueRight` 唯一性断言必须继续通过；单账号会话（只有 DeepSeek 钱包、没有行列表）不加强调。
+- **余额卡的行在最小宽度（340px）也必须单行，不允许换行**（用户 2026-11-08：「不允许缩到换行」）：
+  「短标签 数值」对之间的间距必须收紧到能在 340px 放下最坏情况（3 个 `100%`）；
+  行仍用同一套网格，**禁止**靠加宽面板 / 隐藏窗口 / 改字号来回避。
+  `verify:ui` 会在 340px、中英文、三档都用 `100%` 的夹具上断言每行 `lines === 1`、未裁切；
+  任何来源数量下的余额行也都做同样检查。
 - 设置里的「用量明细列表」打开后，在来源行下方追加逐期 `Token · 金额` 明细（悬浮可看完整日期/Token/金额）
 - 明细列表**高度恒定由固定槽位保证**：`SERIES_ROW_SLOTS = 4`，不足的槽位用不可见占位行（`min-height:21px`）补齐，
   切维度（日↔季↔年）时列表高度不变、下方卡片与 tab 行不闪动；行高只设 `min-height` 不设死高度，
@@ -418,12 +426,14 @@
 - **获取不到就算了，不提供 Retry 按钮**：取代「余额失败时定向重试」，并移除统计卡错误态的重试按钮；只保留既有顶部刷新及定时刷新，不新增失败重试循环。
 - **图标从钱包换成用量柱状图**（1.0.6）：取代「钱包 + 时钟」图标，已安装列表与市场索引共用 `icon.svg`。
 - **介绍语压到 20 字以内**（1.0.8，先压到 50 又收紧）：取代原来 130 字符的长句，只剩「余额 + Token」。
+- **余额行最小宽度单行**（1.0.9）：收紧对间距/字距，取代「窄面板允许换行」；340px 是硬底线。
+- **所有货币符号后置**（1.0.9）：取代「只有 ¥ 后置、其它货币按 $11.04 惯例」。
 - **当前 Account 用整行背景凸显**（1.0.6）：取代「当前来源小圆点」（当时被判为无信息量而删除）；
   现在这条信息有意义，但只用**背景 + 字重**表达，不加任何新元素、不产生布局位移。
 - **余额卡只写剩余**：取代「OpenRouter 显示已用」「OpenAI/Anthropic 显示本月花费 + 需管理员密钥」；也取代「当前来源小圆点」。
 - **只有会话卡保留进度条**：取代「用量统计四列表含胶囊条」「账户卡胶囊条」。
 - 793px/851px 是三来源、420px 宽夹具基准，多来源追加 `16 + (n-3)×52`，英文窄栏的长状态会换行增高（因此英文状态都用短词）。
-- 本轮 1.0.8 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
+- 本轮 1.0.9 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
 
 - 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
 - **卡片**不使用 `container-type: size`（内容高度会塌陷成 0）；但**面板根节点必须用**

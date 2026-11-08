@@ -286,6 +286,25 @@ out.summaryCells = summaryEl === null ? [] : [...summaryEl.children].map((el) =>
 out.sourceRows = [...document.querySelectorAll('.aup-card-stats .aup-src')].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
 out.seriesRows = [...document.querySelectorAll('.aup-card-stats .aup-series-row')].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
 out.acctRows = [...document.querySelectorAll('.aup-acct-src, .aup-acct-row')].map((el) => Math.round(el.getBoundingClientRect().height) + ':' + el.textContent.slice(0, 40));
+out.acctPairs = [...document.querySelectorAll('.aup-acct-srcs .aup-acct-src')].flatMap((row) => {
+  const pairs = row.querySelector('.aup-acct-pairs');
+  if (pairs === null) return [];
+  const label = row.querySelector('.aup-acct-src-label');
+  const items = [...pairs.querySelectorAll('.aup-acct-pair')];
+  const rowRect = row.getBoundingClientRect();
+  const pairsRect = pairs.getBoundingClientRect();
+  return [{
+    label: (label === null ? '' : label.textContent).slice(0, 20),
+    lines: new Set(items.map((el) => Math.round(el.getBoundingClientRect().top))).size,
+    clipped: pairsRect.right > rowRect.right + 1 || pairsRect.left < rowRect.left - 1,
+    width: Math.round(pairsRect.width),
+    rowWidth: Math.round(rowRect.width),
+    labelWidth: label === null ? 0 : Math.round(label.getBoundingClientRect().width),
+    available: Math.round(rowRect.right - label.getBoundingClientRect().right),
+    natural: Math.round(items.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + (Number.parseFloat(getComputedStyle(pairs).columnGap) || 0) * Math.max(0, items.length - 1)),
+    text: pairs.textContent
+  }];
+});
 out.scrolls = cardsEl.scrollHeight > cardsEl.clientHeight + 1;
 out.scrollInfo = cardsEl.scrollHeight + '/' + cardsEl.clientHeight;
 const lastCard = document.querySelector('.aup-cards > .aup-card:last-child');
@@ -338,6 +357,18 @@ function sourcesCase(count, locale) {
     google: { phase: 'error', code: 'unsupported_provider' },
     xai: { phase: 'error', code: 'no_credential' }
   } };
+  return fixture;
+}
+// Worst case for the plan row: three 4-character percentages (`100%`) at the
+// minimum supported panel width, where a wrapped row is unacceptable.
+function wrapCase(locale) {
+  const fixture = sourcesCase(3, locale);
+  fixture.id = 'wrap-' + locale;
+  const plan = PROVIDER_BALANCES.items[0];
+  fixture.providerBalances.byProvider['opencode-go'] = {
+    phase: 'ready',
+    data: { ...plan, windows: plan.windows.map((window) => ({ ...window, usedPercent: 0 })) }
+  };
   return fixture;
 }
 // `--shot <paneHeight> [dimension] [width]` writes one ready-to-look-at page so a
@@ -393,6 +424,13 @@ if (process.argv.includes('--tiers')) {
 // Mixed sessions list every source in the balance card (no tabs). More sources add
 // one statistics row and one balance row each; the per-count CSS budget must keep
 // every state free of overlap, overflow, scrolling and a bottom dead band.
+if (process.argv.includes('--debug-wrap')) {
+  for (const locale of ['zh', 'en']) {
+    const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-wrap-')), 1600, wrapCase(locale), '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', 340);
+    console.log(locale, 340, JSON.stringify(r.acctPairs));
+  }
+  process.exit(0);
+}
 if (process.argv.includes('--debug-sources')) {
   for (const [loc, w, n] of [['en', 340, 5], ['zh', 340, 5]]) { const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-debug-')), 1600, sourcesCase(n, loc), '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', w); console.log(loc, w, n, r.cards.map((c) => c.height).join('/'), JSON.stringify(r.acctRows), JSON.stringify(r.sourceRows)); }
   process.exit(0);
@@ -413,11 +451,28 @@ for (const locale of ['zh', 'en']) for (const width of [340, 420]) for (const he
     for (const name of ['acctLabelLeft', 'acctValueRight']) {
       if ((result.align?.[name] ?? []).length > 1) providerFailures.push(`${label}: ${name} not aligned -> ${result.align[name].join(' / ')}`);
     }
+    // A balance row never wraps or clips its figures, whatever the source count.
+    for (const pair of result.acctPairs ?? []) {
+      if (pair.lines !== 1) providerFailures.push(`${label}: balance figures wrapped -> ${pair.label} ${pair.text}`);
+      if (pair.clipped) providerFailures.push(`${label}: balance figures clipped -> ${pair.label} ${pair.text}`);
+    }
     if ((result.centring?.acctValue ?? 0) > 1) providerFailures.push(`${label}: balance values not centred`);
     providerChecks++;
   }
 }
-console.log(`provider rows: ${providerChecks} states; zh/en, 340/420 wide, 700/900/1080 high, 3/4/5 sources (7 from 900)`);
+// The minimum width is the hard floor for the "never wrap" rule (user 2026-11-08):
+// three 4-character percentages must still read as one line at 340px.
+for (const locale of ['zh', 'en']) {
+  const result = measure(css, providerDir, 900, wrapCase(locale), '', 340);
+  const pairs = result?.acctPairs ?? [];
+  if (pairs.length === 0) providerFailures.push(`${locale} 340 minimum width: no balance rows measured`);
+  for (const pair of pairs) {
+    if (pair.lines !== 1) providerFailures.push(`${locale} 340 minimum width: balance figures wrapped -> ${pair.label} ${pair.text}`);
+    if (pair.clipped) providerFailures.push(`${locale} 340 minimum width: balance figures clipped -> ${pair.label} ${pair.text}`);
+  }
+  providerChecks++;
+}
+console.log(`provider rows: ${providerChecks} states; zh/en, 340/420 wide, 700/900/1080 high, 3/4/5 sources (7 from 900), single-line minimum-width check`);
 if (process.argv.includes('--providers')) {
   if (providerFailures.length) { console.error(providerFailures.join('\n')); process.exit(1); }
   console.log('provider row geometry passed'); process.exit(0);

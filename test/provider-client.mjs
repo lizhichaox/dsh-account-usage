@@ -117,7 +117,7 @@ for (const provider of ['openai','anthropic','google','amazon-bedrock','azure','
   const rows = nodes(tree, n => n.props?.className === 'aup-acct-src').map(txt);
   assert(rows.some(row => row.endsWith('MON 39%')) && rows.some(row => row.endsWith('MON 92%')), 'Zen and Go never share alias data: ' + rows);
 }
-for (const [data, expected] of [[{ remaining: 2, total: 10, used: 8 }, 'Key $2.00'], [{ used: 8 }, 'No balance']]) {
+for (const [data, expected] of [[{ remaining: 2, total: 10, used: 8 }, 'Key 2.00$'], [{ used: 8 }, 'No balance']]) {
   const tree = accountCard({ sessionModels: { phase: 'ready', lastProvider: 'openrouter', items: [{ provider: 'openrouter', tokens: 0, requests: 1 }] },
     providerBalances: { phase: 'ready', byProvider: { openrouter: { phase: 'ready', data: { ok: true, provider: 'openrouter', scope: 'key', currency: 'USD', ...data } } } } });
   assert.equal(txt(nodes(tree, n => n.props?.className === 'aup-acct-src')[0]), 'OpenRouter ' + expected, 'balance card shows what is left only: no Used/costs, unknown remaining is never zero');

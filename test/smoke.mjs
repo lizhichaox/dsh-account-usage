@@ -786,7 +786,9 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const plainCost = walk(preciseTree, (node) => hasClass(node, 'aup-series-cost')).map(flat).find((value) => value !== '');
   assert.ok(plainCost !== undefined && plainCost.endsWith('¥'), 'the spend row ends with the ¥ symbol: ' + String(plainCost));
   assert.ok(!/CN¥|CNY/u.test(plainCost), 'no currency code survives in the amount: ' + String(plainCost));
-  assert.ok(source.includes("String(currency) === 'CNY'"), 'only the ¥ moves behind the amount; other currencies keep their convention');
+  // Every currency keeps its symbol after the figure (user 2026-11-08).
+  assert.ok(source.includes('return body + currencySymbol(currency, locale)'), 'every currency keeps its symbol after the amount');
+  assert.ok(!source.includes('return formatter.format(amount)'), 'no currency keeps the prefix form');
 
   const fallbackTree = render({
     phase: 'ready',
@@ -1006,7 +1008,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(mixedWalletText.includes('542.52'), 'DeepSeek wallet still renders in a mixed session');
   const balanceRows = walk(mixedWallet, (node) => hasClass(node, 'aup-acct-src')).map((node) => flat(walk(node, (n) => hasClass(n, 'aup-acct-src-label'))[0]));
   assert.deepEqual(balanceRows, ['DeepSeek API', 'OpenRouter'], 'one aligned row per source: ' + JSON.stringify(balanceRows));
-  assert.ok(mixedWalletText.includes('$11.04') && !mixedWalletText.includes('$8.96') && !mixedWalletText.includes('已用'), 'the balance card shows what is left, never costs: ' + mixedWalletText);
+  assert.ok(mixedWalletText.includes('11.04$') && !mixedWalletText.includes('8.96$') && !mixedWalletText.includes('已用'), 'the balance card shows what is left, never costs: ' + mixedWalletText);
   // DeepSeek API format (user 2026-11-08): name left, `余额 542.52¥ 赠送 10.00¥` right.
   const deepseekRow = walk(mixedWallet, (node) => hasClass(node, 'aup-acct-src'))[0];
   assert.equal(flat(walk(deepseekRow, (node) => hasClass(node, 'aup-acct-src-value'))[0]), '余额 542.52¥ 赠送 10.00¥', 'DeepSeek reads Balance x Bonus y on the right: ' + flat(deepseekRow));

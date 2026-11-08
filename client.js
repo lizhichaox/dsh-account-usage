@@ -364,9 +364,9 @@ window.__ModuleLoader__.load({
       '.aup-account-body{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}',
       // Mixed sessions: one aligned row per source, using the statistics table rhythm.
       // Every source is visible at once, so there is nothing to switch and no reserved blank.
-      '.aup-acct-srcs{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);align-content:start;column-gap:10px;row-gap:4px}',
+      '.aup-acct-srcs{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);align-content:start;column-gap:6px;row-gap:4px}',
       '.aup-acct-src,.aup-acct-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-height:21px;min-width:0;line-height:18px;font-variant-numeric:tabular-nums}',
-      '.aup-acct-src-label{min-width:0;color:var(--dsw-alias-label-primary);font-weight:500;overflow-wrap:anywhere}',
+      '.aup-acct-src-label{min-width:0;color:var(--dsw-alias-label-primary);font-weight:500;letter-spacing:-0.1px;overflow-wrap:anywhere}',
       '.aup-acct-src-value{min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;column-gap:8px;text-align:right}',
       '.aup-acct-src-amount{color:var(--dsw-alias-label-primary);font-weight:600}',
       '.aup-acct-src-amount.aup-minor{font-weight:500}',
@@ -375,8 +375,8 @@ window.__ModuleLoader__.load({
       // no layout change (a background cannot shift the shared column edges).
       '.aup-acct-src[data-current]{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 10%,transparent);border-radius:6px}',
       '.aup-acct-src[data-current] .aup-acct-src-label{font-weight:600}',
-      '.aup-acct-pairs{display:inline-flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 8px}',
-      '.aup-acct-pair{display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap}',
+      '.aup-acct-pairs{display:inline-flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 2px;letter-spacing:-0.4px}',
+      '.aup-acct-pair{display:inline-flex;align-items:baseline;gap:2px;white-space:nowrap}',
       '.aup-acct-pair-label{color:var(--aup-label-2);font-weight:500}',
       '.aup-acct-label{min-width:0;color:var(--aup-label-2);overflow-wrap:anywhere}',
       '.aup-card-head{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex:none}',
@@ -921,21 +921,18 @@ window.__ModuleLoader__.load({
         moneyFormatters.set(key, formatter);
       }
       if (formatter !== null) {
-        // The user asked for the ¥ after the number ("23.28¥") because it reads
-        // better in this panel. Other currencies keep their own convention, since
-        // "11.04$" would look wrong next to a provider balance.
-        if (String(currency) === 'CNY') {
-          const parts = formatter.formatToParts(amount);
-          const body = parts
-            .filter((part) => part.type !== 'currency')
-            .map((part) => part.value)
-            .join('')
-            .trim();
-          return body + currencySymbol(currency, locale);
-        }
-        return formatter.format(amount);
+        // Every currency puts its symbol AFTER the figure (user 2026-11-08):
+        // `23.28¥`, `9.50$`, `12.00€` - one rule for all money in the panel,
+        // so mixed-provider rows read consistently.
+        const parts = formatter.formatToParts(amount);
+        const body = parts
+          .filter((part) => part.type !== 'currency')
+          .map((part) => part.value)
+          .join('')
+          .trim();
+        return body + currencySymbol(currency, locale);
       }
-      return String(currency) === 'CNY' ? amount.toFixed(2) + '¥' : currencySymbol(currency, locale) + amount.toFixed(2);
+      return amount.toFixed(2) + currencySymbol(currency, locale);
     }
 
     /**
