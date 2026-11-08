@@ -668,9 +668,9 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
     }
   );
   const sideTexts = walk(mixedStats, (node) => hasClass(node, 'aup-src-side')).map(flat);
-  assert.deepEqual(sideTexts, ['订阅', '订阅'], 'every provider row carries the subscription marker: ' + JSON.stringify(sideTexts));
+  assert.deepEqual(sideTexts, ['套餐', '套餐'], 'every provider row carries the plan marker: ' + JSON.stringify(sideTexts));
   assert.ok(!sideTexts.includes('本会话'), 'the session-scope wording is gone from the table');
-  assert.ok(source.includes("'stats.subscriptionScope': 'SUBSCRIPTION'"), 'the English marker is SUBSCRIPTION in capitals');
+  assert.ok(source.includes("'stats.subscriptionScope': 'PLAN'"), 'the English marker stays short: PLAN');
   assert.ok(source.includes("side: t('stats.subscriptionScope')"), 'provider rows use the subscription marker');
   assert.equal(flat(total), '5.92B', 'session total uses B unit with two decimals');
   const header = walk(readyTree, (n) => hasClass(n, 'aup-head'))[0];
