@@ -155,6 +155,9 @@ assert.ok(source.includes('.aup-series-row{display:grid;grid-template-columns:su
 assert.ok(source.includes('display:grid;grid-template-columns:subgrid'), 'rows take their columns from the shared grid');
 assert.ok(source.includes('.aup-srcs,.aup-series{display:contents}'), 'the period rows share the card grid');
 assert.ok(source.includes('const skeletonCount = DIMENSION_ROW_CAP[dimension]'), 'the loading frame matches the target row count');
+// Every period label carries its year: short "11-05" dates left a ragged gap and
+// the table read as uneven.
+assert.ok(source.includes("return year + '-' + pad(month + 1) + '-' + pad(start.getDate())"), 'day and week labels carry the year');
 assert.ok(!source.includes('for (let index = 0; index < 7; index += 1)'), 'no fixed 7-row loading placeholder');
 assert.ok(source.includes("const WARM_ORDER = ['year', 'quarter', 'month', 'week', 'day', 'all']"), 'every dimension is warmed, ALL last');
 assert.ok(source.includes('for (const warmId of WARM_ORDER)'), 'the warm-up loop covers the whole order');
@@ -705,6 +708,8 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const preciseSummary = walk(preciseTree, (n) => hasClass(n, 'aup-stats-summary'))[0];
   assert.ok(flat(preciseSummary).includes('78.77M'), 'stats token total keeps at most two decimals: ' + flat(preciseSummary));
   const preciseRow = walk(preciseTree, (n) => hasClass(n, 'aup-series-tokens')).map(flat).find((value) => value.includes('M'));
+  const dayLabels = walk(preciseTree, (node) => hasClass(node, 'aup-series-label')).map(flat);
+  assert.ok(dayLabels.length > 0 && dayLabels.every((label) => /^\d{4}-\d{2}-\d{2}$/u.test(label)), 'day rows show YYYY-MM-DD: ' + JSON.stringify(dayLabels));
   assert.equal(preciseRow, '78.77M', 'per-period token value keeps at most two decimals');
   const preciseCost = walk(preciseTree, (n) => hasClass(n, 'aup-series-cost')).map(flat).find((value) => value !== '');
   assert.equal(preciseCost, '3.80¥', 'spend keeps the two-decimal platform style, symbol trailing');

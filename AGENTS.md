@@ -57,6 +57,7 @@
 | 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 实测媒体查询阶梯按窗口高度减内容 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
 | 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（886→790px）+ 面板容器查询阶梯（856/835/776/702/680）+ 阶梯末尾带 `!important` + `scrollbar-width:none` | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 4` / `the card column never shows a scrollbar` |
 | 23 | **同一组行左右对齐 + 行内垂直居中** | 父级网格 + 行 `grid-template-columns:subgrid` + 行 `align-items:center` | `the source rows share one grid` / `rows take their columns from the shared grid` / `the period rows share one grid` / `subgrid rows centre their cells vertically` / layout-check 的 `srcTrackLeft`、`srcBar`（居中）断言 |
+| 26 | **期数标签带年份** | 日/周 `YYYY-MM-DD`、月 `YYYY-MM`、季 `YYYY Qn`、年「全」`YYYY` | `day and week labels carry the year` / `day rows show YYYY-MM-DD` |
 | 24 | **用量统计是四列严格对齐的表** | 描述 / 胶囊条 / 用量 / 金额共用一个网格；每行 4 格；第三方行第 4 列写短标记 `PLAN`（中文「套餐」） | `one shared table` / `the card declares the four columns once` / `the English marker stays short: PLAN` / layout-check 的 `table` 断言（barLeft、tokensRight、amountRight 唯一） |
 | 25 | **金额只留货币符号，¥ 后置** | `Intl.formatToParts` 重排；仅 CNY 后置，其它货币按惯例 | `amounts use the narrow currency symbol` / `the spend row ends with the ¥ symbol` / `only the ¥ moves behind the amount` |
 
@@ -160,6 +161,9 @@
     随即说 `SUBSCRIPTION` 太长要缩写，因此用短词 `PLAN`，同时与账户卡的「套餐剩余 / Plan left」用词一致）。
     **禁止**再用 `session` / `本会话` 这类作用域提示。
   - 两行组之间用 `::before` 画一条 hairline 分隔，**不能用 padding/border 撑行高**（会让行内元素偏离中线，被 `verify:ui` 的居中断言抓到）。
+  - **期数标签一律带年份**（用户 2026-11-08：「或许把年份放出来这样可以更协调和优雅」）：
+    日/周显示 `YYYY-MM-DD`，月 `YYYY-MM`，季 `YYYY Qn`，年 `YYYY`，全 `YYYY`。
+    只写 `11-05` 会让描述列空出一截、整张表看着参差。
 - 所有可用空间应尽量被有意义的内容覆盖；不要出现卡片内部的大块空白。
 
 ## 3. 文本与排版（重点，多次强调）

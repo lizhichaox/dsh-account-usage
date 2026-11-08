@@ -1071,7 +1071,9 @@ window.__ModuleLoader__.load({
       switch (dimension) {
         case 'day':
         case 'week':
-          return pad(month + 1) + '-' + pad(start.getDate());
+          // The year is part of every label: short "11-05" dates left a ragged gap
+          // next to the older rows and made the column look uneven.
+          return year + '-' + pad(month + 1) + '-' + pad(start.getDate());
         case 'month':
           return year + '-' + pad(month + 1);
         case 'quarter':
