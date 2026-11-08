@@ -56,6 +56,7 @@
 | 20 | **切维度不许抖动** | 固定槽位 `SERIES_ROW_SLOTS=4` + 固定行距 + 骨架行数对齐 + 全维度预热 | `the list keeps a constant slot count` / `spare slots pad the list in quarter/year` / `period rows keep a fixed pitch across dimensions` / `the loading frame matches the target row count` / `every dimension is warmed widest-first` |
 | 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 实测媒体查询阶梯按窗口高度减内容 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
 | 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（886→790px）+ 面板容器查询阶梯（856/835/776/702/680）+ 阶梯末尾带 `!important` + `scrollbar-width:none` | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 4` / `the card column never shows a scrollbar` |
+| 25 | **金额只留货币符号，¥ 后置** | `Intl.formatToParts` 重排；仅 CNY 后置，其它货币按惯例 | `amounts use the narrow currency symbol` / `the spend row ends with the ¥ symbol` / `only the ¥ moves behind the amount` |
 | 24 | **用量统计是四列严格对齐的表** | 描述 / 胶囊条 / 用量 / 金额共用一个网格；每行 4 格；第三方行第 4 列写短标记 `PLAN`（中文「套餐」） | `one shared table` / `the card declares the four columns once` / `the English marker stays short: PLAN` / layout-check 的 `table` 断言（barLeft、tokensRight、amountRight 唯一） |
 | 23 | **同一组行左右对齐 + 行内垂直居中** | 父级网格 + 行 `grid-template-columns:subgrid` + 行 `align-items:center` | `the source rows share one grid` / `rows take their columns from the shared grid` / `the period rows share one grid` / `subgrid rows centre their cells vertically` / layout-check 的 `srcTrackLeft`、`srcBar`（居中）断言 |
 
@@ -186,6 +187,11 @@
   - 列宽按内容自适应（日期列用 `max-content`）
 - 不允许出现 `text-overflow: ellipsis`（当前全文件已清零）。
 - Token 单位自动 `K → M → B → T`，最多两位小数；金额固定两位小数（正数按平台规则截断）。
+- **金额只显示货币符号、不显示货币代码，且 `¥` 放在数字后面**（用户 2026-11-08：
+  「留个¥就行 CN 没必要」→「金额符号放在价格后面吧¥ 这样看着更协调」）：
+  - 人民币一律 `23.28¥`（`Intl.formatToParts` 重排，保留千分位/小数点/负号），**不写 `CN¥` / `CNY`**
+  - 其它货币保持自身惯例（`$11.04` 而不是 `11.04$`，否则和 Provider 余额放一起很别扭）
+  - 判定逻辑在 `moneyText()`：`String(currency) === 'CNY'` 时才后置符号
 - 主题：只用 DSH 主题 token（`--dsw-alias-*`，图表色可用 `--dsw-static-*` + 十六进制 fallback），
   禁止硬编码普通颜色；浅色/深色都要验证对比度（当前主文本 18.9:1 / 15.0:1）。
 - 禁止使用 `--dsw-alias-bg-layer-2`（浅色下等于 bg-layer-1，会看不见）；

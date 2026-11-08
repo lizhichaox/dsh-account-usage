@@ -900,6 +900,25 @@ window.__ModuleLoader__.load({
     const moneyFormatters = new Map();
 
     /** Localized currency text for one already-settled amount. */
+    /** Symbol for one currency, used when the amount is printed symbol-last. */
+    function currencySymbol(currency, locale) {
+      try {
+        const parts = new Intl.NumberFormat(locale === undefined ? undefined : locale, {
+          style: 'currency',
+          currency,
+          currencyDisplay: 'narrowSymbol'
+        }).formatToParts(0);
+        const found = parts.find((part) => part.type === 'currency');
+        if (found !== undefined) return found.value;
+      } catch (error) {
+        /* fall through to the static table */
+      }
+      if (currency === 'CNY') return '¥';
+      if (currency === 'USD') return '$';
+      if (currency === 'EUR') return '€';
+      return '';
+    }
+
     function moneyText(amount, currency, locale) {
       const key = String(currency === undefined ? '' : currency) + '|' + String(locale === undefined ? '' : locale);
       let formatter = moneyFormatters.get(key);
@@ -908,6 +927,7 @@ window.__ModuleLoader__.load({
           formatter = new Intl.NumberFormat(locale === undefined ? undefined : locale, {
             style: 'currency',
             currency,
+            currencyDisplay: 'narrowSymbol',
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
           });
@@ -916,9 +936,22 @@ window.__ModuleLoader__.load({
         }
         moneyFormatters.set(key, formatter);
       }
-      if (formatter !== null) return formatter.format(amount);
-      const symbol = currency === 'CNY' ? '¥' : currency === 'USD' ? '$' : '';
-      return symbol + amount.toFixed(2);
+      if (formatter !== null) {
+        // The user asked for the ¥ after the number ("23.28¥") because it reads
+        // better in this panel. Other currencies keep their own convention, since
+        // "11.04$" would look wrong next to a provider balance.
+        if (String(currency) === 'CNY') {
+          const parts = formatter.formatToParts(amount);
+          const body = parts
+            .filter((part) => part.type !== 'currency')
+            .map((part) => part.value)
+            .join('')
+            .trim();
+          return body + currencySymbol(currency, locale);
+        }
+        return formatter.format(amount);
+      }
+      return String(currency) === 'CNY' ? amount.toFixed(2) + '¥' : currencySymbol(currency, locale) + amount.toFixed(2);
     }
 
     /**

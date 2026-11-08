@@ -576,7 +576,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.deepEqual(titles, ['会话消耗', '用量统计', '账户余额'], 'four-character card titles');
   const summary = walk(readyTree, (n) => hasClass(n, 'aup-stats-summary'))[0];
   assert.ok(flat(summary).includes('5.9B'), 'B unit in the summary');
-  assert.ok(flat(summary).includes('¥542.52'), 'real platform amount shown');
+  assert.ok(flat(summary).includes('542.52¥'), 'real platform amount shown, symbol trailing');
   const total = walk(readyTree, (n) => hasClass(n, 'aup-session-total-value'))[0];
   // The eight session metrics are grouped in pairs and laid out row-major:
   // volume (turns/steps, requests), efficiency (cache, avg), responsiveness
@@ -639,7 +639,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(!allRows.includes('2020'), 'older years drop out of the visible rows: ' + JSON.stringify(allRows));
   const allSummary = flat(walk(allTree, (node) => hasClass(node, 'aup-stats-summary'))[0]);
   assert.ok(allSummary.includes('6.5M'), 'the ALL total still counts every year: ' + allSummary);
-  assert.ok(allSummary.includes('¥65.00'), 'the ALL spend counts every year: ' + allSummary);
+  assert.ok(allSummary.includes('65.00¥'), 'the ALL spend counts every year: ' + allSummary);
 
   // Third-party rows are billed by their subscription, not by a platform amount:
   // the amount column says SUBSCRIPTION (订阅 in Chinese) instead of a scope hint.
@@ -707,7 +707,13 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const preciseRow = walk(preciseTree, (n) => hasClass(n, 'aup-series-tokens')).map(flat).find((value) => value.includes('M'));
   assert.equal(preciseRow, '78.77M', 'per-period token value keeps at most two decimals');
   const preciseCost = walk(preciseTree, (n) => hasClass(n, 'aup-series-cost')).map(flat).find((value) => value !== '');
-  assert.equal(preciseCost, '¥3.80', 'spend keeps the two-decimal platform style');
+  assert.equal(preciseCost, '3.80¥', 'spend keeps the two-decimal platform style, symbol trailing');
+  // Currency is a bare symbol placed AFTER the amount (23.28¥), never a code prefix.
+  assert.ok(source.includes("currencyDisplay: 'narrowSymbol'"), 'amounts use the narrow currency symbol');
+  const plainCost = walk(preciseTree, (node) => hasClass(node, 'aup-series-cost')).map(flat).find((value) => value !== '');
+  assert.ok(plainCost !== undefined && plainCost.endsWith('¥'), 'the spend row ends with the ¥ symbol: ' + String(plainCost));
+  assert.ok(!/CN¥|CNY/u.test(plainCost), 'no currency code survives in the amount: ' + String(plainCost));
+  assert.ok(source.includes("String(currency) === 'CNY'"), 'only the ¥ moves behind the amount; other currencies keep their convention');
 
   const fallbackTree = render({
     phase: 'ready',
