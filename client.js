@@ -1793,6 +1793,7 @@ window.__ModuleLoader__.load({
         if (buttons[next] !== undefined) buttons[next].focus();
       };
       const sectionRef = React.useRef(null);
+      const totalCellsRef = React.useRef(0);
       const [hiddenRows, setHiddenRows] = React.useState(0);
       React.useEffect(() => {
         setHiddenRows(0);
@@ -1803,10 +1804,24 @@ window.__ModuleLoader__.load({
         if (section === null || section === undefined) return undefined;
         const root = typeof document === 'undefined' ? null : document.querySelector('.aup-root');
         if (root === null || root === undefined) return undefined;
-        // Trim the oldest periods until the whole panel (this card + the cards below it)
-        // fits the available height again.
+        let frame = 0;
+        let settled = false;
         const measure = () => {
+          if (settled) return;
+          if (typeof requestAnimationFrame === 'function') {
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(measureNow);
+          } else {
+            measureNow();
+          }
+        };
+        // Trim the oldest periods until this card plus the cards below it fit the panel again.
+        // The count is clamped to the number of rows, so this can never loop forever.
+        const measureNow = () => {
+          const maxDrop = Math.max(0, totalCellsRef.current - 1);
+          if (maxDrop === 0) return;
           const rootRect = root.getBoundingClientRect();
+          if (!(rootRect.height > 120)) return;
           let below = 0;
           let sibling = section.nextElementSibling;
           while (sibling !== null && sibling !== undefined) {
@@ -1814,14 +1829,24 @@ window.__ModuleLoader__.load({
             sibling = sibling.nextElementSibling;
           }
           const overflow = section.getBoundingClientRect().bottom + below - (rootRect.bottom - 6);
-          if (overflow > 2) setHiddenRows((previous) => previous + Math.max(1, Math.ceil(overflow / 21)));
+          if (overflow <= 2) return;
+          setHiddenRows((previous) => {
+            if (previous >= maxDrop) {
+              settled = true;
+              return previous;
+            }
+            return Math.min(maxDrop, previous + Math.max(1, Math.ceil(overflow / 21)));
+          });
         };
         measure();
         if (typeof ResizeObserver !== 'function') return undefined;
         const observer = new ResizeObserver(measure);
         observer.observe(root);
         observer.observe(section);
-        return () => observer.disconnect();
+        return () => {
+          if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
+          observer.disconnect();
+        };
       }, [listMode, dimension]);
 
       const dimensions = h(
@@ -1905,6 +1930,7 @@ window.__ModuleLoader__.load({
       const series = buildSeries(state.days || [], dimension);
       // Rows that no longer fit are dropped (never clipped); the totals follow what is shown.
       // Dropping rows always removes the OLDEST periods; the newest stay visible.
+      totalCellsRef.current = series.cells.length;
       const droppedRows = Math.min(Math.max(0, hiddenRows), Math.max(0, series.cells.length - 1));
       const visibleCells = series.cells.slice(droppedRows);
       const shownTotal = visibleCells.reduce((sum, cell) => sum + cell.total, 0);
