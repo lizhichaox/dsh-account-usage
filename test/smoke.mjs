@@ -119,16 +119,16 @@ assert.ok(!source.includes('data-aup-compact'), 'no height-driven compact attrib
 // viewport breakpoints fired too late (that is why the pane still scrolled).
 assert.ok(source.includes('container-type:size;container-name:aup-panel'), 'the panel root is a size container');
 for (const rule of [
-  '@container aup-panel (max-height:866px){.aup-compose{display:none!important}}',
-  '@container aup-panel (max-height:855px){.aup-card-session .aup-models{display:none!important}}',
-  '@container aup-panel (max-height:795px){.aup-card-session .aup-stat-list{display:none!important}}',
-  '@container aup-panel (max-height:711px){.aup-context{display:none!important}}',
+  '@container aup-panel (max-height:903px){.aup-compose{display:none!important}}',
+  '@container aup-panel (max-height:891px){.aup-card-session .aup-models{display:none!important}}',
+  '@container aup-panel (max-height:831px){.aup-card-session .aup-stat-list{display:none!important}}',
+  '@container aup-panel (max-height:747px){.aup-context{display:none!important}}',
   '@container aup-panel (max-height:689px){.aup-card-session .aup-session-grid{display:none!important}}'
 ]) {
   assert.ok(source.includes(rule), 'the measured shedding ladder contains: ' + rule);
 }
 assert.ok(!source.includes('@media (max-height:'), 'the old viewport ladder is gone');
-assert.ok(source.indexOf('@container aup-panel (max-height:866px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
+assert.ok(source.indexOf('@container aup-panel (max-height:903px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
 // Compacted so a typical pane still shows every block: the measured full content
 // height dropped from 886px to 790px.
 assert.ok(source.includes("'.aup-card{gap:4px;padding:8px}'"), 'cards are padding 8 / gap 4');
@@ -192,8 +192,21 @@ for (const gone of ['.aup-series-value{', '.aup-model-track{', '.aup-model-fill{
   assert.ok(!source.includes(gone), 'dead code is gone: ' + gone);
 }
 assert.ok(source.includes('const currencySymbols = new Map()'), 'currency symbols are cached per currency+locale');
+// Accessibility and motion are part of the contract, not polish:
+// - reduced-motion disables every transition and animation in the panel
+// - every control keeps a visible keyboard ring, including the retry button
+// - progress tracks are decorative (the number beside them is the alternative)
+assert.ok(source.includes('@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob,.aup-icon-button,.aup-src-tab,.aup-dim,.aup-series-row,.aup-pop-link,.aup-retry{transition:none}.aup-skeleton,.aup-spin{animation:none}}'), 'reduced motion covers every transition and animation');
+assert.ok(source.includes('.aup-retry:focus-visible'), 'the retry button keeps a keyboard ring');
+assert.equal((source.match(/'aria-hidden': true/g) || []).length >= 6, true, 'decorative bars are hidden from screen readers');
+assert.ok(source.includes("{ className: 'aup-series-track', 'aria-hidden': true }") && source.includes("{ className: 'aup-src-track', 'aria-hidden': true }"), 'the table tracks are marked decorative');
 assert.ok(!source.includes('buildDetailStats'), 'the dead provider-detail stat builder is gone');
-assert.ok(source.includes('.aup-stats-summary{grid-column:1/-1;margin-top:2px;'), 'the total row spans the whole table');
+assert.ok(source.includes('.aup-stats-summary{grid-column:1/-1;margin-top:2px}'), 'the total row spans the whole table');
+// Both card footers share one left / centre / right grid, so the panel reads as a
+// single component instead of two differently spaced rows.
+assert.ok(source.includes('.aup-context-legend,.aup-stats-summary{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)'), 'the two footers share one left/centre/right grid');
+assert.ok(source.includes('.aup-context-legend>span:nth-child(3),.aup-stats-summary>span:nth-child(3){justify-self:end'), 'the third cell is pinned to the right edge');
+assert.ok(source.includes("'stats.summary.total': 'Total {total}'") && source.includes("'stats.summary.requests': '{count} requests'"), 'the summary speaks in three parts');
 
 // Theme contract: only tokens the installed UI theme defines in both light and dark.
 // Values resolved from the shipped theme bundle (light | dark):
@@ -1064,7 +1077,8 @@ function walkRoles(node, role, out = []) {
   );
   assert.equal(walk(hidden, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-session')).length, 0, 'session card hidden by settings');
   assert.equal(walk(hidden, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-account')).length, 0, 'account card hidden by settings');
-  assert.equal(walk(hidden, (node) => node.props && node.props.className === 'aup-stats-total').length, 0, 'spend hidden when the option is off');
+  const hiddenTotals = walk(hidden, (node) => node.props && node.props.className === 'aup-stats-total').map(flat).filter((value) => value !== '');
+  assert.equal(hiddenTotals.length, 0, 'spend hidden when the option is off');
   assert.equal(walk(hidden, (node) => node.props && node.props.className === 'aup-series-cost').map(flat).filter((value) => value !== '').length, 0, 'per-row spend hidden');
 
   // All cards hidden -> empty hint, settings still reachable.

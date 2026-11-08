@@ -104,10 +104,23 @@ const PROVIDER_BALANCES = {
     { provider: 'deepseek', kind: 'balance', currency: 'CNY', remaining: 12.5, fetchedAt: Date.now() }
   ]
 };
-const PROJECTION = (key) =>
-  key === 'sessionStats'
-    ? { turns: 151, steps: 1677, decodeTokens: 128_000, decodeMs: 1000, llmMs: 26_640_000, toolMs: 5_280_000, ttftMs: 8_600, ttftSteps: 1000 }
-    : { uncachedInputTokens: 7_820_000, outputTokens: 1_130_000, cacheReadTokens: 570_000_000, cacheWriteTokens: 0 };
+// Real projection shapes: without a context window the panel silently skipped the
+// context block and the legend, so the measured content height was ~40px short of
+// production and every ladder threshold was calibrated too low.
+const PROJECTION = (key) => {
+  switch (key) {
+    case 'sessionStats':
+      return { turns: 151, steps: 1677, decodeTokens: 128_000, decodeMs: 1000, llmMs: 26_640_000, toolMs: 5_280_000, ttftMs: 8_600, ttftSteps: 1000 };
+    case 'tokenUsage':
+      return { uncachedInputTokens: 7_820_000, outputTokens: 1_130_000, cacheReadTokens: 570_000_000, cacheWriteTokens: 0 };
+    case 'contextPressure':
+      return { projectedTokens: 724_000, contextWindow: 1_000_000 };
+    case 'contextBreakdown':
+      return { systemTokens: 21_000, toolsTokens: 14_000, messageTokens: 689_000 };
+    default:
+      return undefined;
+  }
+};
 
 function caseOf(dimension) {
   return {
@@ -218,6 +231,18 @@ out.table = {
   tokensRight: edgesOf('.aup-src-tokens, .aup-series-tokens', 'right'),
   amountRight: edgesOf('.aup-src-side, .aup-series-cost', 'right')
 };
+// The two card footers must share one left / centre / right structure.
+const footerOf = (selector) => {
+  const row = document.querySelector(selector);
+  if (row === null) return null;
+  const box = row.getBoundingClientRect();
+  const cells = [...row.children].map((el) => {
+    const rect = el.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, center: (rect.left + rect.right) / 2 };
+  });
+  return { left: box.left, right: box.right, center: (box.left + box.right) / 2, cells };
+};
+out.footers = { legend: footerOf('.aup-context-legend'), summary: footerOf('.aup-stats-summary') };
 const centring = (groupSelector, probeSelector) => {
   let worst = 0;
   for (const row of document.querySelectorAll(groupSelector + ' > *')) {
@@ -283,15 +308,19 @@ if (process.argv.includes('--shot')) {
 // `--tiers` prints the panel's content height at every shedding tier so the
 // media-query thresholds are chosen from measurements instead of guesses.
 if (process.argv.includes('--tiers')) {
-  const TIERS = [
-    ['all', ''],
-    ['no compose', '.aup-compose{display:none}'],
-    ['+ no pct legend', '.aup-compose,.aup-context-breakdown{display:none}'],
-    ['+ no models', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models{display:none}'],
-    ['+ no stat list', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list{display:none}'],
-    ['+ no context', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list,.aup-context{display:none}'],
-    ['+ no token grid', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list,.aup-context,.aup-card-session .aup-session-grid{display:none}']
+  // Exactly the production shedding order (see the @container ladder in client.js).
+  const STEP = [
+    ['− token bar', '.aup-compose'],
+    ['− model rows', '.aup-card-session .aup-models'],
+    ['− stat table', '.aup-card-session .aup-stat-list'],
+    ['− context block', '.aup-context'],
+    ['− token 2×2', '.aup-card-session .aup-session-grid']
   ];
+  const TIERS = [['all', '']];
+  for (let index = 0; index < STEP.length; index += 1) {
+    const hidden = STEP.slice(0, index + 1).map(([, selector]) => selector + '{display:none}').join('');
+    TIERS.push([STEP[index][0], hidden]);
+  }
   const tierDir = mkdtempSync(join(tmpdir(), 'aup-tiers-'));
   console.log('tier'.padEnd(20) + 'content   cards');
   for (const [label, extra] of TIERS) {
@@ -310,7 +339,8 @@ if (process.argv.includes('--tiers')) {
 }
 
 const SWEEPS = [
-  { width: 420, heights: [700, 760, 810, 900, 1000, 1080, 1200] },
+  // 903/904 straddle the first shedding step (hide the token bar at <= 903).
+  { width: 420, heights: [700, 810, 900, 903, 904, 1000, 1080, 1200] },
   // The documented minimum pane: six range tabs and both tables must still fit.
   { width: 340, heights: [900, 1080] }
 ];
@@ -337,7 +367,24 @@ for (const sweep of SWEEPS) {
       for (const [name, edges] of Object.entries(result.align ?? {})) {
         if (edges.length > 1) failures.push(`${label}: ${name} is not aligned across rows -> ${edges.join(' / ')}`);
       }
-      for (const [name, edges] of Object.entries(result.table ?? {})) {
+      for (const [name, footer] of Object.entries(result.footers ?? {})) {
+      if (footer === null || footer === undefined) continue;
+      const cells = footer.cells;
+      if (cells.length !== 3) {
+        failures.push(`${label}: the ${name} footer renders ${cells.length} cells instead of 3`);
+        continue;
+      }
+      if (Math.abs(cells[0].left - footer.left) > 1) {
+        failures.push(`${label}: the ${name} footer does not start at the card edge (off by ${(cells[0].left - footer.left).toFixed(1)}px)`);
+      }
+      if (Math.abs(cells[2].right - footer.right) > 1) {
+        failures.push(`${label}: the ${name} footer does not end at the card edge (off by ${(cells[2].right - footer.right).toFixed(1)}px)`);
+      }
+      if (Math.abs(cells[1].center - footer.center) > 1.5) {
+        failures.push(`${label}: the ${name} footer middle cell is not centred (off by ${(cells[1].center - footer.center).toFixed(1)}px)`);
+      }
+    }
+    for (const [name, edges] of Object.entries(result.table ?? {})) {
       if (edges.length > 1) failures.push(`${label}: the usage table column ${name} is not shared -> ${edges.join(' / ')}`);
     }
     for (const [name, offset] of Object.entries(result.centring ?? {})) {
@@ -371,6 +418,20 @@ if (small !== undefined && large !== undefined) {
       failures.push(`space allocation: the dense session card does not grow with the pane (${smallSession}px -> ${largeSession}px)`);
     }
   }
+}
+
+// `--debug-footers` prints the measured footer geometry, so a passing run is
+// provably measuring something (and not just skipping a missing selector).
+if (process.argv.includes('--debug-footers')) {
+  const wanted = [...rows].filter((row) => row.requested === 1080 && row.caseId === 'day');
+  for (const row of wanted) {
+    for (const [name, footer] of Object.entries(row.footers ?? {})) {
+      if (footer === null || footer === undefined) { console.log(name, 'missing'); continue; }
+      const cells = footer.cells.map((cell) => `${cell.left.toFixed(0)}..${cell.right.toFixed(0)}`).join('  ');
+      console.log(`${name}: row ${footer.left.toFixed(1)}..${footer.right.toFixed(1)}  cells ${cells}`);
+    }
+  }
+  process.exit(0);
 }
 
 console.log('pane      scrolls  scrollH/clientH  bottom-gap  card heights');

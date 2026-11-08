@@ -137,9 +137,9 @@ window.__ModuleLoader__.load({
       'stats.dim.quarter': '季',
       'stats.dim.year': '年',
       'stats.dim.all': '全',
-      'stats.summary.requests': '合计 {total} · {count} 次请求',
-      'stats.summary.sessions': '合计 {total} · {count} 个会话',
-      'stats.summary.sources': '合计 {total} · {count} 个来源',
+      'stats.summary.total': '合计 {total}',
+      'stats.summary.requests': '{count} 次请求',
+      'stats.summary.sources': '{count} 个来源',
       'stats.empty': '暂无用量记录',
       'stats.failed': '用量记录读取失败',
       'stats.localBadge': '本地估算',
@@ -240,9 +240,9 @@ window.__ModuleLoader__.load({
       'stats.dim.quarter': 'Qtr',
       'stats.dim.year': 'Year',
       'stats.dim.all': 'ALL',
-      'stats.summary.requests': 'Total {total} · {count} requests',
-      'stats.summary.sessions': 'Total {total} · {count} sessions',
-      'stats.summary.sources': 'Total {total} · {count} sources',
+      'stats.summary.total': 'Total {total}',
+      'stats.summary.requests': '{count} requests',
+      'stats.summary.sources': '{count} sources',
       'stats.empty': 'No usage records yet',
       'stats.failed': 'Could not read usage records',
       'stats.localBadge': 'local',
@@ -329,10 +329,11 @@ window.__ModuleLoader__.load({
       '.aup-toggle[data-on]{background:var(--dsw-alias-brand-primary)}',
       '.aup-toggle-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 20%,transparent);transition:transform .15s}',
       '.aup-toggle[data-on] .aup-toggle-knob{transform:translateX(14px)}',
-      '.aup-toggle:focus-visible,.aup-pop-link:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
-      '@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob{transition:none}}',
+      '.aup-toggle:focus-visible,.aup-pop-link:focus-visible,.aup-retry:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-empty{padding:12px;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:18px;font-weight:500;text-align:center}',      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-spin{animation:aup-spin 1s linear infinite}',
+      // Motion is decoration only: honour the preference everywhere.
+      '@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob,.aup-icon-button,.aup-src-tab,.aup-dim,.aup-series-row,.aup-pop-link,.aup-retry{transition:none}.aup-skeleton,.aup-spin{animation:none}}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
       '.aup-cards{flex:1 1 auto;min-height:0;width:100%;display:flex;flex-direction:column;justify-content:flex-start;gap:6px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none}',
       '.aup-cards>.aup-card-session-fixed{flex:1 1 auto;min-height:auto}',
@@ -372,7 +373,6 @@ window.__ModuleLoader__.load({
       '.aup-skeleton-label{width:38px}',
       '.aup-skeleton-track{width:100%;height:8px;border-radius:999px;justify-self:stretch}',
       '.aup-skeleton-value{width:44px;justify-self:end}',
-      '@media (prefers-reduced-motion:reduce){.aup-skeleton{animation:none}}',
       '.aup-badge{flex:none;padding:0 6px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:18px;font-weight:500;white-space:nowrap}',
       '.aup-card-title{margin:0;font-size:var(--aup-fs-text);font-weight:500;line-height:18px;color:var(--aup-label-2);white-space:nowrap}',
 
@@ -409,7 +409,10 @@ window.__ModuleLoader__.load({
                   '.aup-context-breakdown{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
       '.aup-context-used{display:flex;height:100%;gap:1px;border-radius:inherit;overflow:hidden}',
       '.aup-context-seg{flex:1 1 0;min-width:2px;height:100%}',
-      '.aup-context-legend{display:flex;flex-wrap:nowrap;justify-content:space-between;gap:2px 8px;font-size:var(--aup-fs-text);line-height:16px;font-weight:500;color:var(--aup-label-2)}',
+      '.aup-context-legend,.aup-stats-summary{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:baseline;column-gap:12px;row-gap:2px;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2);font-variant-numeric:tabular-nums}',
+      '.aup-context-legend>span:nth-child(1),.aup-stats-summary>span:nth-child(1){justify-self:start;text-align:left}',
+      '.aup-context-legend>span:nth-child(2),.aup-stats-summary>span:nth-child(2){justify-self:center;text-align:center}',
+      '.aup-context-legend>span:nth-child(3),.aup-stats-summary>span:nth-child(3){justify-self:end;text-align:right}',
       '.aup-src-tabs{flex:none;display:flex;gap:2px;padding:2px;border-radius:8px;background:var(--dsw-alias-bg-skeleton)}',
       '.aup-src-tab{flex:1 1 0;min-width:0;height:22px;padding:0 6px;border:none;border-radius:6px;background:transparent;color:var(--aup-label-2);font:inherit;font-size:var(--aup-fs-text);font-weight:500;line-height:16px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;transition:background-color .12s,color .12s}',
       '.aup-src-tab[data-active]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 .5px var(--dsw-alias-border-l2)}',
@@ -456,9 +459,9 @@ window.__ModuleLoader__.load({
       '.aup-dim:hover{background:var(--dsw-alias-interactive-bg-hover)}',
       '.aup-dim[data-active]{background:var(--dsw-alias-bg-layer-1);border-color:var(--dsw-alias-border-l3);box-shadow:0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 9%,transparent);color:var(--dsw-alias-label-primary);font-weight:500}',
       '.aup-dim:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
-      '.aup-stats-summary{grid-column:1/-1;margin-top:2px;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-variant-numeric:tabular-nums;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2)}',
-      '.aup-stats-summary>span{min-width:0;white-space:normal;overflow-wrap:anywhere}',
-      '.aup-stats-total{flex:none;font-size:var(--aup-fs-text);line-height:26px;font-weight:600;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
+      '.aup-stats-summary{grid-column:1/-1;margin-top:2px}',
+      '.aup-stats-summary>span{min-width:0;white-space:nowrap}',
+      '.aup-stats-total{font-size:var(--aup-fs-text);line-height:18px;font-weight:600;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
       
       '.aup-series-slot{min-height:21px;pointer-events:none}',,
       '.aup-card-session .aup-session-body>.aup-context{margin-top:0}',
@@ -495,7 +498,6 @@ window.__ModuleLoader__.load({
       '.aup-bar{height:6px}',
       '.aup-context{gap:4px}',
       '.aup-context-head{font-size:var(--aup-fs-text);line-height:16px}',
-      '.aup-stats-summary{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-stats-total{font-size:var(--aup-fs-text);line-height:26px}',
       '.aup-card-stats .aup-series-row{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-card-stats .aup-series-track{height:6px}',
@@ -516,10 +518,10 @@ window.__ModuleLoader__.load({
       // is shorter than the window (right-sidebar tab strip + header) and viewport
       // breakpoints fired ~90px too late, which is why the pane still scrolled.
       // They must stay LAST and carry !important: a query adds no specificity.
-      '@container aup-panel (max-height:866px){.aup-compose{display:none!important}}',
-      '@container aup-panel (max-height:855px){.aup-card-session .aup-models{display:none!important}}',
-      '@container aup-panel (max-height:795px){.aup-card-session .aup-stat-list{display:none!important}}',
-      '@container aup-panel (max-height:711px){.aup-context{display:none!important}}',
+      '@container aup-panel (max-height:903px){.aup-compose{display:none!important}}',
+      '@container aup-panel (max-height:891px){.aup-card-session .aup-models{display:none!important}}',
+      '@container aup-panel (max-height:831px){.aup-card-session .aup-stat-list{display:none!important}}',
+      '@container aup-panel (max-height:747px){.aup-context{display:none!important}}',
       '@container aup-panel (max-height:689px){.aup-card-session .aup-session-grid{display:none!important}}',
     ].join('\n');
 
@@ -1691,7 +1693,7 @@ window.__ModuleLoader__.load({
               h('span', null, t('account.planUsed', { percent: String(used) })),
               h('span', null, labelFor(monthly.id))
             ),
-            h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: used + '%' } }))
+            h('div', { className: 'aup-bar', 'aria-hidden': true }, h('span', { className: 'aup-bar-fill', style: { width: used + '%' } }))
           ),
           h(
             'div',
@@ -1752,7 +1754,7 @@ window.__ModuleLoader__.load({
                   h('span', null, t('account.providerUsedRate', { percent: String(usedPercent) }) + (used === undefined ? '' : ' · ' + formatMoney(String(used), currency, locale))),
                   h('span', null, totalKnown === undefined ? '' : formatMoney(String(totalKnown), currency, locale))
                 ),
-                h('div', { className: 'aup-bar' }, h('span', { className: 'aup-bar-fill', style: { width: usedPercent + '%' } }))
+                h('div', { className: 'aup-bar', 'aria-hidden': true }, h('span', { className: 'aup-bar-fill', style: { width: usedPercent + '%' } }))
               ),
           compact === true || updatedTime === ''
             ? null
@@ -2025,7 +2027,7 @@ window.__ModuleLoader__.load({
           h('span', { className: 'aup-series-label' }, cell.label),
           h(
             'span',
-            { className: 'aup-series-track' },
+            { className: 'aup-series-track', 'aria-hidden': true },
             h('span', {
               className: 'aup-series-fill',
               style: {
@@ -2078,7 +2080,7 @@ window.__ModuleLoader__.load({
             h('span', { className: 'aup-src-label' }, row.label),
             h(
               'span',
-              { className: 'aup-src-track' },
+              { className: 'aup-src-track', 'aria-hidden': true },
               h('span', { className: 'aup-src-fill', style: { width: Math.max(4, Math.round((row.tokens / sourceMax) * 100)) + '%' } })
             ),
             h('span', { className: 'aup-src-tokens' }, formatTokens(row.tokens)),
@@ -2113,16 +2115,19 @@ window.__ModuleLoader__.load({
               h(
                 'div',
                 { className: 'aup-stats-summary' },
+                // Left / centre / right, exactly like the context legend: the two card
+                // footers must read as the same component.
+                h('span', null, t('stats.summary.total', { total: formatTokens(sessionOnly === true ? sourceTotal : shownTotal) })),
                 h(
                   'span',
                   null,
                   sessionOnly === true
-                    ? t('stats.summary.sources', { total: formatTokens(sourceTotal), count: String(sources.length) })
-                    : t('stats.summary.requests', { total: formatTokens(shownTotal), count: String(shownCount) })
+                    ? t('stats.summary.sources', { count: String(sources.length) })
+                    : t('stats.summary.requests', { count: String(shownCount) })
                 ),
                 showCost !== false && sessionOnly !== true
                   ? h('span', { className: 'aup-stats-total' }, formatCost(shownCost, currency, locale, estimate))
-                  : null
+                  : h('span', { className: 'aup-stats-total', 'aria-hidden': true })
               )
             )
       );
@@ -2318,7 +2323,7 @@ window.__ModuleLoader__.load({
           hasContext
             ? h(
                 'div',
-                { className: 'aup-bar' },
+                { className: 'aup-bar', 'aria-hidden': true },
                 contextSegments.length === 0
                   ? h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } })
                   : h(

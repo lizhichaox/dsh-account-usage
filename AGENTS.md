@@ -55,11 +55,13 @@
 | 19 | **英文文本不许看着浅** | 拉丁字体栈优先 + 根 500 基线 + `--aup-label-2` 混色 | `Latin families precede CJK ones in the stack` / `secondary text is darkened from theme tokens` / `the panel root sets a 500 baseline weight` |
 | 20 | **切维度不许抖动** | 固定槽位 `SERIES_ROW_SLOTS=4` + 固定行距 + 骨架行数对齐 + 全维度预热 | `the list keeps a constant slot count` / `spare slots pad the list in quarter/year` / `period rows keep a fixed pitch across dimensions` / `the loading frame matches the target row count` / `every dimension is warmed widest-first` |
 | 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 实测媒体查询阶梯按窗口高度减内容 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
-| 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（886→790px）+ 面板容器查询阶梯（856/835/776/702/680）+ 阶梯末尾带 `!important` + `scrollbar-width:none` | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 4` / `the card column never shows a scrollbar` |
+| 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（886→846px）+ 面板容器查询阶梯（903/891/831/747/689）+ 阶梯末尾带 `!important` + `scrollbar-width:none` | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 4` / `the card column never shows a scrollbar` |
 | 23 | **同一组行左右对齐 + 行内垂直居中** | 父级网格 + 行 `grid-template-columns:subgrid` + 行 `align-items:center` | `the source rows share one grid` / `rows take their columns from the shared grid` / `the period rows share one grid` / `subgrid rows centre their cells vertically` / layout-check 的 `srcTrackLeft`、`srcBar`（居中）断言 |
 | 24 | **用量统计是四列严格对齐的表** | 描述 / 胶囊条 / 用量 / 金额共用一个网格；每行 4 格；第三方行第 4 列写短标记 `PLAN`（中文「套餐」） | `one shared table` / `the card declares the four columns once` / `the English marker stays short: PLAN` / layout-check 的 `table` 断言（barLeft、tokensRight、amountRight 唯一） |
 | 25 | **金额只留货币符号，¥ 后置** | `Intl.formatToParts` 重排；仅 CNY 后置，其它货币按惯例 | `amounts use the narrow currency symbol` / `the spend row ends with the ¥ symbol` / `only the ¥ moves behind the amount` |
 | 26 | **期数标签带年份** | 日/周 `YYYY-MM-DD`、月 `YYYY-MM`、季 `YYYY Qn`、年「全」`YYYY` | `day and week labels carry the year` / `day rows show YYYY-MM-DD` |
+| 27 | **无障碍与动效是原则** | reduced-motion 全量关闭；装饰条 `aria-hidden`；所有控件有 focus 环 | `reduced motion covers every transition and animation` / `the retry button keeps a keyboard ring` / `the table tracks are marked decorative` |
+| 28 | **两处卡片页脚统一左中右结构** | 图例与合计行共用三列网格；合计行恒 3 格 | `the two footers share one left/centre/right grid` / `the third cell is pinned to the right edge` / layout-check 的 `footer` 断言（首格贴左、中格居中、末格贴右） |
 
 ## 1. 产品定位
 
@@ -114,21 +116,26 @@
      - 历史教训：曾让「最后一张卡」吸收高度，结果信息最少的余额卡吃掉了整屏空白，
        被用户点名骂——**分配空间要看卡片内容量，不要看它在 DOM 里的位置**。
   3. **明细列表固定槽位**：`SERIES_ROW_SLOTS = 4`，按维度渲染 1..N 行，剩余用**不可见占位行**
-     （`.aup-series-slot`，`min-height:19px`）补齐；这样**切维度时列表高度恒定**，下面的卡片一动不动。
+     （`.aup-series-slot`，`min-height:21px`）补齐；这样**切维度时列表高度恒定**，下面的卡片一动不动。
   4. **绝不允许滚动、绝不出现滚动条，并且尽量把信息全部显示出来**
      （用户 2026-11-08：「依然存在可滚动的窗口 优化一下 不滚动 显示全部信息」）。两层措施：
      - **先压缩：不删信息，只压高度**。卡片 `padding:8px` / `gap:4px`、卡间距 6px、根底部 6px、
-       统计表行高 18px、逐期行 `min-height:19px`、会话体/统计体 gap 6px、Token 网格 gap 6px、模型行 gap 0。
-       实测整屏内容高度从 **886px 压到 790px**（面板只需 848px 就能全显示，之前要 946px）。
+       统计表行高 18px、逐期行 `min-height:21px`、会话体/统计体 gap 6px、Token 网格 gap 6px、模型行 gap 0。
+       实测整屏内容高度从 **886px 压到 846px**（面板只需 904px 就能全显示，之前要 946px）；四列表的栏距另计。
      - **再按面板自身高度逐级收窄，用 `@container`（不是 `@media`）**：
        `.aup-root{container-type:size;container-name:aup-panel}`，
-       阈值 `856px 去 Token 彩条 → 835px 去按模型明细 → 776px 去统计表 → 702px 去上下文块 → 680px 去 Token 2×2 明细`。
+       阈值 `903px 去 Token 彩条 → 891px 去按模型明细 → 831px 去统计表 → 747px 去上下文块 → 689px 去 Token 2×2 明细`。
        **必须用容器查询**：窗口比面板高（右侧栏 tab 条 + 面板横条约 90px），
        之前用 `@media (max-height)` 判定基准错了，所以「阶梯明明写了却还滚」——这是反复踩的坑。
      - 阈值由 `node test/layout-check.mjs --tiers` 用**真实面板 markup** 逐级量出，
        规则放在样式表最末并带 `!important`（查询不增加特异性）。
-     - 结论：面板高度 ≥ 848px 时全部信息可见；仅当 < 856px 才隐藏那条装饰性 Token 彩条；
-       `< 586px` 属于极端窗口，只剩隐形兜底（此时仍无滚动条外观）。
+     - **夹具数据必须与生产同形**：曾经因为夹具没给上下文数据，面板跳过了上下文块、
+       量出来的内容高度比生产少 36px，阶梯整体偏低、在 869–903px 的面板里仍会「看不见的滚动」。
+       夹具里 `contextPressure`（projectedTokens/contextWindow）、`contextBreakdown`（三段 tokens）、
+       `tokenUsage`、`sessionStats` 必须全部给真实形状。
+     - 结论：面板高度 ≥ 904px 时全部信息可见；仅当 ≤ 903px 才隐藏那条装饰性 Token 彩条；
+       `< 606px` 属于极端窗口，只剩隐形兜底（此时仍无滚动条外观）。
+       阈值每次都要用 `--tiers` 重新量、改完同步更新本文件这三处数字（内容高度 / 阶梯 / 结论）。
   5. 明令禁止：用 `ResizeObserver`/`getBoundingClientRect` 的内容高度去反推行数并 `setState`
      （09:29 崩溃的成因）、用 `overflow:hidden` 或省略号假装解决放不下。
   6. **必须用真机浏览器验证几何，而且必须量真实 markup**：
@@ -164,6 +171,12 @@
   - **期数标签一律带年份**（用户 2026-11-08：「或许把年份放出来这样可以更协调和优雅」）：
     日/周显示 `YYYY-MM-DD`，月 `YYYY-MM`，季 `YYYY Qn`，年 `YYYY`，全 `YYYY`。
     只写 `11-05` 会让描述列空出一截、整张表看着参差。
+- **两张卡的页脚共用同一套 左 / 中 / 右 三列网格**（用户 2026-11-08：「这两处可以保持 UI 一致性 左中右 结构」）：
+  会话卡的上下文图例（System / Tools / Messages）与用量统计卡的合计行（合计 tokens / 请求数 / 金额）
+  必须是同一个结构：`.aup-context-legend,.aup-stats-summary{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}`，
+  第 1 格左贴边、第 2 格真正居中对齐面板中线、第 3 格右贴边。
+  **禁止**一边用 `space-between` 两段、另一边三段：那样两处看起来像两个不同的组件。
+  合计行**永远输出 3 个单元格**（无金额时输出空 span），格数固定才不会被内容左右结构。
 - 所有可用空间应尽量被有意义的内容覆盖；不要出现卡片内部的大块空白。
 
 ## 3. 文本与排版（重点，多次强调）
@@ -265,7 +278,7 @@
   第三方余额与 DeepSeek 钱包一样实时读取（opencode 走套餐百分比）；
   用量统计卡统一为**一张四列表**：`描述 | 胶囊进度条 | 用量 | 金额`（见 §13），卡标题不挂任何徽标
 - 设置里的「用量明细列表」打开后，在来源行下方追加逐期 `Token · 金额` 明细（悬浮可看完整日期/Token/金额）
-- 明细列表**高度恒定由固定槽位保证**：`SERIES_ROW_SLOTS = 4`，不足的槽位用不可见占位行补齐，
+- 明细列表**高度恒定由固定槽位保证**：`SERIES_ROW_SLOTS = 4`，不足的槽位用不可见占位行（`min-height:21px`）补齐，
   切维度（日↔季↔年）时列表高度不变、下方卡片与 tab 行不闪动；行高只设 `min-height` 不设死高度，
   内容变长时行会长高而不是被压住。
 - 明细列表模式下，期数按维度**固定封顶**（`DIMENSION_ROW_CAP`：日/周/月 4、季 3、年 3），
@@ -301,6 +314,13 @@
 - 首次平台数据成功后**预热全部维度**（`WARM_ORDER`：year → quarter → month → week → day → all，
   宽窗口优先，年窗口顺带填满月份缓存），保证切维度不出现加载帧、不抖动；Host 侧平台登录态缓存 30 秒
 - 首屏骨架屏；尊重 `prefers-reduced-motion`
+- **无障碍与动效（属于原则，不是可选 polish）**：
+  - 面板里**所有**过渡与动画都要在 `prefers-reduced-motion: reduce` 下关掉
+    （`transition` 覆盖 icon-button / src-tab / dim / series-row / pop-link / retry / toggle，
+    `animation` 覆盖 skeleton / spin），不允许只处理一两个控件
+  - **装饰性进度条一律 `aria-hidden`**：紧邻的数字就是它的文本替代（会话构成条、上下文条、套餐条、四列表的胶囊条）
+  - **每个可交互控件都有 `:focus-visible` 环**（含 `.aup-retry` 这类次要按钮），键盘用户不能有死角
+  - 语义角色齐全：范围/来源 tab 用 `role="tablist"`+`role="tab"`，开关用 `role="switch"`，设置弹层 `role="dialog"`
 
 ## 10. 安全与隐私
 
@@ -355,8 +375,8 @@
 - **切维度零抖动**：明细列表固定 `SERIES_ROW_SLOTS=4` 槽位（不足补不可见行）、固定行距而非 space-between、
   骨架行数对齐 `DIMENSION_ROW_CAP`、后台预热全部维度
 - **绝不遮挡 + 绝不滚动 + 尽量全显示**：卡片按内容撑开、永不被压缩（遮挡从结构上不可能）；
-  先把面板压紧（padding 8 / gap 4 / 行高 18 / 逐期行 19，整屏内容 886→790px，面板 848px 即可全显示），
-  再按**面板自身高度**用 `@container` 阶梯（856/835/776/702/680）依次隐藏彩条 / 按模型明细 / 统计表 /
+  先把面板压紧（padding 8 / gap 4 / 行高 18 / 逐期行 21，整屏内容 886→846px，面板 904px 即可全显示），
+  再按**面板自身高度**用 `@container` 阶梯（903/891/831/747/689）依次隐藏彩条 / 按模型明细 / 统计表 /
   上下文块 / 2×2 明细；滚动条外观全部去掉，`overflow-y:auto` 只作隐形兜底；
   **禁止**任何基于运行时测量的行数调整（09:29 崩溃成因），也禁止 `overflow:hidden` 假装修好。
   取代了此前用 `@media (max-height:)` 按**窗口**判定的写法——窗口比面板高约 90px，判定基准错了，所以阶梯一直没能阻止滚动。
