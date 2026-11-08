@@ -104,22 +104,29 @@ assert.ok(source.includes('.aup-cards>.aup-card:last-child{flex:1 1 auto}'), 'th
 assert.ok(source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:grid;'), 'the detail list is content sized');
 assert.ok(source.includes('const SERIES_ROW_SLOTS = 4'), 'the list keeps a constant slot count');
 assert.ok(source.includes('Math.max(0, SERIES_ROW_SLOTS - periodRows.length)'), 'spare slots pad the list in quarter/year');
-assert.ok(source.includes('.aup-series-slot{min-height:21px;pointer-events:none}'), 'the padding rows stay invisible');
+assert.ok(source.includes('.aup-series-slot{min-height:19px;pointer-events:none}'), 'the padding rows stay invisible');
 assert.ok(!source.includes('rowBudget') && !source.includes('ROW_PITCH_PX'), 'no measured row budget remains');
 assert.ok(!source.includes('data-aup-compact'), 'no height-driven compact attribute remains');
-assert.ok(source.includes('@media (max-height:989px){.aup-compose{display:none!important}}'), 'short windows shed the decorative token bar via CSS only');
-// The panel must never scroll: the ladder has to outrank the base declarations it
-// overrides (a media query adds no specificity), and every scrollbar is removed.
+// The panel must never scroll. The ladder measures the PANEL, not the window:
+// container queries on the root, because the pane is shorter than the window and
+// viewport breakpoints fired too late (that is why the pane still scrolled).
+assert.ok(source.includes('container-type:size;container-name:aup-panel'), 'the panel root is a size container');
 for (const rule of [
-  '@media (max-height:959px){.aup-context-breakdown{display:none!important}}',
-  '@media (max-height:929px){.aup-card-session .aup-models{display:none!important}}',
-  '@media (max-height:889px){.aup-card-session .aup-stat-list{display:none!important}}',
-  '@media (max-height:789px){.aup-context{display:none!important}}',
-  '@media (max-height:739px){.aup-card-session .aup-session-grid{display:none!important}}'
+  '@container aup-panel (max-height:856px){.aup-compose{display:none!important}}',
+  '@container aup-panel (max-height:835px){.aup-card-session .aup-models{display:none!important}}',
+  '@container aup-panel (max-height:776px){.aup-card-session .aup-stat-list{display:none!important}}',
+  '@container aup-panel (max-height:702px){.aup-context{display:none!important}}',
+  '@container aup-panel (max-height:680px){.aup-card-session .aup-session-grid{display:none!important}}'
 ]) {
   assert.ok(source.includes(rule), 'the measured shedding ladder contains: ' + rule);
 }
-assert.ok(source.indexOf('@media (max-height:989px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
+assert.ok(!source.includes('@media (max-height:'), 'the old viewport ladder is gone');
+assert.ok(source.indexOf('@container aup-panel (max-height:856px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
+// Compacted so a typical pane still shows every block: the measured full content
+// height dropped from 886px to 790px.
+assert.ok(source.includes("'.aup-card{gap:4px;padding:8px}'"), 'cards are padding 8 / gap 4');
+assert.ok(source.includes('line-height:18px}'), 'the stat table rows are 18px');
+assert.ok(source.includes('.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:19px;'), 'period rows are 19px');
 assert.ok(source.includes('scrollbar-width:none'), 'the card column never shows a scrollbar');
 assert.ok(source.includes('.aup-cards::-webkit-scrollbar{width:0;height:0;display:none}'), 'no webkit scrollbar either');
 assert.ok(!source.includes('@container aup-card'), 'no dead container queries remain');
@@ -142,8 +149,18 @@ assert.ok(source.includes('display:grid;grid-template-columns:subgrid'), 'rows t
 assert.ok(source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:grid;grid-template-columns:minmax(7ch,max-content) minmax(0,1fr) minmax(52px,max-content);align-content:start;gap:2px 8px}'), 'the period rows share one grid');
 assert.ok(source.includes('const skeletonCount = DIMENSION_ROW_CAP[dimension]'), 'the loading frame matches the target row count');
 assert.ok(!source.includes('for (let index = 0; index < 7; index += 1)'), 'no fixed 7-row loading placeholder');
-assert.ok(source.includes("const WARM_ORDER = ['year', 'quarter', 'month', 'week', 'day']"), 'every dimension is warmed widest-first');
+assert.ok(source.includes("const WARM_ORDER = ['year', 'quarter', 'month', 'week', 'day', 'all']"), 'every dimension is warmed, ALL last');
 assert.ok(source.includes('for (const warmId of WARM_ORDER)'), 'the warm-up loop covers the whole order');
+
+// ALL tab: a sixth dimension after year that spans every month with data.
+assert.ok(source.includes("{ id: 'all', key: 'stats.dim.all', buckets: 0 }"), 'ALL is a dimension without a fixed bucket count');
+assert.ok(source.includes("'stats.dim.all': '\u5168'"), 'the ALL tab is the Chinese 全');
+assert.ok(source.includes("'stats.dim.all': 'ALL'"), 'the ALL tab is ALL in English');
+assert.ok(source.includes('all: 4 }'), 'ALL shows four year rows');
+assert.ok(source.includes('const ALL_WINDOW_MONTHS = 36') && source.includes('const ALL_MAX_MONTHS = 72'), 'ALL widens from three to six years');
+assert.ok(source.includes('async function readAllPlatformUsage('), 'ALL has its own widening reader');
+assert.ok(source.includes('function rememberAllStart(') && source.includes('ALL_START_STORAGE_KEY'), 'the discovered first month is remembered');
+assert.ok(source.includes("const summaryCells = dimension === 'all' ? series.cells : visibleCells"), 'the ALL total covers every year it found');
 
 // The panel fills the right sidebar: cards grow with the pane instead of leaving a
 // blank band, the column never reserves a scrollbar gutter, and invisible padding
@@ -154,6 +171,8 @@ assert.ok(source.includes('.aup-card-session-fixed{flex:0 0 auto}'), 'the sessio
 assert.ok(!source.includes('scrollbar-gutter'), 'the card column spans the full pane width');
 assert.ok(source.includes('aup-series-slot'), 'invisible slot rows keep the list height constant');
 assert.ok(source.includes('.aup-card-session .aup-session-body>.aup-context{margin-top:auto}'), 'session footer sits on the card bottom');
+assert.ok(source.includes('.aup-stat-list::before{content:""'), 'a hairline separates the two stat columns');
+assert.ok(!source.includes('buildDetailStats'), 'the dead provider-detail stat builder is gone');
 assert.ok(source.includes('.aup-stats-summary{margin-top:auto;'), 'stats footer sits on the card bottom');
 
 // Theme contract: only tokens the installed UI theme defines in both light and dark.
@@ -547,6 +566,68 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(flat(summary).includes('5.9B'), 'B unit in the summary');
   assert.ok(flat(summary).includes('¥542.52'), 'real platform amount shown');
   const total = walk(readyTree, (n) => hasClass(n, 'aup-session-total-value'))[0];
+  // The eight session metrics are grouped in pairs and laid out row-major:
+  // volume (turns/steps, requests), efficiency (cache, avg), responsiveness
+  // (speed, ttft), time split (model, tools).
+  const statsTree = render(
+    {
+      phase: 'ready',
+      ok: true,
+      source: 'platform',
+      days: [{ date: new Date().toISOString().slice(0, 10), tokens: 5_900_000_000, cost: 542.52, count: 10 }],
+      currency: 'CNY',
+      dimension: 'day',
+      refreshing: false
+    },
+    (key) =>
+      key === 'sessionStats'
+        ? { turns: 151, steps: 1677, decodeTokens: 128_000, decodeMs: 1000, llmMs: 26_640_000, toolMs: 5_280_000, ttftMs: 8_600, ttftSteps: 1000 }
+        : { uncachedInputTokens: 5_000_000, outputTokens: 19_000_000, cacheReadTokens: 5_000_000, cacheWriteTokens: 0 },
+    undefined,
+    undefined,
+    undefined,
+    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-flash', tokens: 5_000_000, requests: 1665 }], totalTokens: 5_000_000 }
+  );
+  const statLabels = walk(statsTree, (n) => hasClass(n, 'aup-stat-label')).map(flat);
+  assert.deepEqual(
+    statLabels,
+    ['轮 / 步', '请求次数', '缓存命中', '平均', '输出速度', '首 Token', '模型用时', '工具用时'],
+    'session stats are grouped in semantic pairs: ' + JSON.stringify(statLabels)
+  );
+  assert.deepEqual(statLabels.slice(0, 2), ['轮 / 步', '请求次数'], 'the volume pair opens the table');
+  assert.deepEqual(statLabels.slice(4, 6), ['输出速度', '首 Token'], 'speed and ttft share the responsiveness row');
+  assert.deepEqual(statLabels.slice(6, 8), ['模型用时', '工具用时'], 'the two durations close the table');
+
+  // ALL tab: the sixth range after year. Rows are years, and the total counts every
+  // year the reader found even when older ones no longer fit on screen.
+  storage.set('dsh.account-usage.all-start.v1', '2020-01');
+  const allTree = render(
+    {
+      phase: 'ready',
+      ok: true,
+      source: 'platform',
+      days: [
+        { date: '2020-05-04', tokens: 1_000_000, cost: 10, count: 3 },
+        { date: '2021-03-01', tokens: 2_000_000, cost: 20, count: 4 },
+        { date: '2023-01-01', tokens: 500_000, cost: 5, count: 1 },
+        { date: new Date().toISOString().slice(0, 10), tokens: 3_000_000, cost: 30, count: 6 }
+      ],
+      currency: 'CNY',
+      dimension: 'all',
+      refreshing: false
+    },
+    () => undefined,
+    'all'
+  );
+  const dimLabels = walk(allTree, (node) => hasClass(node, 'aup-dim')).map(flat);
+  assert.deepEqual(dimLabels, ['日', '周', '月', '季', '年', '全'], 'ALL closes the range row: ' + JSON.stringify(dimLabels));
+  const allRows = walk(allTree, (node) => hasClass(node, 'aup-series-label')).map(flat);
+  assert.equal(allRows.length, 4, 'ALL keeps four year rows: ' + JSON.stringify(allRows));
+  assert.ok(allRows.includes(String(new Date().getFullYear())), 'the current year is listed');
+  assert.ok(!allRows.includes('2020'), 'older years drop out of the visible rows: ' + JSON.stringify(allRows));
+  const allSummary = flat(walk(allTree, (node) => hasClass(node, 'aup-stats-summary'))[0]);
+  assert.ok(allSummary.includes('6.5M'), 'the ALL total still counts every year: ' + allSummary);
+  assert.ok(allSummary.includes('¥65.00'), 'the ALL spend counts every year: ' + allSummary);
   assert.equal(flat(total), '5.92B', 'session total uses B unit with two decimals');
   const header = walk(readyTree, (n) => hasClass(n, 'aup-head'))[0];
   const headerGroups = header.children.filter((child) => child && hasClass(child, 'aup-head-actions'));
@@ -907,7 +988,7 @@ function walkRoles(node, role, out = []) {
   assert.ok(dialog, 'settings dialog opens');
   assert.equal(walkRoles(dialog, 'switch').length, 7, 'three card switches + spend + auto refresh + hide composer stats + usage detail list');
   const miniTabs = walk(dialog, (node) => node.props && String(node.props.className || '').includes('aup-dims-mini'))[0];
-  assert.equal(walk(miniTabs, (node) => node.type === 'button').length, 5, 'five range options');
+  assert.equal(walk(miniTabs, (node) => node.type === 'button').length, 6, 'six range options including ALL');
   assert.ok(walk(dialog, (node) => node.props && node.props.className === 'aup-pop-link').length === 1, 'reset action present');
   assert.equal(flat(walk(dialog, (node) => node.props && node.props.className === 'aup-pop-title')[0]), '设置', 'settings title is short');
   assert.ok(walk(dialog, (node) => node.type === 'button' && node.props['aria-label'] === '关闭').length === 1, 'settings can be closed from the header');

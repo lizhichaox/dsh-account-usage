@@ -140,6 +140,7 @@ window.__ModuleLoader__.load({
       'stats.dim.month': '月',
       'stats.dim.quarter': '季',
       'stats.dim.year': '年',
+      'stats.dim.all': '全',
       'stats.summary.requests': '合计 {total} · {count} 次请求',
       'stats.summary.sessions': '合计 {total} · {count} 个会话',
       'stats.summary.sources': '合计 {total} · {count} 个来源',
@@ -248,6 +249,7 @@ window.__ModuleLoader__.load({
       'stats.dim.month': 'Month',
       'stats.dim.quarter': 'Qtr',
       'stats.dim.year': 'Year',
+      'stats.dim.all': 'ALL',
       'stats.summary.requests': 'Total {total} · {count} requests',
       'stats.summary.sessions': 'Total {total} · {count} sessions',
       'stats.summary.sources': 'Total {total} · {count} sources',
@@ -309,7 +311,7 @@ window.__ModuleLoader__.load({
       'html[data-account-usage-hide-stats] [data-composer-dock]{display:none!important}',
       'html[data-account-usage-hide-stats] [data-slot="conversation.composer.dock"]{display:none!important}',
       'html[data-account-usage-hide-stats] [data-composer-stat]{display:none!important}',
-      '.aup-root{--aup-font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;--aup-fs-text:13px;--aup-label-2:color-mix(in srgb,var(--dsw-alias-label-primary) 30%,var(--dsw-alias-label-secondary));position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;width:100%;height:100%;min-height:0;overflow:hidden;padding:0 8px 8px;color:var(--dsw-alias-label-primary);font-family:var(--aup-font-ui);font-size:var(--aup-fs-text);font-weight:500;line-height:20px}',
+      '.aup-root{container-type:size;container-name:aup-panel;--aup-font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI","Helvetica Neue",Arial,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;--aup-fs-text:13px;--aup-label-2:color-mix(in srgb,var(--dsw-alias-label-primary) 30%,var(--dsw-alias-label-secondary));position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;width:100%;height:100%;min-height:0;overflow:hidden;padding:0 8px 6px;color:var(--dsw-alias-label-primary);font-family:var(--aup-font-ui);font-size:var(--aup-fs-text);font-weight:500;line-height:20px}',
       '.aup-root *{box-sizing:border-box}',
       '.aup-head{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;height:var(--aup-head-h,44px);margin:0 -8px 0;padding:0 8px;border-bottom:.5px solid var(--dsw-alias-border-l3)}',
       '.aup-head-greeting{min-width:0;text-align:center;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:16px;font-weight:500;white-space:nowrap}',
@@ -335,8 +337,8 @@ window.__ModuleLoader__.load({
       '.aup-pop-foot{display:flex;justify-content:flex-end;padding-top:2px}',
       '.aup-pop-link{padding:0;border:none;background:transparent;color:var(--aup-label-2);font:inherit;font-size:var(--aup-fs-text);line-height:18px;cursor:pointer}',
       '.aup-pop-link:hover{color:var(--dsw-alias-label-primary)}',
-      '.aup-dims-mini{background:var(--dsw-alias-bg-skeleton);padding:2px;gap:2px;border-radius:8px}',
-      '.aup-dims-mini .aup-dim{flex:1 1 0;height:22px;padding:0 4px;border-radius:6px;font-size:var(--aup-fs-text);line-height:16px}',
+      '.aup-dims-mini{display:flex;flex-wrap:wrap;background:var(--dsw-alias-bg-skeleton);padding:2px;gap:2px;border-radius:8px}',
+      '.aup-dims-mini .aup-dim{flex:1 1 58px;height:22px;padding:0 4px;border-radius:6px;font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-toggle{position:relative;flex:none;width:34px;height:20px;padding:0;border:none;border-radius:999px;background:var(--dsw-alias-bg-skeleton);cursor:pointer;transition:background-color .15s}',
       '.aup-toggle[data-on]{background:var(--dsw-alias-brand-primary)}',
       '.aup-toggle-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 20%,transparent);transition:transform .15s}',
@@ -346,13 +348,13 @@ window.__ModuleLoader__.load({
       '.aup-empty{padding:12px;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:18px;font-weight:500;text-align:center}',      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
-      '.aup-cards{flex:1 1 auto;min-height:0;width:100%;display:flex;flex-direction:column;justify-content:flex-start;gap:8px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none}',
+      '.aup-cards{flex:1 1 auto;min-height:0;width:100%;display:flex;flex-direction:column;justify-content:flex-start;gap:6px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none}',
       '.aup-cards>.aup-card:last-child{flex:1 1 auto}',
       '.aup-cards::-webkit-scrollbar{width:0;height:0;display:none}',
       '.aup-card{flex:0 0 auto;min-height:auto;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:visible}',
       '.aup-card-session{justify-content:flex-start}',
       '.aup-card-stats{justify-content:flex-start}',
-      '.aup-stats-body{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:10px}',
+      '.aup-stats-body{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}',
       '.aup-srcs{flex:none;display:grid;grid-template-columns:max-content minmax(0,1fr) auto auto;align-items:center;gap:8px}',
       '.aup-src{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-width:0;font-size:var(--aup-fs-text);line-height:18px;font-variant-numeric:tabular-nums}',
       '.aup-src-label{min-width:0;color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
@@ -393,11 +395,11 @@ window.__ModuleLoader__.load({
       '.aup-retry{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:var(--aup-fs-text);line-height:18px;cursor:pointer}',
       '.aup-retry:hover{background:var(--dsw-alias-interactive-bg-hover)}',
       '.aup-card-session-fixed{flex:0 0 auto}',
-      '.aup-card-session .aup-session-body{flex:0 0 auto;display:flex;flex-direction:column;gap:10px;justify-content:flex-start}',
+      '.aup-card-session .aup-session-body{flex:0 0 auto;display:flex;flex-direction:column;gap:6px;justify-content:flex-start}',
       '.aup-card-session .aup-session-grid{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;align-content:space-evenly;justify-items:stretch;margin:0;padding:0;width:100%}',
       '.aup-card-session .aup-session-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}',
       '.aup-card-session .aup-session-cell:nth-child(even){align-items:flex-end;text-align:right}',
-      '.aup-models{display:flex;flex-direction:column;gap:2px;flex:none;min-height:0}',
+      '.aup-models{display:flex;flex-direction:column;gap:0;flex:none;min-height:0}',
       '.aup-model-item{display:flex;flex-direction:column;gap:2px;min-width:0}',
       '.aup-model-track{height:4px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
       '.aup-model-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary)}',
@@ -408,11 +410,12 @@ window.__ModuleLoader__.load({
       '.aup-model-more{font-size:var(--aup-fs-text);line-height:16px;color:var(--aup-label-2)}',
       '.aup-token-dot{flex:none;width:6px;height:6px;border-radius:2px}',
       '.aup-provider-updated{margin:0;font-size:var(--aup-fs-text);line-height:16px;font-weight:500;color:var(--aup-label-2)}',
-      '.aup-stat-list{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px}',
+      '.aup-stat-list{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:2px 20px}',
+      '.aup-stat-list::before{content:"";position:absolute;top:1px;bottom:1px;left:50%;width:.5px;background:var(--dsw-alias-border-l2);pointer-events:none}',
       '.aup-session-sep{flex:none;height:1px;background:var(--dsw-alias-border-l2)}',
-      '.aup-stat-row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:baseline;gap:4px;min-width:0;font-size:var(--aup-fs-text);line-height:20px}',
-      '.aup-stat-label{min-width:0;color:var(--aup-label-2);white-space:nowrap;line-height:20px}',
-      '.aup-stat-value{min-width:0;justify-self:stretch;text-align:right;color:var(--dsw-alias-label-primary);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:var(--aup-fs-text);line-height:20px}',
+      '.aup-stat-row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:baseline;gap:4px;min-width:0;font-size:var(--aup-fs-text);line-height:18px}',
+      '.aup-stat-label{min-width:0;color:var(--aup-label-2);white-space:nowrap;line-height:18px}',
+      '.aup-stat-value{min-width:0;justify-self:stretch;text-align:right;color:var(--dsw-alias-label-primary);font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;font-size:var(--aup-fs-text);line-height:18px}',
       '.aup-stat-value.aup-stat-value-s{letter-spacing:-.01em}',
       '.aup-stat-value.aup-stat-value-xs{letter-spacing:-.02em}',
                   '.aup-context-breakdown{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
@@ -454,7 +457,7 @@ window.__ModuleLoader__.load({
       '.aup-session-total-label{font-size:var(--aup-fs-text);line-height:16px;font-weight:500;color:var(--aup-label-2);white-space:nowrap}',
       '.aup-compose{display:flex;height:8px;flex:none;gap:1px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-skeleton)}',
       '.aup-compose-seg{flex:1 1 0;min-width:2px;height:100%}',
-      '.aup-context{display:flex;flex-direction:column;gap:6px;margin-top:2px}',
+      '.aup-context{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
       '.aup-context-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-variant-numeric:tabular-nums;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2);min-width:0}',
       '.aup-context-head>span{min-width:0;white-space:nowrap}',
       '.aup-context-figures{flex:none;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary);text-align:right}',
@@ -469,9 +472,9 @@ window.__ModuleLoader__.load({
       '.aup-stats-summary>span{min-width:0;white-space:normal;overflow-wrap:anywhere}',
       '.aup-stats-total{flex:none;font-size:var(--aup-fs-text);line-height:26px;font-weight:600;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
       '.aup-card-stats .aup-series{flex:0 0 auto;display:grid;grid-template-columns:minmax(7ch,max-content) minmax(0,1fr) minmax(52px,max-content);align-content:start;gap:2px 8px}',
-      '.aup-series-slot{min-height:21px;pointer-events:none}',,
+      '.aup-series-slot{min-height:19px;pointer-events:none}',,
       '.aup-card-session .aup-session-body>.aup-context{margin-top:auto}',
-      '.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:21px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
+      '.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:19px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
       '.aup-card-stats .aup-series-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
       '.aup-card-stats .aup-series-row[data-current]{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent)}',
       '.aup-card-stats .aup-series-row[data-zero]{opacity:.62}',
@@ -492,7 +495,7 @@ window.__ModuleLoader__.load({
       '.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary)}',
       '.aup-tab-icon{flex:none;width:14px;height:14px;vertical-align:-2px;color:var(--dsw-alias-label-secondary)}',
       // ---- one shared type scale: every Chinese text is 13px, only numbers vary by role ----
-      '.aup-card{gap:6px;padding:10px}',
+      '.aup-card{gap:4px;padding:8px}',
       '.aup-card-title{font-size:var(--aup-fs-text);line-height:16px;font-weight:500}',
       '.aup-card-icon{width:15px;height:15px}',
       '.aup-card-icon svg{width:100%;height:100%}',
@@ -501,7 +504,7 @@ window.__ModuleLoader__.load({
       '.aup-session-total-label{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-session-label{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-session-value{font-size:var(--aup-fs-text);line-height:16px;font-weight:500}',
-      '.aup-card-session .aup-session-grid{gap:8px 12px}',
+      '.aup-card-session .aup-session-grid{gap:6px 12px}',
       '.aup-compose{height:6px}',
       '.aup-bar{height:6px}',
       '.aup-context{gap:4px}',
@@ -522,15 +525,16 @@ window.__ModuleLoader__.load({
       '.aup-hint{font-size:var(--aup-fs-text);line-height:16px}',
       // ---- content shedding on short windows: pure media queries, no measurement ----
       // Measured ladder (test/layout-check.mjs --tiers): each step keeps the whole
-      // panel inside the window so the card column never has to scroll. These rules
-      // must stay LAST: a media query adds no specificity, so a later base rule such
-      // as `.aup-compose{display:flex}` would otherwise win and defeat the ladder.
-      '@media (max-height:989px){.aup-compose{display:none!important}}',
-      '@media (max-height:959px){.aup-context-breakdown{display:none!important}}',
-      '@media (max-height:929px){.aup-card-session .aup-models{display:none!important}}',
-      '@media (max-height:889px){.aup-card-session .aup-stat-list{display:none!important}}',
-      '@media (max-height:789px){.aup-context{display:none!important}}',
-      '@media (max-height:739px){.aup-card-session .aup-session-grid{display:none!important}}'
+      // panel inside its own height so the card column never has to scroll. These are
+      // CONTAINER queries on the panel root, not media queries on the window: the pane
+      // is shorter than the window (right-sidebar tab strip + header) and viewport
+      // breakpoints fired ~90px too late, which is why the pane still scrolled.
+      // They must stay LAST and carry !important: a query adds no specificity.
+      '@container aup-panel (max-height:856px){.aup-compose{display:none!important}}',
+      '@container aup-panel (max-height:835px){.aup-card-session .aup-models{display:none!important}}',
+      '@container aup-panel (max-height:776px){.aup-card-session .aup-stat-list{display:none!important}}',
+      '@container aup-panel (max-height:702px){.aup-context{display:none!important}}',
+      '@container aup-panel (max-height:680px){.aup-card-session .aup-session-grid{display:none!important}}',
     ].join('\n');
 
     // --------------------------------------------------------------- glyphs --
@@ -793,10 +797,17 @@ window.__ModuleLoader__.load({
     const SHORTCUT_ID = 'accountUsage.open';
 
     /** Background warm-up order: widest window first, so later switches hit the cache. */
-    const WARM_ORDER = ['year', 'quarter', 'month', 'week', 'day'];
+    const WARM_ORDER = ['year', 'quarter', 'month', 'week', 'day', 'all'];
 
     /** Maximum periods rendered in the detail list per dimension (older ones are dropped). */
-    const DIMENSION_ROW_CAP = { day: 4, week: 4, month: 4, quarter: 3, year: 3 };
+    const DIMENSION_ROW_CAP = { day: 4, week: 4, month: 4, quarter: 3, year: 3, all: 4 };
+
+    /** ALL tab: the window it opens with (three years, same as the year tab). */
+    const ALL_WINDOW_MONTHS = 36;
+    /** ALL tab: never look further back than six years, so one query stays sane. */
+    const ALL_MAX_MONTHS = 72;
+    /** Where the discovered first month of the account lives. */
+    const ALL_START_STORAGE_KEY = 'dsh.account-usage.all-start.v1';
 
     /** Slots the detail list always occupies: identical height in every dimension. */
     const SERIES_ROW_SLOTS = 4;
@@ -962,7 +973,9 @@ window.__ModuleLoader__.load({
       { id: 'week', key: 'stats.dim.week', buckets: 6 },
       { id: 'month', key: 'stats.dim.month', buckets: 6 },
       { id: 'quarter', key: 'stats.dim.quarter', buckets: 4 },
-      { id: 'year', key: 'stats.dim.year', buckets: 3 }
+      { id: 'year', key: 'stats.dim.year', buckets: 3 },
+      // `all` has no fixed bucket count: it spans every year with data (see bucketStarts).
+      { id: 'all', key: 'stats.dim.all', buckets: 0 }
     ];
 
     /** Round one instant down to the start of its bucket, in local time. */
@@ -1082,10 +1095,68 @@ window.__ModuleLoader__.load({
       return Number.isFinite(date.getTime()) ? date : undefined;
     }
 
+    /** Cached first month the ALL tab covers (module lifetime). */
+    let allStartMonth;
+
+    /** First month the ALL tab covers: the discovered account start, else a 3-year window. */
+    function allWindowStart(now) {
+      const reference = now === undefined ? new Date() : now;
+      if (allStartMonth === undefined) {
+        allStartMonth = null;
+        try {
+          const storage = globalThis.localStorage;
+          const raw = storage === undefined || storage === null ? null : storage.getItem(ALL_START_STORAGE_KEY);
+          if (typeof raw === 'string' && /^\d{4}-\d{2}$/u.test(raw)) {
+            const parts = raw.split('-');
+            allStartMonth = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
+          }
+        } catch (error) {
+          /* storage unavailable: fall back to the default window */
+        }
+      }
+      if (allStartMonth !== null && allStartMonth !== undefined) return allStartMonth;
+      return new Date(reference.getFullYear(), reference.getMonth() - (ALL_WINDOW_MONTHS - 1), 1);
+    }
+
+    /** Remember the first month that actually holds data, so later reads start there. */
+    function rememberAllStart(month) {
+      if (allStartMonth !== null && allStartMonth !== undefined) {
+        if (allStartMonth.getTime() <= month.getTime()) return;
+      }
+      allStartMonth = month;
+      try {
+        const storage = globalThis.localStorage;
+        if (storage === undefined || storage === null) return;
+        const pad = (value) => (value < 10 ? '0' + value : String(value));
+        storage.setItem(ALL_START_STORAGE_KEY, String(month.getFullYear()) + '-' + pad(month.getMonth() + 1));
+      } catch (error) {
+        /* best effort */
+      }
+    }
+
+    /** Every month from `start` through `reference`, inclusive, oldest first. */
+    function monthsBetween(start, reference) {
+      const months = [];
+      let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+      const last = new Date(reference.getFullYear(), reference.getMonth(), 1);
+      while (cursor.getTime() <= last.getTime()) {
+        months.push({ year: cursor.getFullYear(), month: cursor.getMonth() + 1 });
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+      }
+      return months;
+    }
+
     /** The most recent bucket starts of one dimension, oldest first. */
     function bucketStarts(dimensionId, now) {
       const dimension = DIMENSIONS.find((entry) => entry.id === dimensionId) || DIMENSIONS[0];
-      const currentStart = startOfBucket((now === undefined ? new Date() : now).getTime(), dimension.id);
+      const reference = now === undefined ? new Date() : now;
+      if (dimension.id === 'all') {
+        const first = allWindowStart(reference);
+        const years = [];
+        for (let year = first.getFullYear(); year <= reference.getFullYear(); year += 1) years.push(new Date(year, 0, 1));
+        return { dimension, starts: years };
+      }
+      const currentStart = startOfBucket(reference.getTime(), dimension.id);
       const starts = [];
       let cursor = currentStart;
       for (let index = 0; index < dimension.buckets; index += 1) {
@@ -1100,8 +1171,9 @@ window.__ModuleLoader__.load({
      * the oldest bucket through the current month, inclusive.
      */
     function monthsForDimension(dimensionId, now) {
-      const { starts } = bucketStarts(dimensionId, now);
       const reference = now === undefined ? new Date() : now;
+      if (dimensionId === 'all') return monthsBetween(allWindowStart(reference), reference);
+      const { starts } = bucketStarts(dimensionId, now);
       const first = starts[0];
       const months = [];
       let cursor = new Date(first.getFullYear(), first.getMonth(), 1);
@@ -1326,13 +1398,18 @@ window.__ModuleLoader__.load({
       }
     }
 
-    /** Platform usage over one dimension's window, folded into day records. */
-    async function readPlatformUsage(dimension, force) {
-      restorePersistedMonths();
-      const months = monthsForDimension(dimension, new Date());
-      const results = await mapLimit(months, 6, (period) => readPlatformMonth(period, force === true && isCurrentMonth(period)));
-      const failed = results.find((result) => result.ok !== true);
-      if (failed !== undefined) return { ok: false, code: failed.code };
+    /** Whether one platform month payload carries any usage at all. */
+    function monthHasData(data) {
+      if (data === null || typeof data !== 'object' || !Array.isArray(data.days)) return false;
+      for (const day of data.days) {
+        if (day === null || typeof day !== 'object') continue;
+        if ((Number(day.tokens) || 0) > 0 || (Number(day.cost) || 0) > 0) return true;
+      }
+      return false;
+    }
+
+    /** Fold month payloads into the flat day records the series builder consumes. */
+    function daysFromMonths(results) {
       const days = [];
       let currency = 'CNY';
       for (const result of results) {
@@ -1348,6 +1425,47 @@ window.__ModuleLoader__.load({
           });
         }
       }
+      return { days, currency };
+    }
+
+    /**
+     * The ALL tab: read a three-year window first, then widen it while the oldest
+     * month still holds data, remembering the first month that does. Closed months
+     * come from the shared month cache, so widening costs no extra requests.
+     */
+    async function readAllPlatformUsage(force) {
+      restorePersistedMonths();
+      const reference = new Date();
+      let start = allWindowStart(reference);
+      let folded = { days: [], currency: 'CNY' };
+      for (let round = 0; round < 3; round += 1) {
+        const months = monthsBetween(start, reference);
+        const results = await mapLimit(months, 6, (period) => readPlatformMonth(period, force === true && isCurrentMonth(period)));
+        const failed = results.find((result) => result.ok !== true);
+        if (failed !== undefined) return { ok: false, code: failed.code };
+        folded = daysFromMonths(results);
+        const earliest = months.find((period, index) => results[index].ok === true && monthHasData(results[index].data));
+        if (earliest !== undefined) rememberAllStart(new Date(earliest.year, earliest.month - 1, 1));
+        const oldestHasData = results[0] !== undefined && results[0].ok === true && monthHasData(results[0].data);
+        const canExtend = months.length < ALL_MAX_MONTHS;
+        if (oldestHasData !== true || canExtend !== true) break;
+        const widened = new Date(start.getFullYear(), start.getMonth() - ALL_WINDOW_MONTHS, 1);
+        if (widened.getTime() >= start.getTime()) break;
+        start = widened;
+      }
+      persistMonths();
+      return { ok: true, source: 'platform', days: folded.days, currency: folded.currency };
+    }
+
+    /** Platform usage over one dimension's window, folded into day records. */
+    async function readPlatformUsage(dimension, force) {
+      restorePersistedMonths();
+      if (dimension === 'all') return readAllPlatformUsage(force);
+      const months = monthsForDimension(dimension, new Date());
+      const results = await mapLimit(months, 6, (period) => readPlatformMonth(period, force === true && isCurrentMonth(period)));
+      const failed = results.find((result) => result.ok !== true);
+      if (failed !== undefined) return { ok: false, code: failed.code };
+      const { days, currency } = daysFromMonths(results);
       persistMonths();
       return { ok: true, source: 'platform', days, currency };
     }
@@ -1464,45 +1582,6 @@ window.__ModuleLoader__.load({
       };
     }
 
-    /** Derived session statistics for the provider detail card. */
-    function buildDetailStats({ t, usage, sessionStats, requestCount, total }) {
-      const promptTokens = usage ? (usage.uncachedInputTokens || 0) + (usage.cacheReadTokens || 0) + (usage.cacheWriteTokens || 0) : 0;
-      const cacheHit = promptTokens > 0 ? Math.round(((usage.cacheReadTokens || 0) / promptTokens) * 1000) / 10 : undefined;
-      const average = requestCount > 0 ? Math.round(total / requestCount) : undefined;
-      const turns = sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.turns) ? sessionStats.turns : undefined;
-      const steps = sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.steps) ? sessionStats.steps : undefined;
-      const speed =
-        sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.decodeTokens) && Number.isFinite(sessionStats.decodeMs) && sessionStats.decodeMs > 0
-          ? Math.round(sessionStats.decodeTokens / (sessionStats.decodeMs / 1000))
-          : undefined;
-      const duration = (ms) => {
-        if (!Number.isFinite(ms) || ms <= 0) return undefined;
-        if (ms < 1000) return t('tokens.duration.compactMs', { milliseconds: String(Math.round(ms)) });
-        const seconds = ms / 1000;
-        if (seconds < 60) return t('tokens.duration.compactSeconds', { seconds: String(Math.round(seconds * 10) / 10) });
-        const totalSeconds = Math.round(seconds);
-        const minutes = Math.floor(totalSeconds / 60);
-        if (minutes < 60) return t('tokens.duration.compactMinutes', { minutes: String(minutes), seconds: String(totalSeconds % 60) });
-        const hours = Math.floor(minutes / 60);
-        return t('tokens.duration.compactHours', { hours: String(hours), minutes: String(minutes % 60) });
-      };
-      const llmTime = sessionStats === null || sessionStats === undefined ? undefined : duration(sessionStats.llmMs);
-      const toolTime = sessionStats === null || sessionStats === undefined ? undefined : duration(sessionStats.toolMs);
-      const ttft =
-        sessionStats !== null && sessionStats !== undefined && Number.isFinite(sessionStats.ttftMs) && Number.isFinite(sessionStats.ttftSteps) && sessionStats.ttftSteps > 0
-          ? duration(sessionStats.ttftMs / sessionStats.ttftSteps)
-          : undefined;
-      return [
-        { key: 'turnsSteps', label: t('tokens.stat.turnsSteps'), value: turns === undefined && steps === undefined ? undefined : (turns === undefined ? '—' : String(turns)) + ' / ' + (steps === undefined ? '—' : String(steps)) },
-        { key: 'requests', label: t('tokens.stat.requests'), value: requestCount > 0 ? String(requestCount) : undefined },
-        { key: 'cacheHit', label: t('tokens.stat.cacheHit'), value: cacheHit === undefined ? undefined : cacheHit + '%' },
-        { key: 'average', label: t('tokens.stat.avg'), value: average === undefined || average <= 0 ? undefined : formatTokens(average) },
-        { key: 'speed', label: t('tokens.stat.speed'), value: speed === undefined || speed <= 0 ? undefined : speed + ' tok/s' },
-        { key: 'llm', label: t('tokens.stat.llm'), value: llmTime },
-        { key: 'tool', label: t('tokens.stat.tool'), value: toolTime },
-        { key: 'ttft', label: t('tokens.stat.ttft'), value: ttft }
-      ].filter((item) => item.value !== undefined);
-    }
 
     /** First fetchedAt among provider balance rows (all rows share the same fetch). */
     function singleFetchedAt(rows) {
@@ -1894,9 +1973,12 @@ window.__ModuleLoader__.load({
       // No measurement and no observer, so this can never feed back into layout.
       const rowCap = DIMENSION_ROW_CAP[dimension] === undefined ? SERIES_ROW_SLOTS : DIMENSION_ROW_CAP[dimension];
       const visibleCells = series.cells.slice(Math.max(0, series.cells.length - rowCap));
-      const shownTotal = visibleCells.reduce((sum, cell) => sum + cell.total, 0);
-      const shownCost = visibleCells.reduce((sum, cell) => sum + cell.cost, 0);
-      const shownCount = visibleCells.reduce((sum, cell) => sum + (Number.isFinite(cell.count) ? cell.count : 0), 0);
+      // The ALL tab is defined by its grand total: older years that no longer fit on
+      // screen still count, otherwise the number would silently shrink.
+      const summaryCells = dimension === 'all' ? series.cells : visibleCells;
+      const shownTotal = summaryCells.reduce((sum, cell) => sum + cell.total, 0);
+      const shownCost = summaryCells.reduce((sum, cell) => sum + cell.cost, 0);
+      const shownCount = summaryCells.reduce((sum, cell) => sum + (Number.isFinite(cell.count) ? cell.count : 0), 0);
       const periodRows = visibleCells.map((cell) => {
         const detail =
           showCost !== false && cell.cost > 0
@@ -2088,9 +2170,9 @@ window.__ModuleLoader__.load({
         { key: 'cacheHit', label: t('tokens.stat.cacheHit'), value: cacheHit === undefined ? undefined : cacheHit + '%' },
         { key: 'average', label: t('tokens.stat.avg'), value: average === undefined || average <= 0 ? undefined : formatTokens(average) },
         { key: 'speed', label: t('tokens.stat.speed'), value: speed === undefined || speed <= 0 ? undefined : speed + ' tok/s' },
+        { key: 'ttft', label: t('tokens.stat.ttft'), value: ttft },
         { key: 'llm', label: t('tokens.stat.llm'), value: llmTime },
-        { key: 'tool', label: t('tokens.stat.tool'), value: toolTime },
-        { key: 'ttft', label: t('tokens.stat.ttft'), value: ttft }
+        { key: 'tool', label: t('tokens.stat.tool'), value: toolTime }
       ].filter((item) => item.value !== undefined);
 
       const composeSegments = usage

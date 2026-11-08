@@ -55,7 +55,7 @@
 | 19 | **英文文本不许看着浅** | 拉丁字体栈优先 + 根 500 基线 + `--aup-label-2` 混色 | `Latin families precede CJK ones in the stack` / `secondary text is darkened from theme tokens` / `the panel root sets a 500 baseline weight` |
 | 20 | **切维度不许抖动** | 固定槽位 `SERIES_ROW_SLOTS=4` + 固定行距 + 骨架行数对齐 + 全维度预热 | `the list keeps a constant slot count` / `spare slots pad the list in quarter/year` / `period rows keep a fixed pitch across dimensions` / `the loading frame matches the target row count` / `every dimension is warmed widest-first` |
 | 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 实测媒体查询阶梯按窗口高度减内容 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
-| 22 | **不允许滚动、不允许出现滚动条** | 实测阶梯（989/959/929/889/789/739）+ 阶梯写在样式表末尾带 `!important` + `scrollbar-width:none` | `short windows shed the decorative token bar via CSS only` / `the measured shedding ladder contains: …` / `the ladder is declared after the base rules it overrides` / `the card column never shows a scrollbar` / `no visible scrollbar either` |
+| 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（886→790px）+ 面板容器查询阶梯（856/835/776/702/680）+ 阶梯末尾带 `!important` + `scrollbar-width:none` | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 4` / `the card column never shows a scrollbar` |
 | 23 | **同一组行左右对齐 + 行内垂直居中** | 父级网格 + 行 `grid-template-columns:subgrid` + 行 `align-items:center` | `the source rows share one grid` / `rows take their columns from the shared grid` / `the period rows share one grid` / `subgrid rows centre their cells vertically` / layout-check 的 `srcTrackLeft`、`srcBar`（居中）断言 |
 
 ## 1. 产品定位
@@ -74,7 +74,7 @@
   - 横条高度**运行时测量**：`conversation.header` 的 `bottom` 减去本面板 root 的 `top`，
     写入 CSS 变量 `--aup-head-h`；找不到时用 `[data-phase]` 会话根的第一个子元素 bottom 兜底
   - root 的 `padding-top` 必须为 0，横条才能从面板顶端开始，测量值才对得上
-  - 面板边界留白要克制：root `padding: 0 8px 8px`、卡片间距 8px（不要回到 16px，会显得空旷）；
+  - 面板边界留白要克制：root `padding: 0 8px 6px`、卡片间距 6px（不要回到 16px，会显得空旷）；
     横条用**负外边距 `margin:0 -8px` + `padding:0 8px` 铺满面板整宽**（线必须顶到面板左右边缘），
     否则线和中间会话区的线之间会留出面板 padding 的空档、看起来「没连起来」
   - **线永远不能消失**：测量失败或数值不合理时退回默认 44px 的横条高度，绝不隐藏这条线
@@ -103,27 +103,33 @@
   2. **最后一张卡吸收剩余高度**：`.aup-cards>.aup-card:last-child{flex:1 1 auto}`，
      面板底部不会出现空白带；账户卡内部的余额/套餐块用 `flex:1` + 均匀分布填满这块空间。
   3. **明细列表固定槽位**：`SERIES_ROW_SLOTS = 4`，按维度渲染 1..N 行，剩余用**不可见占位行**
-     （`.aup-series-slot`，`min-height:21px`）补齐；这样**切维度时列表高度恒定**，下面的卡片一动不动。
-  4. **绝不允许滚动、绝不出现滚动条**（用户 2026-11-08：「不要出现滚动轴 高度合理利用 不允许滚动」）。
-     做法是一条**实测出来的媒体查询阶梯**，窗口越矮按顺序丢内容，保证任何高度下内容都装得下：
-     `989px` 隐藏 Token 构成彩条 → `959px` 隐藏上下文百分比图例 → `929px` 隐藏按模型明细 →
-     `889px` 隐藏统计表 → `789px` 隐藏整个上下文块 → `739px` 隐藏 Token 2×2 明细。
-     阈值不是猜的：由 `node test/layout-check.mjs --tiers` 在真机 Chrome 里逐级量出内容高度，
-     取「内容高度 + 60px（顶部横条+间距）」再留余量。
-     **阶梯规则必须写在样式表最后并带 `!important`**：媒体查询不增加特异性，
-     否则后面的 `.aup-compose{display:flex}` 会盖掉它（这个坑已经踩过一次，导致阶梯长期无效）。
-     同时 `scrollbar-width:none` + `::-webkit-scrollbar{width:0;height:0;display:none}` 去掉滚动条外观，
-     `overflow-y:auto` 只作为「阶梯万一没算准」的隐形兜底。
+     （`.aup-series-slot`，`min-height:19px`）补齐；这样**切维度时列表高度恒定**，下面的卡片一动不动。
+  4. **绝不允许滚动、绝不出现滚动条，并且尽量把信息全部显示出来**
+     （用户 2026-11-08：「依然存在可滚动的窗口 优化一下 不滚动 显示全部信息」）。两层措施：
+     - **先压缩：不删信息，只压高度**。卡片 `padding:8px` / `gap:4px`、卡间距 6px、根底部 6px、
+       统计表行高 18px、逐期行 `min-height:19px`、会话体/统计体 gap 6px、Token 网格 gap 6px、模型行 gap 0。
+       实测整屏内容高度从 **886px 压到 790px**（面板只需 848px 就能全显示，之前要 946px）。
+     - **再按面板自身高度逐级收窄，用 `@container`（不是 `@media`）**：
+       `.aup-root{container-type:size;container-name:aup-panel}`，
+       阈值 `856px 去 Token 彩条 → 835px 去按模型明细 → 776px 去统计表 → 702px 去上下文块 → 680px 去 Token 2×2 明细`。
+       **必须用容器查询**：窗口比面板高（右侧栏 tab 条 + 面板横条约 90px），
+       之前用 `@media (max-height)` 判定基准错了，所以「阶梯明明写了却还滚」——这是反复踩的坑。
+     - 阈值由 `node test/layout-check.mjs --tiers` 用**真实面板 markup** 逐级量出，
+       规则放在样式表最末并带 `!important`（查询不增加特异性）。
+     - 结论：面板高度 ≥ 848px 时全部信息可见；仅当 < 856px 才隐藏那条装饰性 Token 彩条；
+       `< 586px` 属于极端窗口，只剩隐形兜底（此时仍无滚动条外观）。
   5. 明令禁止：用 `ResizeObserver`/`getBoundingClientRect` 的内容高度去反推行数并 `setState`
      （09:29 崩溃的成因）、用 `overflow:hidden` 或省略号假装解决放不下。
-  6. **必须用真机浏览器验证几何**：`npm run verify:ui`（`test/layout-check.mjs`）用本机 Chrome
-     无头模式、让面板高度 = 视口高度（媒体查询就是按视口算的），在 700/760/810/900/1000/1080/1200px
-     七档测量真实布局，断言 **任意两个文本叶子不重叠、卡片内容不溢出、无横向溢出、
-     最后一张卡贴住面板底部（无空白带）、卡片列从不滚动**。
-     几何承诺不能只靠字符串断言——这就是「改了却没生效」反复发生的原因。
+  6. **必须用真机浏览器验证几何，而且必须量真实 markup**：
+     `test/render-fixture.mjs` 用与冒烟测试相同的桩**启动真正的 client.js**、用真实状态渲染面板、
+     把元素树序列化成 HTML；`npm run verify:ui`（`test/layout-check.mjs`）再把它放进本机 Chrome
+     无头模式的固定面板里测量，覆盖 420px/340px 两种宽度 × 700→1200px 七档高度 × 日/月/全 三种维度，
+     断言 **文本零重叠、卡片零溢出、无横向溢出、最后一张卡贴底（无空白带）、卡片列从不滚动、
+     跨行列边缘对齐、行内垂直居中**。
+     曾经用手写 markup 近似面板，结果和真实渲染脱节、把真实溢出藏了起来——**禁止再手写 markup 近似**。
 - **任何地方都不允许滚动**（用户 2026-11-08，取代旧的「卡内不滚、卡片列可滚」）：
   `.aup-cards` 的 `overflow-y:auto` 只是一层**不可见的兜底**（滚动条已 `display:none`），
-  正常情况由上面的媒体查询阶梯保证内容装得下，永远滚不动。优先级：
+  正常情况由上面的**容器查询阶梯**保证内容装得下，永远滚不动。优先级：
   **先减内容（阶梯）→ 装不下才轮到隐形兜底 → 绝不裁切、绝不遮挡**。
 - **同一组数据行必须共用一个网格，左右都要对齐**（用户 2026-11-08：「左侧没对齐」）：
   来源行（`.aup-srcs`）、逐期行（`.aup-series`）都是**一个父级网格**，
@@ -192,7 +198,7 @@
 
 标题就叫 **「设置」**；弹层要精简、优雅：
 
-- 默认维度（日/周/月/季/年）
+- 默认维度（日/周/月/季/年/全）；「全」= 第六个 tab，汇总所有能取到的月份（最多回溯 6 年）
 - 显示卡片（会话消耗 / 用量统计 / 账户余额）
 - 显示消费金额（关掉后只显示 Token）
 - 自动刷新（开/关；用量 2 分钟、余额 5 分钟；页面隐藏暂停）
@@ -261,7 +267,7 @@
 - 余额 5 分钟、用量 2 分钟自动刷新；页面隐藏时暂停，回前台补一次
 - 月份缓存：已结束月份 7 天（localStorage 持久化），当前月 2 分钟；刷新只重读当前月
 - 维度结果内存缓存，数据未变化不重渲染；切维度不闪屏、不串用其他维度数据
-- 首次平台数据成功后**预热全部维度**（`WARM_ORDER`：year → quarter → month → week → day，
+- 首次平台数据成功后**预热全部维度**（`WARM_ORDER`：year → quarter → month → week → day → all，
   宽窗口优先，年窗口顺带填满月份缓存），保证切维度不出现加载帧、不抖动；Host 侧平台登录态缓存 30 秒
 - 首屏骨架屏；尊重 `prefers-reduced-motion`
 
@@ -293,7 +299,7 @@
 ## 12. 工程习惯
 
 - 改完必须跑：`node --check index.js && node --check client.js && npm run verify`
-- 动布局/几何必须再跑 `npm run verify:ui`（真机 Chrome 无头测量，不是字符串断言）
+- 动布局/几何必须再跑 `npm run verify:ui`（真机 Chrome 无头 + 真实 markup，不是字符串断言、不是手写近似）
 - 视觉/交互改动要补冒烟测试；Host 折叠逻辑要有单元测试
 - 无法用浏览器验证时，如实说明「基于 CSS/契约测试，非真机像素比对」
 - 本地是 link 安装；改 `index.js` 需要 Plugin Manager 停用/启用一次，改 `client.js` 等 HMR
@@ -303,21 +309,24 @@
 ## 13. 已完成的关键决策（避免回退）
 
 - 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
-- 会话卡不再使用 `container-type: size`（会让内容高度塌陷成 0）
+- **卡片**不使用 `container-type: size`（内容高度会塌陷成 0）；但**面板根节点必须用**
+  `container-type:size;container-name:aup-panel`，让收窄阶梯按面板真实高度判定（见 §2）
 - 面板充满右侧栏整高整宽：**卡片按内容撑开（`flex:0 0 auto`）+ 最后一张卡 `flex:1 1 auto` 吸收剩余高度**；
   取代了此前「三张卡都 `flex:1 1 0` 平分高度」的写法——平分会把卡片压到内容以下，这是所有叠字的根因
 - 按模型统计：无冗余小标题，每行 `Provider - 模型短名    Tokens`（最多 3 行，过长换行，绝不降字号）
-- 统计区为**对齐两列表格**（标签列 `max-content`、值列右对齐，行高 20px、列间距 16px）；
+- 统计区为**对齐两列表格**（标签列 `max-content`、值列右对齐，行高 18px、列间距 16px）；
   数值过长时只允许收紧字距（`statValueClass` → letter-spacing），**绝不能改字号、也不能与相邻列重叠**；时长使用紧凑格式（如 1时44分 / 2分57秒 / 1.7秒）；用量统计每日行单行显示 Token · 金额，行高有下限，禁止重叠
 - 卡片文本无省略号；长文本换行、长金额只收紧字距（字号恒 13px）
 - **英文（拉丁）文字墨色与中文对齐**：字体栈拉丁优先、根 500 基线、次要色 `--aup-label-2`（color-mix 30% 主色）；
   取代了此前「次要文字直接用 `label-secondary`、字重从默认 400 继承」的写法（那样英文会明显发浅）
 - **切维度零抖动**：明细列表固定 `SERIES_ROW_SLOTS=4` 槽位（不足补不可见行）、固定行距而非 space-between、
   骨架行数对齐 `DIMENSION_ROW_CAP`、后台预热全部维度
-- **绝不遮挡 + 绝不滚动**：卡片按内容撑开、永不被压缩（遮挡从结构上不可能）；窗口矮时按实测阶梯
-  （989/959/929/889/789/739）依次隐藏彩条 / 百分比图例 / 按模型明细 / 统计表 / 上下文块 / 2×2 明细，
-  保证内容永远装得下；滚动条外观全部去掉，`overflow-y:auto` 只作隐形兜底；
-  **禁止**任何基于运行时测量的行数调整（09:29 崩溃成因），也禁止 `overflow:hidden` 假装修好
+- **绝不遮挡 + 绝不滚动 + 尽量全显示**：卡片按内容撑开、永不被压缩（遮挡从结构上不可能）；
+  先把面板压紧（padding 8 / gap 4 / 行高 18 / 逐期行 19，整屏内容 886→790px，面板 848px 即可全显示），
+  再按**面板自身高度**用 `@container` 阶梯（856/835/776/702/680）依次隐藏彩条 / 按模型明细 / 统计表 /
+  上下文块 / 2×2 明细；滚动条外观全部去掉，`overflow-y:auto` 只作隐形兜底；
+  **禁止**任何基于运行时测量的行数调整（09:29 崩溃成因），也禁止 `overflow:hidden` 假装修好。
+  取代了此前用 `@media (max-height:)` 按**窗口**判定的写法——窗口比面板高约 90px，判定基准错了，所以阶梯一直没能阻止滚动。
 - 面板最小宽度 340px，低于它会被自动纠正；万一纠正失败，模型行 `Provider - 模型名` 换行显示（不降字号）
   （`.aup-model-row` 用 `flex-wrap`），token 数值 `margin-left:auto`，绝不压到文字上
 - 底栏 dock + ContextMeter 一起隐藏（只隐藏 slot 不够）
@@ -326,6 +335,9 @@
 - 第三方 Provider 会话不显示 DeepSeek 余额/平台用量，改显示 Provider 余额
 - 上下文只保留一条按占用比例着色的堆叠条；Token 构成条与明细标签颜色圆点对应
 - 用量统计统一为「按来源一行 + 占比条 + 合计」，不再使用趋势柱；明细列表逐期单行 Token · 金额，0 用量淡化
+- **「全」(ALL) tab 在「年」之后**：按年分桶汇总所有可取的月份；窗口从 3 年开始、最老一个月有数据就往前扩到最多 6 年，
+  首次发现的最早月份写进 localStorage（`dsh.account-usage.all-start.v1`）避免重复扫描；
+  **合计永远是全部年份的总额**（即使行数受 4 个槽位限制、只显示最近 4 年）
 - **优先左右结构**：来源行用 `标签 | 占比条 | Tokens | 金额/本会话` 的四列网格；账户卡的余额/套餐标题与数值
   必须在同一行（标签左、数值右），不要把「套餐剩余 / 99%」上下堆叠导致右侧大片空白
 - 快捷开栏**不改宽度**；只在面板实测宽度 < 340px 时自动加宽回 340px（测不到就不猜），失败静默

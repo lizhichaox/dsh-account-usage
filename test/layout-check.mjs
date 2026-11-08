@@ -18,6 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { panelHtml } from './render-fixture.mjs';
 
 const CHROME_CANDIDATES = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -58,132 +59,107 @@ html,body{margin:0;padding:0;background:#fff;font-size:13px}
 #pane{width:420px;overflow:hidden}
 `;
 
-/** One text leaf: real markup so line heights, gaps and wrapping match production. */
-function head(title, withDims) {
-  const dims = withDims
-    ? `<div class="aup-dims" role="tablist">${['Day', 'Week', 'Month', 'Qtr', 'Year']
-        .map((label, index) => `<button type="button" class="aup-dim"${index === 0 ? ' data-active="true"' : ''}>${label}</button>`)
-        .join('')}</div>`
-    : '';
-  return `<div class="${withDims ? 'aup-stats-head' : 'aup-card-head'}">
-    <div class="aup-card-head-main"><span class="aup-card-icon">◧</span><h3 class="aup-card-title">${title}</h3></div>
-  </div><span class="aup-divider"></span>${dims}`;
+
+// --------------------------------------------------------------- fixtures --
+// Real panel state, so the geometry measured here is production geometry: three
+// providers, four period rows, the provider plan card and a full session card.
+const DAY_MS = 24 * 60 * 60 * 1000;
+function isoDay(offset) {
+  const date = new Date();
+  date.setDate(date.getDate() - offset);
+  return date.toISOString().slice(0, 10);
+}
+const USAGE_DAYS = [0, 1, 2, 3].map((offset, index) => ({
+  date: isoDay(offset),
+  tokens: [46_520_000, 287_000_000, 209_000_000, 543_000_000][index],
+  cost: [4.63, 10.92, 7.72, 23.28][index],
+  count: [120, 300, 260, 840][index]
+}));
+const SESSION_MODELS = {
+  phase: 'ready',
+  totalTokens: 460_050_000,
+  lastProvider: 'opencode-go',
+  items: [
+    { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 251_000_000, requests: 800 },
+    { provider: 'openrouter', model: 'deepseek-flash-latest', tokens: 180_000_000, requests: 420 },
+    { provider: 'deepseek-account', model: 'deepseek-flash', tokens: 29_050_000, requests: 120 }
+  ]
+};
+const PROVIDER_BALANCES = {
+  phase: 'ready',
+  error: undefined,
+  items: [
+    {
+      provider: 'opencode-go',
+      kind: 'opencode-plan',
+      currency: 'USD',
+      fetchedAt: Date.now(),
+      windows: [
+        { id: 'rolling', usedPercent: 16, resetsAt: Date.now() + 3600_000 },
+        { id: 'weekly', usedPercent: 12, resetsAt: Date.now() + DAY_MS },
+        { id: 'monthly', usedPercent: 6, resetsAt: Date.now() + DAY_MS }
+      ]
+    },
+    { provider: 'openrouter', kind: 'credits', currency: 'USD', remaining: 1.5, used: 2, total: 3.5, fetchedAt: Date.now() },
+    { provider: 'deepseek', kind: 'balance', currency: 'CNY', remaining: 12.5, fetchedAt: Date.now() }
+  ]
+};
+const PROJECTION = (key) =>
+  key === 'sessionStats'
+    ? { turns: 151, steps: 1677, decodeTokens: 128_000, decodeMs: 1000, llmMs: 26_640_000, toolMs: 5_280_000, ttftMs: 8_600, ttftSteps: 1000 }
+    : { uncachedInputTokens: 7_820_000, outputTokens: 1_130_000, cacheReadTokens: 570_000_000, cacheWriteTokens: 0 };
+
+function caseOf(dimension) {
+  return {
+    id: dimension,
+    dimension,
+    usageState: { phase: 'ready', ok: true, source: 'platform', days: USAGE_DAYS, currency: 'CNY', dimension, refreshing: false },
+    projection: PROJECTION,
+    sessionModels: SESSION_MODELS,
+    providerBalances: PROVIDER_BALANCES
+  };
 }
 
-function sessionCard() {
-  const cells = [
-    ['Input (uncached)', '6.75M'],
-    ['Output', '1.02M'],
-    ['Cache read', '452M'],
-    ['Cache write', '0']
-  ]
-    .map(
-      ([label, value]) =>
-        `<div class="aup-session-cell"><dt class="aup-session-label"><span class="aup-token-dot"></span>${label}</dt><dd class="aup-session-value">${value}</dd></div>`
-    )
-    .join('');
-  const stats = [
-    ['Turn/Step', '98 / 1274'],
-    ['Requests', '1265'],
-    ['Cache', '98.5%'],
-    ['Avg', '363K'],
-    ['Speed', '161 tok/s'],
-    ['Model', '3h25m'],
-    ['Tools', '1h40m'],
-    ['TTFT', '4.7s']
-  ]
-    .map(([label, value]) => `<div class="aup-stat-row"><span class="aup-stat-label">${label}</span><span class="aup-stat-value">${value}</span></div>`)
-    .join('');
-  const models = [
-    'OpenCode Go - deepseek-v4.1-flash',
-    'OpenRouter - deepseek-flash-latest',
-    'DeepSeek API - deepseek-flash'
-  ]
-    .map((name) => `<div class="aup-model-row"><span class="aup-model-name">${name}</span><span class="aup-model-tokens">251M</span></div>`)
-    .join('');
-  return `<section class="aup-card aup-card-session aup-card-session-fixed">
-    ${head('Session usage', false)}
-    <div class="aup-session-body">
-      <div class="aup-session-total"><span class="aup-session-total-label">Total</span><span class="aup-session-total-value">460M</span></div>
-      <div class="aup-compose"><span class="aup-compose-seg" style="flex-grow:6;background:#f59e0b"></span><span class="aup-compose-seg" style="flex-grow:1;background:#4d93f8"></span><span class="aup-compose-seg" style="flex-grow:3;background:#a78bfa"></span></div>
-      <dl class="aup-session-grid">${cells}</dl>
-      <span class="aup-session-sep"></span>
-      <div class="aup-stat-list">${stats}</div>
-      <span class="aup-session-sep"></span>
-      <div class="aup-models">${models}</div>
-      <span class="aup-session-sep"></span>
-      <div class="aup-context">
-        <div class="aup-context-head"><span>Context usage</span><span class="aup-context-figures">565K / 1M (56%)</span></div>
-        <div class="aup-bar"><span class="aup-bar-fill" style="width:56%"></span></div>
-        <div class="aup-context-breakdown"><div class="aup-context-legend"><span class="aup-context-legend-item">System 0%</span><span class="aup-context-legend-item">Tools 2%</span><span class="aup-context-legend-item">Messages 98%</span></div></div>
-      </div>
-    </div>
-  </section>`;
+const chrome = CHROME_CANDIDATES.find((candidate) => existsSync(candidate));
+if (chrome === undefined) {
+  console.log('layout check skipped: no Chrome/Chromium found');
+  process.exit(0);
+}
+const css = readStylesheet();
+
+// ---------------------------------------------------------------- launcher --
+let launchSeq = 0;
+
+/** Run one headless Chrome render, isolating the profile dir and retrying once. */
+function render(file, dir, height) {
+  launchSeq += 1;
+  const profile = join(dir, 'profile-' + String(launchSeq));
+  const args = [
+    '--headless=new',
+    '--disable-gpu',
+    '--no-sandbox',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-extensions',
+    `--window-size=520,${height + 143}`,
+    `--user-data-dir=${profile}`,
+    '--virtual-time-budget=3000',
+    '--dump-dom',
+    `file://${file}`
+  ];
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return execFileSync(chrome, args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
-function statsCard(sources, rows) {
-  const srcs = sources
-    .map(
-      ([label, tokens, side]) => `<div class="aup-src"><span class="aup-src-label">${label}</span>
-        <span class="aup-src-track"><span class="aup-src-fill" style="width:80%"></span></span>
-        <span class="aup-src-tokens">${tokens}</span><span class="aup-src-side">${side}</span></div>`
-    )
-    .join('');
-  const periods = [
-    ['11-05', '0', ''],
-    ['11-06', '209M', 'CNY7.72'],
-    ['11-07', '287M', 'CNY29.28'],
-    ['11-08', '46.52M', 'CNY4.63']
-  ]
-    .slice(0, rows)
-    .map(
-      ([label, tokens, cost]) => `<div class="aup-series-row"><span class="aup-series-label">${label}</span>
-        <span class="aup-series-track"><span class="aup-series-fill" style="width:60%"></span></span>
-        <span class="aup-series-value"><span class="aup-series-tokens">${tokens}</span>${cost ? `<span class="aup-series-cost">${cost}</span>` : ''}</span></div>`
-    )
-    .join('');
-  const slots = Array.from({ length: Math.max(0, 4 - rows) }, () => '<div class="aup-series-row aup-series-slot" aria-hidden="true"></div>').join('');
-  return `<section class="aup-card aup-card-stats">
-    ${head('Usage statistics', true)}
-    <div class="aup-stats-body">
-      <div class="aup-srcs">${srcs}</div>
-      <div class="aup-series">${periods}${slots}</div>
-      <div class="aup-stats-summary"><span>543M · 1520 requests</span><span class="aup-stats-total">CNY23.28</span></div>
-    </div>
-  </section>`;
-}
-
-function accountCard() {
-  return `<section class="aup-card aup-card-account aup-card-account-provider">
-    ${head('Account balance', false)}
-    <div class="aup-src-tabs" role="tablist">
-      <button type="button" class="aup-src-tab" data-active="true">DeepSeek API</button>
-      <button type="button" class="aup-src-tab">OpenCode Go</button>
-      <button type="button" class="aup-src-tab">OpenRouter</button>
-    </div>
-    <div class="aup-account-body">
-      <div class="aup-provider-body">
-        <div class="aup-provider-hero"><span class="aup-provider-hero-label">Plan left</span><span class="aup-provider-hero-value">95%</span></div>
-        <div class="aup-provider-progress">
-          <div class="aup-provider-rate"><span>5% used</span><span>This month</span></div>
-          <div class="aup-bar"><span class="aup-bar-fill" style="width:5%"></span></div>
-        </div>
-        <div class="aup-plan-windows"><span class="aup-plan-window"><span class="aup-plan-window-label">5 hours</span><span class="aup-plan-window-value">10% used</span></span><span class="aup-plan-window"><span class="aup-plan-window-label">This week</span><span class="aup-plan-window-value">10% used</span></span></div>
-      </div>
-    </div>
-  </section>`;
-}
-
-function page(css, height, options, extraCss = '') {
-  const cards = [sessionCard(), statsCard(options.sources, options.rows), accountCard()].join('');
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<style>${THEME}</style><style>${css}</style><style>${extraCss}</style></head>
-<body><div id="pane" style="height:100vh"><div class="aup-root" style="height:100%">${
-    '<div class="aup-head"><div class="aup-head-actions"><button type="button" class="aup-icon-button">⚙</button></div><span class="aup-head-greeting">Good morning</span><div class="aup-head-actions"><button type="button" class="aup-icon-button">⟳</button></div></div>'
-  }<div class="aup-cards">${cards}</div></div></div>
-<pre id="result">pending</pre>
-<script>
-const out = { height: ${height}, paneHeight: innerHeight, overlaps: [], cardOverflow: [], horizontal: [], scrolls: false, deadBand: 0, cards: [] };
+const MEASURE_SCRIPT = `
+const out = { paneHeight: innerHeight, paneWidth: Math.round(document.getElementById('pane').getBoundingClientRect().width), overlaps: [], cardOverflow: [], horizontal: [], scrolls: false, deadBand: 0, cards: [] };
 const cardsEl = document.querySelector('.aup-cards');
 const rectOf = (el) => el.getBoundingClientRect();
 const leaves = [];
@@ -204,28 +180,12 @@ for (let i = 0; i < leaves.length; i += 1) {
   }
 }
 for (const card of document.querySelectorAll('.aup-card')) {
-  out.cards.push({ classes: card.className, height: Math.round(rectOf(card).height), scrollHeight: card.scrollHeight, clientHeight: card.clientHeight });
+  out.cards.push({ classes: card.className, height: Math.round(rectOf(card).height) });
   if (card.scrollHeight > card.clientHeight + 1 || card.scrollWidth > card.clientWidth + 1) {
     out.cardOverflow.push(card.className + ' ' + card.scrollHeight + '>' + card.clientHeight + ' / ' + card.scrollWidth + '>' + card.clientWidth);
   }
 }
 if (cardsEl.scrollWidth > cardsEl.clientWidth + 1) out.horizontal.push(cardsEl.scrollWidth + '>' + cardsEl.clientWidth);
-out.media = {
-  q989: matchMedia('(max-height:989px)').matches,
-  q959: matchMedia('(max-height:959px)').matches,
-  q929: matchMedia('(max-height:929px)').matches,
-  q889: matchMedia('(max-height:889px)').matches,
-  q789: matchMedia('(max-height:789px)').matches,
-  q739: matchMedia('(max-height:739px)').matches,
-  viewport: innerHeight
-};
-out.shedding = {};
-for (const selector of ['.aup-compose', '.aup-context-breakdown', '.aup-card-session .aup-models', '.aup-card-session .aup-stat-list', '.aup-context', '.aup-card-session .aup-session-grid']) {
-  const el = document.querySelector(selector);
-  out.shedding[selector] = el === null ? 'missing' : getComputedStyle(el).display;
-}
-// Column alignment: every row of the source list (and of the period list) must
-// share one grid, otherwise the bars start at different x positions.
 const columnEdges = (groupSelector, probeSelector, edge) => {
   const edges = new Set();
   for (const row of document.querySelectorAll(groupSelector + ' > *')) {
@@ -242,8 +202,6 @@ out.align = {
   seriesTrackLeft: columnEdges('.aup-card-stats .aup-series', '.aup-series-track', 'left'),
   seriesValueRight: columnEdges('.aup-card-stats .aup-series', '.aup-series-value', 'right')
 };
-// Vertical centring: the bar track must sit on the row's own centre line, not at
-// its top (a subgrid row that lost align-items:center top-aligns everything).
 const centring = (groupSelector, probeSelector) => {
   let worst = 0;
   for (const row of document.querySelectorAll(groupSelector + ' > *')) {
@@ -266,55 +224,35 @@ out.scrollInfo = cardsEl.scrollHeight + '/' + cardsEl.clientHeight;
 const lastCard = document.querySelector('.aup-cards > .aup-card:last-child');
 if (lastCard) out.deadBand = Math.round(rectOf(cardsEl).bottom - rectOf(lastCard).bottom);
 document.getElementById('result').textContent = JSON.stringify(out);
-</script></body></html>`;
+`;
+
+/** One measurement page: real panel markup inside a pane of the given size. */
+function page(css, height, testCase, extraCss = '', width = 420) {
+  const markup = panelHtml({
+    dimension: testCase.dimension,
+    usageState: testCase.usageState,
+    projection: testCase.projection,
+    sessionModels: testCase.sessionModels,
+    providerBalances: testCase.providerBalances
+  });
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<style>${THEME}</style><style>${css}</style><style>${extraCss}</style></head>
+<body><div id="pane" style="height:100vh;width:${width}px!important">${markup}</div>
+<pre id="result">pending</pre>
+<script>${MEASURE_SCRIPT}</script></body></html>`;
 }
 
-const HEIGHTS = [700, 760, 810, 900, 1000, 1080, 1200];
-const SOURCES = [
-  ['DeepSeek API', '543M', 'CNY23.28'],
-  ['OpenCode Go', '251M', 'session'],
-  ['OpenRouter', '180M', 'session']
-];
-
-const chrome = CHROME_CANDIDATES.find((candidate) => existsSync(candidate));
-if (chrome === undefined) {
-  console.log('layout check skipped: no Chrome/Chromium found');
-  process.exit(0);
-}
-
-const css = readStylesheet();
-let launchSeq = 0;
-
-/** Run one headless Chrome render, isolating the profile dir and retrying once. */
-function render(file, dir, height) {
-  launchSeq += 1;
-  const profile = join(dir, 'profile-' + String(launchSeq));
-  const args = [
-    '--headless=new',
-    '--disable-gpu',
-    '--no-sandbox',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--disable-extensions',
-    `--window-size=520,${height + 200}`,
-    `--user-data-dir=${profile}`,
-    '--virtual-time-budget=3000',
-    '--dump-dom',
-    `file://${file}`
-  ];
-  let lastError;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      return execFileSync(chrome, args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  throw lastError;
+function measure(css, dir, height, testCase, extraCss = '', width = 420) {
+  const file = join(dir, `pane-${width}x${height}-${testCase.id}.html`);
+  writeFileSync(file, page(css, height, testCase, extraCss, width));
+  const dom = render(file, dir, height);
+  const match = dom.match(/<pre id="result">([\s\S]*?)<\/pre>/);
+  if (match === null) return undefined;
+  return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
 }
 
 // `--tiers` prints the panel's content height at every shedding tier so the
-// media-query thresholds can be chosen from measurements instead of guesses.
+// media-query thresholds are chosen from measurements instead of guesses.
 if (process.argv.includes('--tiers')) {
   const TIERS = [
     ['all', ''],
@@ -323,64 +261,65 @@ if (process.argv.includes('--tiers')) {
     ['+ no models', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models{display:none}'],
     ['+ no stat list', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list{display:none}'],
     ['+ no context', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list,.aup-context{display:none}'],
-    ['+ no token grid', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list,.aup-context,.aup-session-grid{display:none}'],
-    ['+ no plan rows', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list,.aup-context,.aup-session-grid,.aup-plan-windows,.aup-provider-updated{display:none}']
+    ['+ no token grid', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list,.aup-context,.aup-card-session .aup-session-grid{display:none}']
   ];
   const tierDir = mkdtempSync(join(tmpdir(), 'aup-tiers-'));
-  const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8');
-  const startIndex = source.indexOf('const CSS = [');
-  const endIndex = source.indexOf('].join(', startIndex);
-  const tierCss = eval(source.slice(startIndex + 'const CSS = '.length, endIndex + 1)).join('\n');
-  console.log('tier'.padEnd(20) + 'content   pane needed   cards');
+  console.log('tier'.padEnd(20) + 'content   cards');
   for (const [label, extra] of TIERS) {
-    const file = join(tierDir, label.replace(/[^a-z0-9]+/gi, '-') + '.html');
-    const measureCss = extra + '.aup-cards>.aup-card:last-child{flex:0 0 auto}';
-    writeFileSync(file, page(tierCss.replace('.aup-root{', '.aup-root{height:auto!important;'), 2000, { sources: SOURCES, rows: 4 }, measureCss));
-    const dom = render(file, tierDir, 1800);
-    const match = dom.match(/<pre id="result">([\s\S]*?)<\/pre>/);
-    const measured = JSON.parse(match[1].replace(/&quot;/g, '"'));
-    const content = measured.scrollInfo !== undefined ? Number(measured.scrollInfo.split('/')[0]) : 0;
-    const head = measured.scrollInfo !== undefined ? 0 : 0;
-    console.log(label.padEnd(20) + String(content).padEnd(10) + '~' + String(content + 60).padEnd(13) + measured.cards.map((card) => card.height).join('/'));
+    // Keep the pane tall so no ladder step fires, and stop the last card from
+    // stretching, then add the card heights up: that is the natural content height.
+    const extraCss = extra + '.aup-cards>.aup-card:last-child{flex:0 0 auto}';
+    const measured = measure(css, tierDir, 1600, caseOf('day'), extraCss);
+    if (measured === undefined) {
+      console.log(label.padEnd(20) + 'no measurement');
+      continue;
+    }
+    const content = measured.cards.reduce((sum, card) => sum + card.height, 0) + 6 * Math.max(0, measured.cards.length - 1);
+    console.log(label.padEnd(20) + String(content).padEnd(10) + measured.cards.map((card) => card.height).join('/'));
   }
   process.exit(0);
 }
 
+const SWEEPS = [
+  { width: 420, heights: [700, 760, 810, 900, 1000, 1080, 1200] },
+  // The documented minimum pane: six range tabs and both tables must still fit.
+  { width: 340, heights: [900, 1080] }
+];
+const CASES = [caseOf('day'), caseOf('month'), caseOf('all')];
+
 const dir = mkdtempSync(join(tmpdir(), 'aup-layout-'));
 const failures = [];
 const rows = [];
-for (const height of HEIGHTS) {
-  for (const rowsCount of [4, 3]) {
-    const file = join(dir, `pane-${height}-${rowsCount}.html`);
-    writeFileSync(file, page(css, height, { sources: SOURCES, rows: rowsCount }));
-    const dom = render(file, dir, height);
-    const match = dom.match(/<pre id="result">([\s\S]*?)<\/pre>/);
-    if (match === null) {
-      failures.push(`${height}px rows=${rowsCount}: no measurement returned`);
-      continue;
-    }
-    const result = JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
-    rows.push(result);
-    if (result.overlaps.length > 0) failures.push(`${height}px rows=${rowsCount}: overlapping text -> ${result.overlaps.join(' | ')}`);
-    if (result.cardOverflow.length > 0) failures.push(`${height}px rows=${rowsCount}: card content overflows -> ${result.cardOverflow.join(' | ')}`);
-    if (result.horizontal.length > 0) failures.push(`${height}px rows=${rowsCount}: horizontal overflow -> ${result.horizontal.join(' | ')}`);
-    if (result.deadBand > 2) failures.push(`${height}px rows=${rowsCount}: dead band at the pane bottom -> ${result.deadBand}px`);
-    if (result.scrolls) failures.push(`${height}px rows=${rowsCount}: the card column scrolls (${result.scrollInfo}) - the panel must never scroll`);
-    for (const [name, edges] of Object.entries(result.align ?? {})) {
-      if (edges.length > 1) failures.push(`${height}px rows=${rowsCount}: ${name} is not aligned across rows -> ${edges.join(' / ')}`);
-    }
-    for (const [name, offset] of Object.entries(result.centring ?? {})) {
-      if (offset > 1) failures.push(`${height}px rows=${rowsCount}: ${name} is not vertically centred -> off by ${offset}px`);
+for (const sweep of SWEEPS) {
+  for (const height of sweep.heights) {
+    for (const testCase of CASES) {
+      const result = measure(css, dir, height, testCase, '', sweep.width);
+      const label = `${sweep.width}×${height} ${testCase.id}`;
+      if (result === undefined) {
+        failures.push(`${label}: no measurement returned`);
+        continue;
+      }
+      rows.push(result);
+      if (result.overlaps.length > 0) failures.push(`${label}: overlapping text -> ${result.overlaps.join(' | ')}`);
+      if (result.cardOverflow.length > 0) failures.push(`${label}: card content overflows -> ${result.cardOverflow.join(' | ')}`);
+      if (result.horizontal.length > 0) failures.push(`${label}: horizontal overflow -> ${result.horizontal.join(' | ')}`);
+      if (result.deadBand > 2) failures.push(`${label}: dead band at the pane bottom -> ${result.deadBand}px`);
+      if (result.scrolls) failures.push(`${label}: the card column scrolls (${result.scrollInfo}) - the panel must never scroll`);
+      for (const [name, edges] of Object.entries(result.align ?? {})) {
+        if (edges.length > 1) failures.push(`${label}: ${name} is not aligned across rows -> ${edges.join(' / ')}`);
+      }
+      for (const [name, offset] of Object.entries(result.centring ?? {})) {
+        if (offset > 1) failures.push(`${label}: ${name} is not vertically centred -> off by ${offset}px`);
+      }
     }
   }
 }
 
-console.log('pane   rows  scrolls  scrollH/clientH  bottom-gap  card heights');
+console.log('pane      scrolls  scrollH/clientH  bottom-gap  card heights');
 for (const result of rows) {
-  const label = result.paneHeight + 'px';
+  const label = result.paneWidth + '×' + result.paneHeight;
   console.log(
-    label.padEnd(7) +
-      (result.cardOverflow.length === 0 ? 'ok' : 'BAD').padEnd(6) +
+    label.padEnd(10) +
       (result.scrolls ? 'yes' : 'no ').padEnd(9) +
       String(result.scrollInfo).padEnd(17) +
       (result.deadBand + 'px').padEnd(12) +
@@ -393,4 +332,4 @@ if (failures.length > 0) {
   for (const failure of failures) console.error('  - ' + failure);
   process.exit(1);
 }
-console.log('\nlayout check passed: no overlap, no card overflow, no dead band');
+console.log('\nlayout check passed: no overlap, no overflow, no dead band, no scroll, aligned and centred');
