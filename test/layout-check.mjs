@@ -285,6 +285,13 @@ const summaryEl = document.querySelector('.aup-stats-summary');
 out.summaryCells = summaryEl === null ? [] : [...summaryEl.children].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
 out.sourceRows = [...document.querySelectorAll('.aup-card-stats .aup-src')].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
 out.seriesRows = [...document.querySelectorAll('.aup-card-stats .aup-series-row')].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
+for (const [name, selector] of [['legend', '.aup-context-legend'], ['summary', '.aup-stats-summary']]) {
+  const row = document.querySelector(selector);
+  if (row === null) continue;
+  const cells = [...row.children];
+  out[name + 'Lines'] = new Set(cells.map((el) => Math.round(el.getBoundingClientRect().top))).size;
+  out[name + 'Overflow'] = row.scrollWidth > row.clientWidth + 1;
+}
 out.acctRows = [...document.querySelectorAll('.aup-acct-src, .aup-acct-row')].map((el) => Math.round(el.getBoundingClientRect().height) + ':' + el.textContent.slice(0, 40));
 out.acctPairs = [...document.querySelectorAll('.aup-acct-srcs .aup-acct-src')].flatMap((row) => {
   const pairs = row.querySelector('.aup-acct-pairs');
@@ -424,6 +431,16 @@ if (process.argv.includes('--tiers')) {
 // Mixed sessions list every source in the balance card (no tabs). More sources add
 // one statistics row and one balance row each; the per-count CSS budget must keep
 // every state free of overlap, overflow, scrolling and a bottom dead band.
+if (process.argv.includes('--debug-narrow')) {
+  const width = Number(process.argv[process.argv.indexOf('--debug-narrow') + 1]) || 299;
+  for (const locale of ['zh', 'en']) {
+    for (const [name, fixture] of [['typical', sourcesCase(3, locale)], ['worst', wrapCase(locale)]]) {
+      const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-narrow-')), 1400, fixture, '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', width);
+      console.log(locale, width, name.padEnd(8), JSON.stringify(r.acctPairs), 'legend', r.legendLines, r.legendOverflow, 'summary', r.summaryLines, r.summaryOverflow);
+    }
+  }
+  process.exit(0);
+}
 if (process.argv.includes('--debug-wrap')) {
   for (const locale of ['zh', 'en']) {
     const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-wrap-')), 1600, wrapCase(locale), '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', 340);
@@ -459,6 +476,26 @@ for (const locale of ['zh', 'en']) for (const width of [340, 420]) for (const he
     if ((result.centring?.acctValue ?? 0) > 1) providerFailures.push(`${label}: balance values not centred`);
     providerChecks++;
   }
+}
+// Below the documented 340px floor the panel gets one more compaction step
+// (container query <=330px): typical two-digit values and both footers must still
+// read as single lines, with no overflow, overlap or scroll.
+for (const locale of ['zh', 'en']) for (const width of [330, 300]) {
+  const result = measure(css, providerDir, 900, sourcesCase(3, locale), '', width);
+  const label = `${locale} ${width} narrow`;
+  if (!result || result.cards.length !== 3) { providerFailures.push(label + ': missing cards'); continue; }
+  if (result.overlaps.length || result.cardOverflow.length || result.horizontal.length || result.scrolls || result.deadBand > 2) {
+    providerFailures.push(label + ': geometry invalid ' + JSON.stringify({ overlaps: result.overlaps, cardOverflow: result.cardOverflow, horizontal: result.horizontal, scroll: result.scrollInfo, deadBand: result.deadBand }));
+  }
+  for (const pair of result.acctPairs ?? []) {
+    if (pair.lines !== 1) providerFailures.push(`${label}: balance figures wrapped -> ${pair.label} ${pair.text}`);
+    if (pair.clipped) providerFailures.push(`${label}: balance figures clipped -> ${pair.label}`);
+  }
+  if (result.legendLines > 1) providerFailures.push(`${label}: context legend wrapped`);
+  if (result.legendOverflow) providerFailures.push(`${label}: context legend overflows`);
+  if (result.summaryLines > 1) providerFailures.push(`${label}: stats summary wrapped`);
+  if (result.summaryOverflow) providerFailures.push(`${label}: stats summary overflows`);
+  providerChecks++;
 }
 // The minimum width is the hard floor for the "never wrap" rule (user 2026-11-08):
 // three 4-character percentages must still read as one line at 340px.

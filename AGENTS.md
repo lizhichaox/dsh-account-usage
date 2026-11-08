@@ -3,7 +3,7 @@
 > 这是用户对本插件的**长期要求清单**。接手前先读本文件，不要重复询问已经写在这里的偏好；
 > 用户不想反复重申。若实现与本文件冲突，以用户当次明确指示为准，并在完成后回写本文件。
 
-最后更新：2026-11-08 · 插件版本：`1.0.9`
+最后更新：2026-11-08 · 插件版本：`1.0.10`
 
 - 插件目录：`/Users/lizhichao/vc/macos/dsh/dsh-preset/account-usage-panel`
 - GitHub：<https://github.com/lizhichaox/dsh-account-usage>
@@ -45,7 +45,7 @@
 | 9 | **所有文字同一个字号，只能加粗** | 单一 `--aup-fs-text`，层级靠 font-weight | `exactly one font size token exists` |
 | 10 | **切 tab / 切维度不许闪动** | 固定槽位补齐列表高度 + 样式进 head｜详见第 20 行 | `the detail list is content sized` / `the list keeps a constant slot count` |
 | 11 | tab chip 切走后不许变形 | 样式表注入 `document.head` | `the stylesheet is injected into document.head` |
-| 12 | 快捷键开栏 **绝不擅自改宽度** | 只在实测 < 340px 时纠正，松手后才动 | `opening never resizes a wide sidebar on its own` |
+| 12 | 快捷键开栏 **绝不擅自改宽度** | 只在实测 < 300px 时纠正，松手后才动（300 是宿主最窄值；340 是舒适宽度） | `opening never resizes a wide sidebar on its own` |
 | 13 | 开始页要显示键位 | guide entry 带 `commandId` = `SHORTCUT_ID` | `guide card links to the shortcut for its key hint` |
 | 14 | **不许把 DSH 搞崩** | 禁止 ResizeObserver+setState 自反馈布局 | `row trimming never feeds back from a resize observer` |
 | 15 | 底栏会话统计默认隐藏 | `<html data-account-usage-hide-stats>` | `the composer dock stats are hidden by default` |
@@ -74,7 +74,7 @@
 | 38 | **上架图标要体现 usage**（2026-11-08：「一点也没体现出来 usage 的概念」） | `icon.svg` = 蓝色圆角块 + 三条递增白色柱状条；设置里的已安装列表与市场 Discover 共用这份图 | `the icon draws three usage bars` / `the wallet artwork is gone` |
 | 39 | **当前会话在用的 Account 要凸显**（2026-11-08） | 最新 assistant 消息的 provider 对应的那一行：整行淡品牌色背景 + 名称加粗；无圆点、无胶囊、不改变列宽与左右边缘；`aria-current` 暴露给读屏 | `exactly one account row is highlighted` / `the row in use is the highlighted one` / `the highlight is exposed to assistive tech` / `the highlight is a background tint, not a pill` |
 | 40 | **介绍语 20 字以内**（2026-11-08，先要 50 再收紧到 20） | 插件列表/市场 Discover 共用一句短介绍：`Balances + tokens.`（18 字符）/「余额与 Token 用量」（12 字）；`package.json.description`、`scripts/finalize-release.mjs`、`market/index.json` 三处同步，`market/check.mjs` 强制 ≤20 | `the plugin intro stays within 20 characters` / `the intro names balances and tokens` / market check 的 `description must stay within 20 characters` |
-| 41 | **账户行在最小宽度也不许换行**（2026-11-08：「不允许缩到换行」） | 余额卡的行在 340px 面板仍单行：把「短标签 数值」对的间距收到 `gap:2px 2px`、对列 `column-gap:6px`、字距 `-0.4px`（名称 `-0.1px`），worst case 三个 `100%` 也放得下；`verify:ui` 用 340px + 全 `100%` 夹具断言 `lines === 1` 且不裁切 | layout-check `single-line minimum-width check` / `balance figures wrapped` 失败即回归 |
+| 41 | **账户行在最小宽度也不许换行**（2026-11-08：「不允许缩到换行」） | 两级：≥340px 任何数值（含三个 `100%`）都单行（收紧对间距/字距）；≤330px 进入窄屏紧凑档（间距再收、`proportional-nums`、图例/合计 `nowrap`），典型数值到 ~300px 仍单行。不缩放字号 | layout-check `single-line minimum-width check`（340px + 全 `100%`）与窄屏 330/300 断言 `lines === 1` / `legend wrapped` / `summary wrapped` |
 
 ## 1. 产品定位
 
@@ -165,7 +165,7 @@
   6. **必须用真机浏览器验证几何，而且必须量真实 markup**：
      `test/render-fixture.mjs` 用与冒烟测试相同的桩**启动真正的 client.js**、用真实状态渲染面板、
      把元素树序列化成 HTML；`npm run verify:ui`（`test/layout-check.mjs`）再把它放进本机 Chrome
-     无头模式的固定面板里测量，覆盖 420px/340px 两种宽度 × 700→1200px 七档高度 × 日/月/全 三种维度，
+     无头模式的固定面板里测量，覆盖 420px/340px/330px/300px 宽度 × 700→1200px 七档高度 × 日/月/全 三种维度，
      断言 **文本零重叠、卡片零溢出、无横向溢出、最后一张卡贴底（无空白带）、卡片列从不滚动、
      跨行列边缘对齐、行内垂直居中**。
      曾经用手写 markup 近似面板，结果和真实渲染脱节、把真实溢出藏了起来——**禁止再手写 markup 近似**。
@@ -264,9 +264,9 @@
 
 - `⌘U`（macOS 桌面）/ `Ctrl+U`（Win/Linux）/ Web 用 `⌘⌥U` / `Ctrl+Alt+U`。
 - **绝不擅自改宽度**：快捷键只是打开面板，**不做任何收窄/加宽**（用户手动拖出来的宽度必须保持）。
-  唯一例外：面板实际宽度低于 340px 且**能测量到**时，才把它加宽回 340px（否则排版会挤爆）；测不到宽度就不要猜。
+  唯一例外：面板实际宽度低于 300px 且**能测量到**时，才把它加宽回 300px（宿主最窄宽度；340px 是舒适宽度）；测不到宽度就不要猜。
   切 tab、切窗口回来都不许触发任何宽度变化。
-- **最小宽度护栏**：面板打开期间监听自身宽度，低于 `PANEL_MIN_WIDTH`（340px）时自动加宽回去。
+- **最小宽度护栏**：面板打开期间监听自身宽度，低于 `PANEL_MIN_WIDTH`（300px，宿主最窄值）时自动加宽回去。
   **只在用户松手后纠正**（监听全局 `pointerdown/pointerup`，按下期间绝不发合成手势），
   否则会和用户拖动打架、导致宿主拖拽手柄卡死；合成手势的 `setPointerCapture` 覆写必须 try/finally 还原。
 - 左侧栏底部不再放插件入口。
@@ -349,7 +349,7 @@
 - 账户卡不再有 tab：所有来源同时可见，没有可点的东西，高度只随来源数量和窗口变化。没有备注的行数值独占右侧，不会因为别的行长而换行。
 - 4–16 来源按数量追加预算 `16 + (n-3)×52` px（`layout-check --tiers N` 实测）。不根据 DOM 高度反算布局。几何验证覆盖 3/4/5 来源（700/900/1080 高）与 7 来源（900/1080 高）；7 来源在 <755px 面板只能依赖隐形兜底。
 - 验收：`test/provider-host.mjs` 模拟真实 Host route（不访问真实网络/凭据）；`test/provider-client.mjs` 渲染真实账户卡和 body effects，覆盖混合成功/失败、错误顺序、0 用量、所有失败态无重试按钮、旧响应与纯第三方刷新。
-- `verify:ui` 另测来源数 × 中英文 × 340/420 宽 × 700/900/1080 高：无重叠/溢出/滚动/底部空带，账户行名称左对齐、数值右对齐且垂直居中。夹具必须把 ARIA 布尔值写为字符串 true/false。
+- `verify:ui` 另测来源数 × 中英文 × 340/420 宽 × 700/900/1080 高，并加测 330/300 窄屏：无重叠/溢出/滚动/底部空带，账户行名称左对齐、数值右对齐且垂直居中。夹具必须把 ARIA 布尔值写为字符串 true/false。
 - 冒烟守护：`errors are never shared between providers` / `requested source identity overrides provider aliases` / `one aligned row per source` / `no tabs to switch` / `the English unsupported status stays one short word`。
 
 ## 8. 底栏会话统计
@@ -426,14 +426,15 @@
 - **获取不到就算了，不提供 Retry 按钮**：取代「余额失败时定向重试」，并移除统计卡错误态的重试按钮；只保留既有顶部刷新及定时刷新，不新增失败重试循环。
 - **图标从钱包换成用量柱状图**（1.0.6）：取代「钱包 + 时钟」图标，已安装列表与市场索引共用 `icon.svg`。
 - **介绍语压到 20 字以内**（1.0.8，先压到 50 又收紧）：取代原来 130 字符的长句，只剩「余额 + Token」。
-- **余额行最小宽度单行**（1.0.9）：收紧对间距/字距，取代「窄面板允许换行」；340px 是硬底线。
+- **余额行最小宽度单行**（1.0.9）：收紧对间距/字距，取代「窄面板允许换行」；340px 是舒适宽度（任何值单行）。
+- **最小宽度护栏降到 300px**（1.0.10）：取代 340px 回弹；宿主最窄也能用，330px 以下自动进入紧凑档。
 - **所有货币符号后置**（1.0.9）：取代「只有 ¥ 后置、其它货币按 $11.04 惯例」。
 - **当前 Account 用整行背景凸显**（1.0.6）：取代「当前来源小圆点」（当时被判为无信息量而删除）；
   现在这条信息有意义，但只用**背景 + 字重**表达，不加任何新元素、不产生布局位移。
 - **余额卡只写剩余**：取代「OpenRouter 显示已用」「OpenAI/Anthropic 显示本月花费 + 需管理员密钥」；也取代「当前来源小圆点」。
 - **只有会话卡保留进度条**：取代「用量统计四列表含胶囊条」「账户卡胶囊条」。
 - 793px/851px 是三来源、420px 宽夹具基准，多来源追加 `16 + (n-3)×52`，英文窄栏的长状态会换行增高（因此英文状态都用短词）。
-- 本轮 1.0.9 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
+- 本轮 1.0.10 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
 
 - 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
 - **卡片**不使用 `container-type: size`（内容高度会塌陷成 0）；但**面板根节点必须用**
@@ -456,7 +457,7 @@
   上下文块 / 2×2 明细；滚动条外观全部去掉，`overflow-y:auto` 只作隐形兜底；
   **禁止**任何基于运行时测量的行数调整（09:29 崩溃成因），也禁止 `overflow:hidden` 假装修好。
   取代了此前用 `@media (max-height:)` 按**窗口**判定的写法——窗口比面板高约 90px，判定基准错了，所以阶梯一直没能阻止滚动。
-- 面板最小宽度 340px，低于它会被自动纠正；万一纠正失败，模型行 `Provider - 模型名` 换行显示（不降字号）
+- 面板最小宽度 300px（340px 是舒适宽度），低于它会被自动纠正；万一纠正失败，模型行 `Provider - 模型名` 换行显示（不降字号）
   （`.aup-model-row` 用 `flex-wrap`），token 数值 `margin-left:auto`，绝不压到文字上
 - 底栏 dock + ContextMeter 一起隐藏（只隐藏 slot 不够）
 - 三张卡固定叫「会话消耗 / 用量统计 / 账户余额」，**不许改名、不许新增第四张卡**（「会话明细」已废弃）；
@@ -469,4 +470,4 @@
   **合计永远是全部年份的总额**（即使行数受 4 个槽位限制、只显示最近 4 年）
 - **优先左右结构**：统计来源行用 `标签 | Tokens | 金额/PLAN` 的三列网格；账户卡的余额/套餐标题与数值
   必须在同一行（标签左、数值右），不要把「套餐剩余 / 99%」上下堆叠导致右侧大片空白
-- 快捷开栏**不改宽度**；只在面板实测宽度 < 340px 时自动加宽回 340px（测不到就不猜），失败静默
+- 快捷开栏**不改宽度**；只在面板实测宽度 < 300px 时自动加宽回 300px（测不到就不猜），失败静默

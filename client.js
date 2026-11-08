@@ -497,6 +497,10 @@ window.__ModuleLoader__.load({
       '.aup-card-account .aup-balance-value.aup-value-longer{font-size:var(--aup-fs-text)}',
       '.aup-card-account .aup-balance-label{font-size:var(--aup-fs-text);line-height:16px;font-weight:500}',
       '.aup-hint{font-size:var(--aup-fs-text);line-height:16px}',
+      // ---- narrow panes: one more compaction step so balance rows stay on one line ----
+      // The documented comfort width is 340px (where even three `100%` windows fit); below it,
+      // typical values must still read as a single line, without scaling text.
+      '@container aup-panel (max-width:330px){.aup-acct-srcs{column-gap:4px}.aup-acct-pair{gap:1px}.aup-acct-pairs{gap:1px 0;letter-spacing:-0.7px;font-variant-numeric:proportional-nums}.aup-context-legend,.aup-stats-summary{column-gap:6px}.aup-context-legend>span,.aup-stats-summary>span{white-space:nowrap}}',
       // ---- content shedding on short windows: pure media queries, no measurement ----
       // Measured ladder (test/layout-check.mjs --tiers): each step keeps the whole
       // panel inside its own height so the card column never has to scroll. These are
@@ -797,7 +801,9 @@ window.__ModuleLoader__.load({
     const SERIES_ROW_SLOTS = 4;
 
     /** Minimum usable panel width: below this the no-wrap rows would collide. */
-    const PANEL_MIN_WIDTH = 340;
+    // The compact layout holds down to ~300px (host's own narrowest); 340 stays the
+    // comfort width where even three `100%` windows fit on one line.
+    const PANEL_MIN_WIDTH = 300;
 
     /** Widen the sidebar only when it is below the readable minimum; otherwise leave it alone. */
     function widenIfNeeded() {

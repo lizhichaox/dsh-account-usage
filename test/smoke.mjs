@@ -491,14 +491,14 @@ assert.equal(first.registrations.filter((r) => r.definition.name === 'sidebar.ri
   assert.deepEqual(wide.events, [], 'opening never resizes a wide sidebar on its own');
 
   // Panel narrower than the readable minimum: it widens itself back.
-  const tooNarrow = makeHandle('900px');
-  const pane = { getBoundingClientRect: () => ({ width: 300, height: 800 }) };
+  const tooNarrow = makeHandle('920px');
+  const pane = { getBoundingClientRect: () => ({ width: 280, height: 800 }) };
   globalThis.document = {
     querySelector: (selector) => (selector === '[data-side="rightbar"]' ? tooNarrow : selector === '.aup-root' ? pane : null)
   };
   const tooNarrowBoot = bootClient();
   tooNarrowBoot.shortcutRegistrations[0].resolve({ target: null }).run();
-  assert.deepEqual(tooNarrow.events, ['pointerdown', 'pointermove', 'pointerup'], 'a too-narrow panel is widened to the minimum');
+  assert.deepEqual(tooNarrow.events, ['pointerdown', 'pointermove', 'pointerup'], 'a too-narrow panel (280px) is widened to the minimum');
 
   // Already readable: still no synthetic drag.
   const readable = makeHandle('860px');
