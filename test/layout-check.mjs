@@ -283,6 +283,35 @@ if (chrome === undefined) {
 }
 
 const css = readStylesheet();
+let launchSeq = 0;
+
+/** Run one headless Chrome render, isolating the profile dir and retrying once. */
+function render(file, dir, height) {
+  launchSeq += 1;
+  const profile = join(dir, 'profile-' + String(launchSeq));
+  const args = [
+    '--headless=new',
+    '--disable-gpu',
+    '--no-sandbox',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-extensions',
+    `--window-size=520,${height + 200}`,
+    `--user-data-dir=${profile}`,
+    '--virtual-time-budget=3000',
+    '--dump-dom',
+    `file://${file}`
+  ];
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return execFileSync(chrome, args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
 
 // `--tiers` prints the panel's content height at every shedding tier so the
 // media-query thresholds can be chosen from measurements instead of guesses.
@@ -307,7 +336,7 @@ if (process.argv.includes('--tiers')) {
     const file = join(tierDir, label.replace(/[^a-z0-9]+/gi, '-') + '.html');
     const measureCss = extra + '.aup-cards>.aup-card:last-child{flex:0 0 auto}';
     writeFileSync(file, page(tierCss.replace('.aup-root{', '.aup-root{height:auto!important;'), 2000, { sources: SOURCES, rows: 4 }, measureCss));
-    const dom = execFileSync(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--window-size=520,2000', `--user-data-dir=${join(tierDir, 'profile')}`, '--virtual-time-budget=3000', '--dump-dom', `file://${file}`], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });
+    const dom = render(file, tierDir, 1800);
     const match = dom.match(/<pre id="result">([\s\S]*?)<\/pre>/);
     const measured = JSON.parse(match[1].replace(/&quot;/g, '"'));
     const content = measured.scrollInfo !== undefined ? Number(measured.scrollInfo.split('/')[0]) : 0;
@@ -324,11 +353,7 @@ for (const height of HEIGHTS) {
   for (const rowsCount of [4, 3]) {
     const file = join(dir, `pane-${height}-${rowsCount}.html`);
     writeFileSync(file, page(css, height, { sources: SOURCES, rows: rowsCount }));
-    const dom = execFileSync(
-      chrome,
-      ['--headless=new', '--disable-gpu', '--no-sandbox', `--window-size=520,${height + 200}`, `--user-data-dir=${join(dir, 'profile')}`, '--virtual-time-budget=4000', '--dump-dom', `file://${file}`],
-      { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] }
-    );
+    const dom = render(file, dir, height);
     const match = dom.match(/<pre id="result">([\s\S]*?)<\/pre>/);
     if (match === null) {
       failures.push(`${height}px rows=${rowsCount}: no measurement returned`);
