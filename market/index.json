@@ -37,7 +37,7 @@
         "en": "Real account balance plus real token usage and spend grouped by day, week, month, quarter, or year, plus this session token usage.",
         "zh": "真实账号余额，以及按日/周/月/季/年分组的真实 Token 用量与消费金额，并显示本次会话的 Token。"
       },
-      "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IkFjY291bnQgdXNhZ2UiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJhdXAtd2FsbGV0IiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzNiODJmNiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMxZDRlZDgiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgPC9kZWZzPgogIDxyZWN0IHg9IjIuNSIgeT0iNi41IiB3aWR0aD0iMTkiIGhlaWdodD0iMTMiIHJ4PSIzLjQiIGZpbGw9InVybCgjYXVwLXdhbGxldCkiLz4KICA8cGF0aCBkPSJNNS42IDYuNFY1LjRjMC0uOS43LTEuNiAxLjYtMS42aDguNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOTNjNWZkIiBzdHJva2Utd2lkdGg9IjEuNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+CiAgPHBhdGggZD0iTTEyIDEyLjJhMy4xIDMuMSAwIDAgMSAzLjEtMy4xIiBmaWxsPSJub25lIiBzdHJva2U9IiNlZmY2ZmYiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIG9wYWNpdHk9IjAuODUiLz4KICA8Y2lyY2xlIGN4PSIxMiIgY3k9IjE1LjQiIHI9IjEuMzUiIGZpbGw9IiNmZmZmZmYiLz4KICA8cGF0aCBkPSJNMTIgMTMuMDV2LTEuMSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmZmZmIiBzdHJva2Utd2lkdGg9IjEuNCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPgo=",
+      "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IkFjY291bnQgdXNhZ2UiPgogIDxkZWZzPgogICAgPGxpbmVhckdyYWRpZW50IGlkPSJhdXAtdXNhZ2UiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjM2I4MmY2Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzFkNGVkOCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICA8L2RlZnM+CiAgPHJlY3QgeD0iMi41IiB5PSIyLjUiIHdpZHRoPSIxOSIgaGVpZ2h0PSIxOSIgcng9IjUiIGZpbGw9InVybCgjYXVwLXVzYWdlKSIvPgogIDxyZWN0IHg9IjUuOSIgeT0iMTIuOSIgd2lkdGg9IjMiIGhlaWdodD0iNS4xIiByeD0iMS4zIiBmaWxsPSIjYzdkZGZmIi8+CiAgPHJlY3QgeD0iMTAuNSIgeT0iOS45IiB3aWR0aD0iMyIgaGVpZ2h0PSI4LjEiIHJ4PSIxLjMiIGZpbGw9IiNlNmVmZmYiLz4KICA8cmVjdCB4PSIxNS4xIiB5PSI2LjkiIHdpZHRoPSIzIiBoZWlnaHQ9IjExLjEiIHJ4PSIxLjMiIGZpbGw9IiNmZmZmZmYiLz4KPC9zdmc+Cg==",
       "author": "chaox",
       "homepage": "https://github.com/lizhichaox/dsh-account-usage#readme",
       "repository": {
@@ -60,8 +60,8 @@
       },
       "versions": [
         {
-          "version": "1.0.5",
-          "publishTimestamp": 1794132874,
+          "version": "1.0.6",
+          "publishTimestamp": 1794134781,
           "source": {
             "type": "npm"
           },
