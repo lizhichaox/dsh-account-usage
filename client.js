@@ -312,7 +312,7 @@ window.__ModuleLoader__.load({
       '.aup-root{--aup-font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif;--aup-fs-text:13px;position:relative;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;height:100%;min-height:0;overflow:hidden;padding:0 8px 8px;color:var(--dsw-alias-label-primary);font-family:var(--aup-font-ui);font-size:var(--aup-fs-text);line-height:20px}',
       '.aup-root *{box-sizing:border-box}',
       '.aup-head{flex:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;height:var(--aup-head-h,44px);margin:0 -8px 0;padding:0 8px;border-bottom:.5px solid var(--dsw-alias-border-l3)}',
-      '.aup-head-greeting{min-width:0;text-align:center;color:var(--dsw-alias-label-secondary);font-size:var(--aup-fs-text);line-height:16px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:clip}',
+      '.aup-head-greeting{min-width:0;text-align:center;color:var(--dsw-alias-label-secondary);font-size:var(--aup-fs-text);line-height:16px;font-weight:500;white-space:nowrap}',
       '.aup-glyph{flex:none;color:var(--dsw-alias-label-secondary);display:inline-flex}',
       '.aup-title{flex:1;min-width:0;margin:0;font-size:var(--aup-fs-text);font-weight:500;line-height:20px;white-space:nowrap}',
       '.aup-icon-button{flex:none;width:24px;height:24px;display:inline-flex;align-items:center;justify-content:center;padding:0;border:none;border-radius:6px;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;transition:background-color .12s,color .12s}',
@@ -350,7 +350,7 @@ window.__ModuleLoader__.load({
       '.aup-cards::-webkit-scrollbar{width:6px}',
       '.aup-cards::-webkit-scrollbar-thumb{border-radius:999px;background:var(--dsw-alias-bg-skeleton)}',
       '.aup-cards::-webkit-scrollbar-track{background:transparent}',
-      '.aup-card{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:hidden}',
+      '.aup-card{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:visible}',
       '.aup-card-session{justify-content:flex-start}',
       '.aup-card-stats{justify-content:flex-start}',
       '.aup-stats-body{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:10px}',
@@ -363,7 +363,7 @@ window.__ModuleLoader__.load({
       '.aup-src-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary);opacity:.75}',
       '.aup-stats-head{flex:none;display:flex;flex-direction:column;gap:6px}',
       '.aup-card-account{flex:0 0 auto;min-height:0;justify-content:flex-start}',
-      '.aup-account-body{flex:0 0 auto;min-height:96px;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}',
+      '.aup-account-body{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}',
       '.aup-plan-windows{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 12px;font-size:var(--aup-fs-text);line-height:16px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-plan-window{display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap}',
       '.aup-plan-window-value{color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
@@ -469,8 +469,9 @@ window.__ModuleLoader__.load({
       '.aup-stats-summary{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-variant-numeric:tabular-nums;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--dsw-alias-label-secondary)}',
       '.aup-stats-summary>span{min-width:0;white-space:normal;overflow-wrap:anywhere}',
       '.aup-stats-total{flex:none;font-size:var(--aup-fs-text);line-height:26px;font-weight:600;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
-      '.aup-card-stats .aup-series{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:2px;min-height:88px}',
-      '.aup-card-stats .aup-series-row{flex:0 0 21px;height:21px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
+      '.aup-card-stats .aup-series{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}',
+      '.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:21px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
+      '.aup-series-slot{min-height:21px;pointer-events:none}',
       '.aup-card-stats .aup-series-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
       '.aup-card-stats .aup-series-row[data-current]{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent)}',
       '.aup-card-stats .aup-series-row[data-zero]{opacity:.45}',
@@ -507,7 +508,7 @@ window.__ModuleLoader__.load({
       '.aup-context-head{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-stats-summary{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-stats-total{font-size:var(--aup-fs-text);line-height:26px}',
-      '.aup-card-stats .aup-series{min-height:88px}',
+      '.aup-card-stats .aup-series{min-height:0}',
       '.aup-card-stats .aup-series-row{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-card-stats .aup-series-track{height:6px}',
       '.aup-card-stats .aup-series-label,.aup-card-stats .aup-series-tokens{font-size:var(--aup-fs-text);line-height:16px}',
@@ -1980,7 +1981,14 @@ window.__ModuleLoader__.load({
               { className: 'aup-stats-body' },
               sourceList,
               listMode === true && sessionOnly !== true && series.total > 0
-                ? h('div', { className: 'aup-series' }, periodRows)
+                ? h(
+                    'div',
+                    { className: 'aup-series' },
+                    periodRows,
+                    Array.from({ length: Math.max(0, rowCap - periodRows.length) }, (unused, index) =>
+                      h('div', { key: 'row-slot-' + String(index), className: 'aup-series-row aup-series-slot', 'aria-hidden': true })
+                    )
+                  )
                 : null,
               h(
                 'div',
