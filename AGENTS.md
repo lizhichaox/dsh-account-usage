@@ -37,7 +37,7 @@
 | 1 | 右侧栏能看到额度 / 费用 / tokens | Host 读真实平台接口，三卡面板 | `real platform amount shown` |
 | 2 | 只用真实数据，不许假估算 | 平台 usage / 余额接口，失败才回退并带 `≈` | `account reader does not fetch the profile` |
 | 3 | 三张卡、四字中文标题、居中、**不许改名、不许第四张** | 会话消耗 / 用量统计 / 账户余额 | `four-character card titles` |
-| 4 | **标题上不许挂 provider 标记** | 供应商只出现在账户卡来源 tab | `no provider badge inside a card head` / `no provider name inside a card head` |
+| 4 | **标题上不许挂 provider 标记** | 供应商只出现在账户卡来源行 | `no provider badge inside a card head` / `no provider name inside a card head` |
 | 5 | **面板充满右侧栏整高整宽、底部不留白，且空间按信息密度分配** | 会话卡吸收剩余并均匀摊开；余额卡按内容收紧 | `cards size to their content and are never squeezed` / `the dense session card absorbs the leftover height` / `the balance card hugs its content` / layout-check 的 `space allocation` 断言 |
 | 6 | **卡内不许大块空白** | 底部块 `margin-top:auto`、拉伸块 `flex:1` | `session footer sits on the card bottom` / `stats footer sits on the card bottom` |
 | 7 | 宽度也必须撑满 | 不写 `scrollbar-gutter`、不留右侧内边距 | `the card column spans the full pane width` |
@@ -55,14 +55,22 @@
 | 19 | **英文文本不许看着浅** | 拉丁字体栈优先 + 根 500 基线 + `--aup-label-2` 混色 | `Latin families precede CJK ones in the stack` / `secondary text is darkened from theme tokens` / `the panel root sets a 500 baseline weight` |
 | 20 | **切维度不许抖动** | 固定槽位 `SERIES_ROW_SLOTS=4` + 固定行距 + 全维度预热 | `the list keeps a constant slot count` / `spare slots pad the list in quarter/year` / `period rows keep a fixed pitch across dimensions` / `every dimension is warmed widest-first` |
 | 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 实测媒体查询阶梯按窗口高度减内容 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
-| 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（886→838px）+ 面板容器查询阶梯（895/883/823/739/681）+ 阶梯末尾带 `!important` + `scrollbar-width:none` | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 4` / `the card column never shows a scrollbar` |
-| 23 | **同一组行左右对齐 + 行内垂直居中** | 父级网格 + 行 `grid-template-columns:subgrid` + 行 `align-items:center` | `the source rows share one grid` / `rows take their columns from the shared grid` / `the period rows share one grid` / `subgrid rows centre their cells vertically` / layout-check 的 `srcTrackLeft`、`srcBar`（居中）断言 |
-| 24 | **用量统计是四列严格对齐的表** | 描述 / 胶囊条 / 用量 / 金额共用一个网格；每行 4 格；第三方行第 4 列写短标记 `PLAN`（中文「套餐」） | `one shared table` / `the card declares the four columns once` / `the English marker stays short: PLAN` / layout-check 的 `table` 断言（barLeft、tokensRight、amountRight 唯一） |
+| 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（三来源夹具内容 793px）+ 面板容器查询阶梯（850/838/771/680/615，按来源数追加预算）+ 阶梯末尾带 `!important` + `scrollbar-width:none` | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 4` / `the card column never shows a scrollbar` |
+| 23 | **同一组行左右对齐 + 行内垂直居中** | 父级网格 + 行 `grid-template-columns:subgrid` + 行 `align-items:center` | `the source rows share one grid` / `rows take their columns from the shared grid` / `the period rows share one grid` / `subgrid rows centre their cells vertically` / layout-check 的 `srcLabelLeft`、`acctValueRight`、`srcLabel`（居中）断言 |
+| 24 | **用量统计是三列严格对齐的表（无胶囊条）** | 描述 / 用量 / 金额共用一个网格；每行 3 格；第三方行第 3 列写短标记 `PLAN`（中文「套餐」） | `one shared table` / `the card declares the three columns once` / `the English marker stays short: PLAN` / layout-check 的 `table` 断言（labelLeft、tokensRight、amountRight 唯一） |
 | 25 | **金额只留货币符号，¥ 后置** | `Intl.formatToParts` 重排；仅 CNY 后置，其它货币按惯例 | `amounts use the narrow currency symbol` / `the spend row ends with the ¥ symbol` / `only the ¥ moves behind the amount` |
 | 26 | **期数标签带年份** | 日/周 `YYYY-MM-DD`、月 `YYYY-MM`、季 `YYYY Qn`、年「全」`YYYY` | `day and week labels carry the year` / `day rows show YYYY-MM-DD` |
-| 27 | **无障碍与动效是原则** | reduced-motion 全量关闭；装饰条 `aria-hidden`；所有控件有 focus 环 | `reduced motion covers every transition and animation` / `the retry button keeps a keyboard ring` / `the table tracks are marked decorative` |
+| 27 | **无障碍与动效是原则** | reduced-motion 全量关闭；装饰条 `aria-hidden`；所有控件有 focus 环 | `reduced motion covers every transition and animation` / `the refresh button keeps a keyboard ring` / `no capsule bar outside the session card: …` |
 | 28 | **两处卡片页脚统一左中右结构** | 图例与合计行共用三列网格；合计行恒 3 格 | `the two footers share one left/centre/right grid` / `the third cell is pinned to the right edge` / layout-check 的 `footer` 断言（首格贴左、中格居中、末格贴右） |
 | 29 | **点 tab 不改变高度** | loading 骨架与 ready 同构、空范围保留 4 槽位、合计行线高统一、缓存优先 | `the loading frame reserves all four period slots` / `the period list is not hidden for an empty range` / `range stability: every range + loading + empty frame measures …` |
+| 30 | **统一优化所有 provider，不混数据、不串错误** | 独立来源状态、每来源一行、独立刷新、原始身份 | `errors are never shared between providers` / `requested source identity overrides provider aliases` / `every source row reads name left, figures right` |
+| 31 | **账户卡不用 tab、不换行、不留白**（2026-11-08） | 每来源一行：名称左对齐，「短标签 数值」对右对齐；不加任何装饰圆点 | `one aligned row per source` / `no tabs to switch` / `every source row has exactly two cells` / `no current-source dot` |
+| 32 | **除会话卡外不要胶囊进度条**（2026-11-08：「没什么信息量」） | 统计表、账户卡只写数字；会话卡构成条/上下文条保留 | `no capsule bar outside the session card: …` |
+| 33 | **不许连着两条分割线**（2026-11-08） | 每条 `aup-session-sep` 绑定它引出的区块，阶梯隐藏区块时一起隐藏 | `each session separator belongs to one block: …` |
+| 34 | **OpenAI / Anthropic 先调研 API，确实不行才写 Unsupported** | 已调研：找到组织花费 API，未找到公开余额 API；余额卡不写花费 → `Unsupported`，不请求花费接口 | provider-host `openai/anthropic unsupported` 测试 / provider-client `OpenAI Unsupported` |
+| 35 | **余额卡只写剩余，不写 costs**（2026-11-08） | 只显示 Balance / Bonus / Key / 套餐剩余；`Used`、本月花费一律不出现；花费在用量统计卡 | `the balance card shows what is left, never costs` / `no spend (Used) in the balance card` |
+| 36 | **额度显示规范** | 套餐：`5HW 63%  WEK 70%  MON 85%`（全是剩余，不写 left）；DeepSeek：`Balance 199.54¥  Bonus 0.00¥`（中文 `余额 / 赠送`） | `plan windows read 5HW / WEK / MON as the share left` / `DeepSeek reads Balance x Bonus y on the right` |
+| 37 | **不需要 Retry 按钮，获取不到就算了**（2026-11-08） | 所有卡片失败只显示状态，不显示重试按钮、不添加失败后自动重试；保留既有顶部刷新及定时刷新 | `failed reads never render Retry buttons` / provider-client 全部错误态无按钮、顶部刷新和旧响应回归 |
 
 ## 1. 产品定位
 
@@ -100,7 +108,7 @@
 
 - 卡片标题：三张卡标题都用**四个中文字符**（会话消耗 / 用量统计 / 账户余额），**居中**，
   标题下方有 `.aup-divider` 细分割线。
-- **标题区只放图标 + 标题**：不放供应商徽标/标记（供应商名只在账户卡的来源 tab 里出现）；
+- **标题区只放图标 + 标题**：不放供应商徽标/标记（供应商名只在账户卡的来源行里出现）；
   标题 `white-space:nowrap`，`aup-card-head` 用绝对定位的 `aup-card-head-extra` 承载必要的小标记，
   绝不能把标题挤成两行。
 - **布局只用确定性 CSS，任何高度都不许靠运行时测量决定**（2026-11-08 反复踩坑后的最终架构）：
@@ -111,8 +119,8 @@
      - **会话卡吸收剩余高度**：`.aup-cards>.aup-card-session-fixed{flex:1 1 auto;min-height:auto}`，
        内部 `.aup-session-body{flex:1 1 auto;justify-content:space-evenly}`，多出来的高度被均匀摊在
        会话卡的各段之间，**不会在面板底部留白带**。
-     - **账户余额卡按内容高度收紧**：`flex:0 0 auto`，内部 `.aup-account-body` / `.aup-provider-body` /
-       `.aup-balance` 一律 `flex:0 0 auto` + `justify-content:flex-start`，
+     - **账户余额卡按内容高度收紧**：`flex:0 0 auto`，内部 `.aup-account-body` /
+       `.aup-acct-srcs` 一律 `flex:0 0 auto` + `justify-content:flex-start`，
        **禁止**再用 `space-evenly` / `flex:1 1 auto` 把自己的几行数字撑成一大片空白。
      - 历史教训：曾让「最后一张卡」吸收高度，结果信息最少的余额卡吃掉了整屏空白，
        被用户点名骂——**分配空间要看卡片内容量，不要看它在 DOM 里的位置**。
@@ -122,10 +130,12 @@
      （用户 2026-11-08：「依然存在可滚动的窗口 优化一下 不滚动 显示全部信息」）。两层措施：
      - **先压缩：不删信息，只压高度**。卡片 `padding:8px` / `gap:4px`、卡间距 6px、根底部 6px、
        统计表行高 18px、逐期行 `min-height:21px`、会话体/统计体 gap 6px、Token 网格 gap 6px、模型行 gap 0。
-       实测整屏内容高度从 **886px 压到 838px**（面板只需 896px 就能全显示，之前要 946px）；四列表的栏距另计。
+       三来源夹具实测整屏内容 **793px**（去掉胶囊条和账户 tab 后；之前 838px），面板 851px 即可全显示。
      - **再按面板自身高度逐级收窄，用 `@container`（不是 `@media`）**：
        `.aup-root{container-type:size;container-name:aup-panel}`，
-       阈值 `895px 去 Token 彩条 → 883px 去按模型明细 → 823px 去统计表 → 739px 去上下文块 → 681px 去 Token 2×2 明细`。
+       阈值 `850px 去 Token 彩条 → 838px 去按模型明细 → 771px 去统计表 → 680px 去上下文块 → 615px 去 Token 2×2 明细`；
+       每个区块与引出它的分割线（`aup-sep-models/-stats/-context`）**一起隐藏**，绝不留下连续两条线。
+       来源 ≥4 时按 `data-source-count` 追加预算 `16 + (n-3)×52` px（`--tiers N` 实测：每多一个来源 = 一行统计 + 一行余额 52px，第 4 个模型多一行「另有 N 个模型」16px）。
        **必须用容器查询**：窗口比面板高（右侧栏 tab 条 + 面板横条约 90px），
        之前用 `@media (max-height)` 判定基准错了，所以「阶梯明明写了却还滚」——这是反复踩的坑。
      - 阈值由 `node test/layout-check.mjs --tiers` 用**真实面板 markup** 逐级量出，
@@ -134,8 +144,8 @@
        量出来的内容高度比生产少 36px，阶梯整体偏低、在 869–903px 的面板里仍会「看不见的滚动」。
        夹具里 `contextPressure`（projectedTokens/contextWindow）、`contextBreakdown`（三段 tokens）、
        `tokenUsage`、`sessionStats` 必须全部给真实形状。
-     - 结论：面板高度 ≥ 896px 时全部信息可见；仅当 ≤ 895px 才隐藏那条装饰性 Token 彩条；
-       `< 598px` 属于极端窗口，只剩隐形兜底（此时仍无滚动条外观）。
+     - 结论（三来源）：面板高度 ≥ 851px 时全部信息可见；≤ 850px 才隐藏那条装饰性 Token 彩条；
+       `< 531px` 属于极端窗口，只剩隐形兜底（此时仍无滚动条外观）。7 个来源全部收窄后仍需约 755px。
        阈值每次都要用 `--tiers` 重新量、改完同步更新本文件这三处数字（内容高度 / 阶梯 / 结论）。
   5. 明令禁止：用 `ResizeObserver`/`getBoundingClientRect` 的内容高度去反推行数并 `setState`
      （09:29 崩溃的成因）、用 `overflow:hidden` 或省略号假装解决放不下。
@@ -154,17 +164,18 @@
   来源行（`.aup-srcs`）、逐期行（`.aup-series`）都是**一个父级网格**，
   每行用 `display:grid;grid-template-columns:subgrid;grid-column:1/-1` 继承父级列宽。
   **禁止每行各写一套 `grid-template-columns`**：那样标签列按行取 `max-content`，
-  进度条起点和右侧数值都会随行漂移（实测差 13px）。
+  右侧数值会随行漂移（实测差 13px）。
   另外**行内单元格必须垂直居中**：subgrid 行要显式写 `align-items:center`，
-  漏掉就会退化成 stretch/顶对齐，进度条会比文字高出一截（实测偏 7px，用户报「没居中对齐」）。
-- **用量统计卡是一张四列表**（用户 2026-11-08：「左侧描述列 胶囊进度条 用量 金额 分为四个列 严谨对齐」）：
-  `描述 | 胶囊进度条 | 用量 | 金额`。实现必须满足：
-  - **整张卡只声明一次列模板**：`.aup-stats-body{display:grid;grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(52px,max-content) minmax(0,max-content)}`；
+  漏掉就会退化成 stretch/顶对齐（曾实测偏 7px，用户报「没居中对齐」）。
+- **用量统计卡是一张三列表**（用户 2026-11-08 先要求「描述 胶囊进度条 用量 金额 四列严谨对齐」，
+  随后要求「除了 session usage 卡片全都取消胶囊进度条，没什么信息量」，故删掉胶囊列）：
+  `描述 | 用量 | 金额`。实现必须满足：
+  - **整张卡只声明一次列模板**：`.aup-stats-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(52px,max-content) minmax(0,max-content)}`；
     来源组与逐期组都用 `display:contents` 把行提升为这张表的行。
-  - **每行 4 个单元格**（`grid-template-columns:subgrid;grid-column:1/-1`），
+  - **每行 3 个单元格**（`grid-template-columns:subgrid;grid-column:1/-1`），
     空值也要输出空 `span`，**绝不允许条件性少一个单元格**——少一个会把后面所有列错位（踩过）。
-  - 第 2 列是**同样的胶囊条**（`border-radius:999px`，高度 6px，两组一致）；第 3、4 列一律 `justify-self:end` 右对齐。
-  - 第 4 列的含义：DeepSeek API 行是**真实金额**；第三方 Provider 行没有平台金额，
+  - 不再有胶囊条；第 2、3 列一律 `justify-self:end` 右对齐，描述列 `1fr` 吃掉剩余宽度。
+  - 第 3 列的含义：DeepSeek API 行是**真实金额**；第三方 Provider 行没有平台金额，
     显示**套餐标记**——英文 `PLAN`、中文「套餐」（用户 2026-11-08：先要求把 `session` 换成订阅名词并大写，
     随即说 `SUBSCRIPTION` 太长要缩写，因此用短词 `PLAN`，同时与账户卡的「套餐剩余 / Plan left」用词一致）。
     **禁止**再用 `session` / `本会话` 这类作用域提示。
@@ -277,16 +288,18 @@
   - 账户卡改为显示对应 Provider 的余额（OpenRouter `/api/v1/credits`，失败回退 `/api/v1/key`；
     DeepSeek API Key 用 `/user/balance`）
   - opencode / opencode-go / opencode-zen：`GET https://opencode.ai/zen/go/v1/usage`（Bearer Key），
-    返回套餐百分比；卡片显示「套餐剩余 xx%」+ 进度条 + 5 小时/本周/本月三档已用
+    返回套餐百分比；来源行固定显示 `5HW 63%  WEK 70%  MON 85%`（5 小时 / 周 / 月，**全部是剩余比例**，不写 left/剩余/已用；中英文同一套缩写），不画进度条
     （`opencode-go` 的凭据引用是 `OPENCODE_GO_API_KEY`；`opencode`/`-zen` 用 `OPENCODE_API_KEY`）
-  - 其他不支持的 Provider 显示「暂未开放余额接口」并改为展示本会话 Token/请求数（不给无效重试按钮）；未配置 Key 显示「未配置 … API Key」
-  - Provider 卡为大号余额 + 使用率进度条（已用百分比与金额同行，总额只出现一次）+ 更新时间 + 单行说明
-- 只要出现第三方来源（含单 Provider 会话）账户卡就用**来源 tab**（`aup-src-tabs`）列出每个来源（DeepSeek API / 各第三方 Provider），
-  点击切换显示该来源的余额；默认**自动选中当前会话正在使用的 Provider**（Host 返回 `lastRoute`，客户端映射成 `preferredSource`）；**禁止**使用「部分 {provider}」这类徽标或说明文字；
-  所有 tab 共用一个内容盒（`aup-account-body`，min-height 96px、内容顶部对齐），
-  **切换 tab 不允许改变卡片高度**；tab 模式下省略 Provider 说明/更新时间等附加行；
+  - OpenAI / Anthropic：已调研（2026-11-08），调研到的官方接口是**组织花费**（OpenAI Costs API、Anthropic Cost Report，需相应组织权限），**未找到公开余额接口**；用户决定余额卡不写花费，所以两家显示 `Unsupported`，插件不请求花费接口。
+  - 其余未接入的 Provider 显示「插件暂不支持 / Unsupported」，不暗示供应商没有 API；本会话 Token 在用量统计卡里看，账户卡不重复。
+  - 未配置、鉴权失败、超时、网络失败、凭据读取失败分别显示短状态；不提供任何 Retry / 重试按钮，不因失败立即重发请求。既有顶部刷新与定时刷新保持不变。
+  - **余额卡只写剩余**（用户：「Account balance 里不需要写 costs」）：`Balance` / `Bonus` / `Key`（OpenRouter 密钥额度）/ 套餐剩余；`Used`、本月花费不出现，花费看用量统计卡；只有用量没有剩余时写「无余额数据 / No balance」，绝不当成 0。
+  - 统一显示规范：右侧是「短标签（次要色） 数值（加粗）」对，多对之间 8px，如 DeepSeek `Balance 199.54¥  Bonus 0.00¥`（中文 `余额 / 赠送`）。不画进度条。
+- 只要出现第三方来源（含单 Provider 会话），账户卡**每个来源一行**（`aup-acct-srcs`，取代来源 tab：tab 多于 3 个会换行、短 pane 留白，用户点名不美观），
+  来源名左对齐，右侧「短标签 数值」对右对齐（如 `Balance 199.54¥  Bonus 0.00¥`、`5HW 63%  WEK 70%  MON 85%`、`Timed out`）；
+  **不加任何装饰**（曾给当前来源加小圆点，用户：「没有用就删掉，别浪费注意力」）；没有任何切换，因此不存在「点 tab 改变高度」的问题；
   第三方余额与 DeepSeek 钱包一样实时读取（opencode 走套餐百分比）；
-  用量统计卡统一为**一张四列表**：`描述 | 胶囊进度条 | 用量 | 金额`（见 §13），卡标题不挂任何徽标
+  用量统计卡统一为**一张三列表**：`描述 | 用量 | 金额`（见 §2），卡标题不挂任何徽标
 - 设置里的「用量明细列表」打开后，在来源行下方追加逐期 `Token · 金额` 明细（悬浮可看完整日期/Token/金额）
 - 明细列表**高度恒定由固定槽位保证**：`SERIES_ROW_SLOTS = 4`，不足的槽位用不可见占位行（`min-height:21px`）补齐，
   切维度（日↔季↔年）时列表高度不变、下方卡片与 tab 行不闪动；行高只设 `min-height` 不设死高度，
@@ -298,6 +311,20 @@
   宁可少显示几行，也不要任何自反馈的布局测量。
 - Provider 余额缓存 60 秒；手动刷新强制重新查询
 - **API Key 只在 Host 侧读取**（`ctx.credentials`），不得下发到浏览器/客户端
+
+### 7.1 Provider 统一优化（2026-11-08）
+
+用户：「OpenAI 的请求信息过于杂乱了…其他 provider 可能也会有问题…统一优化」。必须统一处理，而非仅改一个 provider：
+- 按原始请求 provider id 保存 `byProvider[id]`，独立 loading/ready/error。失败不覆盖其它来源的成功，禁止只取第一个全局错误。
+- Host 和 Client 均保留请求身份；别名只复用读取实现，不合并不同来源/密钥的余额。Go/Zen 不可串账。
+- 每个来源一行：失败/未接入只写短状态（英文 `Unsupported` 等单词级短语，太长难看），获取不到就停留在状态文字，不加重试按钮。
+- 「插件暂不支持」不等于「供应商没有 API」；禁止暗示余额缺失就是 0。OpenRouter `/credits` 缺 usage 必须回退或失败；`/key` 标明密钥额度作用域。
+- 刷新仍按 provider 独立读取，逐来源请求序号丢弃旧响应；会话变化/卸载后失效。取消的平台请求不得锁死纯第三方刷新按钮。
+- 账户卡不再有 tab：所有来源同时可见，没有可点的东西，高度只随来源数量和窗口变化。没有备注的行数值独占右侧，不会因为别的行长而换行。
+- 4–16 来源按数量追加预算 `16 + (n-3)×52` px（`layout-check --tiers N` 实测）。不根据 DOM 高度反算布局。几何验证覆盖 3/4/5 来源（700/900/1080 高）与 7 来源（900/1080 高）；7 来源在 <755px 面板只能依赖隐形兜底。
+- 验收：`test/provider-host.mjs` 模拟真实 Host route（不访问真实网络/凭据）；`test/provider-client.mjs` 渲染真实账户卡和 body effects，覆盖混合成功/失败、错误顺序、0 用量、所有失败态无重试按钮、旧响应与纯第三方刷新。
+- `verify:ui` 另测来源数 × 中英文 × 340/420 宽 × 700/900/1080 高：无重叠/溢出/滚动/底部空带，账户行名称左对齐、数值右对齐且垂直居中。夹具必须把 ARIA 布尔值写为字符串 true/false。
+- 冒烟守护：`errors are never shared between providers` / `requested source identity overrides provider aliases` / `one aligned row per source` / `no tabs to switch` / `the English unsupported status stays one short word`。
 
 ## 8. 底栏会话统计
 
@@ -326,11 +353,11 @@
 - 首屏骨架屏；尊重 `prefers-reduced-motion`
 - **无障碍与动效（属于原则，不是可选 polish）**：
   - 面板里**所有**过渡与动画都要在 `prefers-reduced-motion: reduce` 下关掉
-    （`transition` 覆盖 icon-button / src-tab / dim / series-row / pop-link / retry / toggle，
+    （`transition` 覆盖 icon-button / dim / series-row / pop-link / toggle，
     `animation` 覆盖 skeleton / spin），不允许只处理一两个控件
-  - **装饰性进度条一律 `aria-hidden`**：紧邻的数字就是它的文本替代（会话构成条、上下文条、套餐条、四列表的胶囊条）
-  - **每个可交互控件都有 `:focus-visible` 环**（含 `.aup-retry` 这类次要按钮），键盘用户不能有死角
-  - 语义角色齐全：范围/来源 tab 用 `role="tablist"`+`role="tab"`，开关用 `role="switch"`，设置弹层 `role="dialog"`
+  - **装饰性进度条一律 `aria-hidden`**：紧邻的数字就是它的文本替代（会话构成条、上下文条；其余卡片已不使用进度条）
+  - **每个可交互控件都有 `:focus-visible` 环**（含顶部刷新按钮），键盘用户不能有死角
+  - 语义角色齐全：范围 tab 用 `role="tablist"`+`role="tab"`，账户来源用 `role="list"`+`listitem`，开关用 `role="switch"`，设置弹层 `role="dialog"`
 
 ## 10. 安全与隐私
 
@@ -369,6 +396,13 @@
 
 ## 13. 已完成的关键决策（避免回退）
 
+- **账户卡来源行**（§7、§7.1）：取代「来源 tab + 共享网格等高 pane」（tab 换行、短 pane 留白，被用户点名不美观）。独立原始身份与状态保留。
+- **获取不到就算了，不提供 Retry 按钮**：取代「余额失败时定向重试」，并移除统计卡错误态的重试按钮；只保留既有顶部刷新及定时刷新，不新增失败重试循环。
+- **余额卡只写剩余**：取代「OpenRouter 显示已用」「OpenAI/Anthropic 显示本月花费 + 需管理员密钥」；也取代「当前来源小圆点」。
+- **只有会话卡保留进度条**：取代「用量统计四列表含胶囊条」「账户卡胶囊条」。
+- 793px/851px 是三来源、420px 宽夹具基准，多来源追加 `16 + (n-3)×52`，英文窄栏的长状态会换行增高（因此英文状态都用短词）。
+- 本轮 1.0.5 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
+
 - 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
 - **卡片**不使用 `container-type: size`（内容高度会塌陷成 0）；但**面板根节点必须用**
   `container-type:size;container-name:aup-panel`，让收窄阶梯按面板真实高度判定（见 §2）
@@ -385,8 +419,8 @@
 - **切维度零抖动**：明细列表固定 `SERIES_ROW_SLOTS=4` 槽位（不足补不可见行）、固定行距而非 space-between、
   加载骨架与 ready 卡片同构等高、后台预热全部维度
 - **绝不遮挡 + 绝不滚动 + 尽量全显示**：卡片按内容撑开、永不被压缩（遮挡从结构上不可能）；
-  先把面板压紧（padding 8 / gap 4 / 行高 18 / 逐期行 21，整屏内容 886→838px，面板 896px 即可全显示），
-  再按**面板自身高度**用 `@container` 阶梯（895/883/823/739/681）依次隐藏彩条 / 按模型明细 / 统计表 /
+  先把面板压紧（padding 8 / gap 4 / 行高 18 / 逐期行 21，三来源整屏内容 793px，面板 851px 即可全显示），
+  再按**面板自身高度**用 `@container` 阶梯（850/838/771/680/615，区块连同引出它的分割线一起隐藏）依次隐藏彩条 / 按模型明细 / 统计表 /
   上下文块 / 2×2 明细；滚动条外观全部去掉，`overflow-y:auto` 只作隐形兜底；
   **禁止**任何基于运行时测量的行数调整（09:29 崩溃成因），也禁止 `overflow:hidden` 假装修好。
   取代了此前用 `@media (max-height:)` 按**窗口**判定的写法——窗口比面板高约 90px，判定基准错了，所以阶梯一直没能阻止滚动。
@@ -397,10 +431,10 @@
   会话卡负责本会话 Token/统计/按模型/上下文，用量统计负责平台周期数据（纯第三方会话显示各来源小计），余额卡负责余额
 - 第三方 Provider 会话不显示 DeepSeek 余额/平台用量，改显示 Provider 余额
 - 上下文只保留一条按占用比例着色的堆叠条；Token 构成条与明细标签颜色圆点对应
-- 用量统计统一为「按来源一行 + 占比条 + 合计」，不再使用趋势柱；明细列表逐期单行 Token · 金额，0 用量淡化
+- 用量统计统一为「按来源一行 + 合计」（占比条已取消），不再使用趋势柱；明细列表逐期单行 Token · 金额，0 用量淡化
 - **「全」(ALL) tab 在「年」之后**：按年分桶汇总所有可取的月份；窗口从 3 年开始、最老一个月有数据就往前扩到最多 6 年，
   首次发现的最早月份写进 localStorage（`dsh.account-usage.all-start.v1`）避免重复扫描；
   **合计永远是全部年份的总额**（即使行数受 4 个槽位限制、只显示最近 4 年）
-- **优先左右结构**：来源行用 `标签 | 占比条 | Tokens | 金额/本会话` 的四列网格；账户卡的余额/套餐标题与数值
+- **优先左右结构**：统计来源行用 `标签 | Tokens | 金额/PLAN` 的三列网格；账户卡的余额/套餐标题与数值
   必须在同一行（标签左、数值右），不要把「套餐剩余 / 99%」上下堆叠导致右侧大片空白
 - 快捷开栏**不改宽度**；只在面板实测宽度 < 340px 时自动加宽回 340px（测不到就不猜），失败静默

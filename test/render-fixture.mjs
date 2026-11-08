@@ -30,6 +30,7 @@ globalThis.localStorage = {
   removeItem: (key) => storage.delete(key)
 };
 
+let fixtureLocale = 'zh';
 const React = {
   Fragment: Symbol('Fragment'),
   createElement(type, props, ...children) {
@@ -80,13 +81,13 @@ function bootClient(config = {}) {
       },
       bind(namespace) {
         return (key, params) => {
-          let text = (dictionaries[namespace] || {}).zh?.[key];
+          let text = (dictionaries[namespace] || {})[fixtureLocale]?.[key];
           if (text === undefined) return key;
           if (params) text = text.replace(/\{(\w+)\}/g, (match, name) => (name in params ? String(params[name]) : match));
           return text;
         };
       },
-      getSnapshot: () => ({ active: 'zh' }),
+      getSnapshot: () => ({ active: fixtureLocale }),
       subscribe: () => () => {}
     },
     slots: {
@@ -278,6 +279,7 @@ function escapeAttribute(value) {
 function attributesOf(props) {
   const out = [];
   for (const [key, value] of Object.entries(props)) {
+    if (key.startsWith('aria-') && typeof value === 'boolean') { out.push(key + '="' + String(value) + '"'); continue; }
     if (key === 'children' || value === null || value === undefined || value === false) continue;
     if (key === 'style' && typeof value === 'object') {
       const css = Object.entries(value)
@@ -336,8 +338,65 @@ function panelHtml(options = {}) {
     dimension,
     refreshing: false
   };
-  const tree = render(state, options.projection, dimension, options.settings, false, options.sessionModels, options.providerBalances);
-  return toHtml(tree);
+  fixtureLocale = options.locale || 'zh';
+  try {
+    const tree = render(state, options.projection, dimension, options.settings, false, options.sessionModels, options.providerBalances);
+    return toHtml(tree);
+  } finally { fixtureLocale = 'zh'; }
 }
 
-export { panelHtml, render, toHtml };
+/** Render the real AccountSection for one state (no browser or live APIs). */
+function accountCard(options) {
+  const tree = render({ phase: 'ready', ok: true, days: [], dimension: 'day' }, undefined, 'day', undefined, false, options.sessionModels, options.providerBalances);
+  function find(node) {
+    if (!node || typeof node !== 'object') return undefined;
+    if (Array.isArray(node)) return node.map(find).find(Boolean);
+    if (node.type?.name === 'AccountSection') return node;
+    return find(node.children);
+  }
+  const account = find(tree);
+  fixtureLocale = options.locale || 'en';
+  try { return account.type({ ...account.props, state: options.state || account.props.state, locale: fixtureLocale }); }
+  finally { fixtureLocale = 'zh'; }
+}
+
+// A small hook runner for the real body effects: setters/refs survive explicit renders.
+// No DOM is emulated; browser geometry remains the responsibility of layout-check.
+function bodyHarness(overrides = {}) {
+  const values = [], dependencies = [], cleanups = [];
+  let cursor = 0;
+  const equalDeps = (a, b) => a && b && a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+  const methods = ['useState', 'useRef', 'useMemo', 'useEffect'];
+  return {
+    render() {
+      cursor = 0;
+      const pending = [];
+      const originals = Object.fromEntries(methods.map((key) => [key, React[key]]));
+      React.useState = (initial) => {
+        const i = cursor++;
+        if (!(i in values)) values[i] = typeof initial === 'function' ? initial() : initial;
+        return [values[i], (value) => { values[i] = typeof value === 'function' ? value(values[i]) : value; }];
+      };
+      React.useRef = (initial) => { const i = cursor++; return values[i] ??= { current: initial }; };
+      React.useMemo = (fn, deps) => {
+        const i = cursor++;
+        if (!equalDeps(dependencies[i], deps)) { values[i] = fn(); dependencies[i] = deps; }
+        return values[i];
+      };
+      React.useEffect = (fn, deps) => {
+        const i = cursor++;
+        if (!equalDeps(dependencies[i], deps)) {
+          dependencies[i] = deps;
+          pending.push(() => { cleanups[i]?.(); cleanups[i] = fn(); });
+        }
+      };
+      let tree;
+      try { tree = bodyRegistration.component({ ...bodyProps, sessionId: 'fixture-session', useProjection: () => undefined, ...overrides }); }
+      finally { Object.assign(React, originals); }
+      for (const effect of pending) effect();
+      return tree;
+    },
+    destroy() { for (const cleanup of cleanups) cleanup?.(); }
+  };
+}
+export { panelHtml, render, toHtml, accountCard, bodyHarness };

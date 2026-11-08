@@ -105,7 +105,7 @@ assert.ok(source.includes('.aup-cards>.aup-card-session-fixed{flex:1 1 auto;min-
 // tokens | amount. Both the provider rows and the period rows are rows of it,
 // so every bar starts on one line and every figure ends on one.
 assert.ok(source.includes('.aup-srcs,.aup-series{display:contents}'), 'both row groups feed one shared table');
-assert.ok(source.includes('grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(52px,max-content) minmax(0,max-content)'), 'the card declares the four columns once');
+assert.ok(source.includes('grid-template-columns:minmax(0,1fr) minmax(52px,max-content) minmax(0,max-content)'), 'the card declares the three columns once');
 assert.ok(!source.includes('.aup-srcs{flex:none;display:grid'), 'no private grid for the provider rows');
 assert.ok(!source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:grid'), 'no private grid for the period rows');
 assert.ok(source.includes('.aup-card-stats .aup-series>.aup-series-row:first-child::before'), 'a hairline marks the second group without breaking the columns');
@@ -119,16 +119,20 @@ assert.ok(!source.includes('data-aup-compact'), 'no height-driven compact attrib
 // viewport breakpoints fired too late (that is why the pane still scrolled).
 assert.ok(source.includes('container-type:size;container-name:aup-panel'), 'the panel root is a size container');
 for (const rule of [
-  '@container aup-panel (max-height:895px){.aup-compose{display:none!important}}',
-  '@container aup-panel (max-height:883px){.aup-card-session .aup-models{display:none!important}}',
-  '@container aup-panel (max-height:823px){.aup-card-session .aup-stat-list{display:none!important}}',
-  '@container aup-panel (max-height:739px){.aup-context{display:none!important}}',
-  '@container aup-panel (max-height:681px){.aup-card-session .aup-session-grid{display:none!important}}'
+  '@container aup-panel (max-height:850px){.aup-compose{display:none!important}}',
+  '@container aup-panel (max-height:838px){.aup-card-session .aup-models,.aup-card-session .aup-sep-models{display:none!important}}',
+  '@container aup-panel (max-height:771px){.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats{display:none!important}}',
+  '@container aup-panel (max-height:680px){.aup-context,.aup-card-session .aup-sep-context{display:none!important}}',
+  '@container aup-panel (max-height:615px){.aup-card-session .aup-session-grid{display:none!important}}'
 ]) {
   assert.ok(source.includes(rule), 'the measured shedding ladder contains: ' + rule);
 }
 assert.ok(!source.includes('@media (max-height:'), 'the old viewport ladder is gone');
-assert.ok(source.indexOf('@container aup-panel (max-height:895px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
+// A shed block takes the separator that introduces it: never two hairlines in a row.
+for (const sep of ['aup-sep-models', 'aup-sep-stats', 'aup-sep-context']) {
+  assert.ok(source.includes("className: 'aup-session-sep " + sep + "'"), 'each session separator belongs to one block: ' + sep);
+}
+assert.ok(source.indexOf('@container aup-panel (max-height:850px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
 // Compacted so a typical pane still shows every block: the measured full content
 // height dropped from 886px to 790px.
 assert.ok(source.includes("'.aup-card{gap:4px;padding:8px}'"), 'cards are padding 8 / gap 4');
@@ -147,7 +151,7 @@ assert.ok(source.includes('.aup-srcs,.aup-series{display:contents}'), 'the label
 // Rows of one table must share a single grid: with a grid per row the label
 // column is sized per row, so bars start at different x positions and the right
 // edge does not line up either (user report: 左侧没对齐).
-assert.ok(source.includes('grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(52px,max-content) minmax(0,max-content)'), 'the source rows share the card grid');
+assert.ok(source.includes('grid-template-columns:minmax(0,1fr) minmax(52px,max-content) minmax(0,max-content)'), 'the source rows share the card grid');
 // Inside a shared grid the row itself must still centre its cells: without
 // align-items the bar track sticks to the top and the row reads as misaligned.
 assert.ok(source.includes('grid-template-columns:subgrid;grid-column:1/-1;align-items:center'), 'subgrid rows centre their cells vertically');
@@ -189,7 +193,12 @@ assert.ok(source.includes('.aup-card-account-provider{flex:0 0 auto;min-height:a
 // slack and the balance card (three rows) hugs its content instead of stretching.
 assert.ok(source.includes('.aup-card-session .aup-session-body{flex:1 1 auto;min-height:auto;display:flex;flex-direction:column;gap:6px;justify-content:space-evenly}'), 'the session content spreads evenly over the space it gets');
 assert.ok(source.includes("'.aup-card-account{flex:0 0 auto;min-height:auto;justify-content:flex-start}'"), 'the balance card hugs its content');
-assert.ok(source.includes("'.aup-provider-body{flex:0 0 auto;min-height:0;display:flex;flex-direction:column;gap:8px;justify-content:flex-start}'"), 'the plan rows do not stretch inside the balance card');
+assert.ok(source.includes("'.aup-account-body{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}'"), 'the balance rows do not stretch inside the balance card');
+// Mixed sessions: one aligned row per source in the statistics-table rhythm, no tabs.
+assert.ok(source.includes("'.aup-acct-srcs{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);"), 'every source row reads name left, figures right');
+assert.ok(!source.includes('aup-acct-track') && !source.includes('aup-acct-fill'), 'balance rows write the amount; no capsule bars');
+assert.ok(source.includes("'.aup-acct-src,.aup-acct-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-height:21px;"), 'source rows take their columns from the shared table');
+assert.ok(!source.includes('aup-src-tab') && !source.includes('aup-account-pane'), 'no source tabs or stacked panes remain');
 assert.ok(!source.includes('.aup-cards>.aup-card:last-child{flex:1 1 auto}'), 'no card earns space just for being last');
 assert.ok(!source.includes('scrollbar-gutter'), 'the card column spans the full pane width');
 assert.ok(source.includes('aup-series-slot'), 'invisible slot rows keep the list height constant');
@@ -202,12 +211,17 @@ for (const gone of ['.aup-series-value{', '.aup-model-track{', '.aup-model-fill{
 assert.ok(source.includes('const currencySymbols = new Map()'), 'currency symbols are cached per currency+locale');
 // Accessibility and motion are part of the contract, not polish:
 // - reduced-motion disables every transition and animation in the panel
-// - every control keeps a visible keyboard ring, including the retry button
+// - every remaining control keeps a visible keyboard ring
 // - progress tracks are decorative (the number beside them is the alternative)
-assert.ok(source.includes('@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob,.aup-icon-button,.aup-src-tab,.aup-dim,.aup-series-row,.aup-pop-link,.aup-retry{transition:none}.aup-skeleton,.aup-spin{animation:none}}'), 'reduced motion covers every transition and animation');
-assert.ok(source.includes('.aup-retry:focus-visible'), 'the retry button keeps a keyboard ring');
+assert.ok(source.includes('@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob,.aup-icon-button,.aup-dim,.aup-series-row,.aup-pop-link{transition:none}.aup-skeleton,.aup-spin{animation:none}}'), 'reduced motion covers every transition and animation');
+assert.ok(source.includes('.aup-icon-button:focus-visible'), 'the refresh button keeps a keyboard ring');
+assert.ok(!source.includes('aup-retry') && !source.includes('onRetry'), 'failed reads never render Retry buttons');
 assert.equal((source.match(/'aria-hidden': true/g) || []).length >= 6, true, 'decorative bars are hidden from screen readers');
-assert.ok(source.includes("{ className: 'aup-series-track', 'aria-hidden': true }") && source.includes("{ className: 'aup-src-track', 'aria-hidden': true }"), 'the table tracks are marked decorative');
+// Capsule bars carried no information beyond the number beside them (user 2026-11-08):
+// only the session card keeps its composition/context bars.
+for (const gone of ['aup-src-track', 'aup-src-fill', 'aup-series-track', 'aup-series-fill', 'aup-skeleton-track', 'aup-acct-track']) {
+  assert.ok(!source.includes(gone), 'no capsule bar outside the session card: ' + gone);
+}
 assert.ok(!source.includes('buildDetailStats'), 'the dead provider-detail stat builder is gone');
 assert.ok(source.includes('.aup-stats-summary{grid-column:1/-1;margin-top:2px}'), 'the total row spans the whole table');
 // Both card footers share one left / centre / right grid, so the panel reads as a
@@ -528,6 +542,8 @@ function walk(node, predicate, out = []) {
     walk(expand(node), predicate, out);
     return out;
   }
+  // User-visible assertions must not count the inactive intrinsic-sizing panes.
+  if (node.props?.className === 'aup-account-pane' && node.props['aria-hidden'] === true) return out;
   if (predicate(node)) out.push(node);
   walk(node.children, predicate, out);
   return out;
@@ -538,7 +554,7 @@ function text(node) {
   if (typeof node === 'string' || typeof node === 'number') return String(node);
   if (Array.isArray(node)) return node.map(text).join(' ');
   if (typeof node.type === 'function') return text(expand(node));
-  if (node.type === 'style') return '';
+  if (node.type === 'style' || (node.props?.className === 'aup-account-pane' && node.props['aria-hidden'] === true)) return '';
   return text(node.children);
 }
 const flat = (node) => text(node).replace(/\s+/g, ' ').trim();
@@ -841,7 +857,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const providerCard = walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const providerText = flat(providerCard);
   assert.ok(providerText.includes('42.50'), 'provider remaining balance');
-  assert.ok(providerText.includes('7.50'), 'provider used amount');
+  assert.ok(!providerText.includes('7.50'), 'no spend (Used) in the balance card');
   assert.ok(!providerText.includes('542.52'), 'DeepSeek wallet never renders in provider mode');
   assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 1, 'the 用量统计 card always exists');
   assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-session')).length, 1, 'session card still renders');
@@ -852,7 +868,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
     accountState,
     { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
     { phase: 'ready', items: [{ provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 7_500_000, requests: 1234 }], totalTokens: 7_500_000 },
-    { phase: 'ready', items: [], error: 'unsupported_provider' },
+    { phase: 'ready', byProvider: { 'opencode-go': { phase: 'error', code: 'unsupported_provider' } } },
     DEFAULT_SETTINGS,
     'day',
     { count: 0, force: false },
@@ -864,8 +880,9 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const unsupportedCard = walk(unsupportedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const unsupportedText = flat(unsupportedCard);
   assert.ok(unsupportedText.includes('OpenCode Go'), 'unknown providers get a readable label: ' + unsupportedText);
-  assert.ok(unsupportedText.includes('7.5M'), 'unsupported provider card shows this session usage');
-  assert.ok(unsupportedText.includes('1234'), 'unsupported provider card shows the request count');
+  assert.ok(unsupportedText.includes('插件暂不支持'), 'unsupported provider row states plugin support, not a vendor claim');
+  assert.ok(!unsupportedText.includes('7.5M'), 'session tokens live in the statistics card, not repeated in the balance row');
+  assert.ok(flat(walk(unsupportedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0]).includes('7.5M'), 'the statistics card carries this source session usage');
   assert.equal(walk(unsupportedCard, (node) => hasClass(node, 'aup-retry')).length, 0, 'no dead retry for a provider without a balance API');
 
   // opencode reports plan usage percentages instead of a money balance.
@@ -884,16 +901,16 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   stateQueue.length = 0;
   const planCard = walk(planTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const planText = flat(planCard);
-  assert.ok(planText.includes('套餐剩余'), 'plan card leads with the remaining share');
-  assert.ok(planText.includes('65%'), 'remaining share is the complement of monthly usage: ' + planText);
-  assert.ok(planText.includes('5 小时') && planText.includes('本周'), 'other windows are listed');
+  // Plan format (user 2026-11-08): `5HW 63%  WEK 70%  MON 85%`, every figure is the share left.
+  assert.ok(planText.includes('5HW 99% WEK 88% MON 65%'), 'plan windows read 5HW / WEK / MON as the share left: ' + planText);
+  assert.ok(!/剩余|已用|left|used/.test(planText.replace('账户余额', '')), 'plan figures carry no left/used wording: ' + planText);
 
   // Mixed sessions split the platform statistics by source instead of one flat total.
   stateQueue.push(
     accountState,
     { phase: 'ready', ok: true, source: 'platform', days: [{ date: '2026-11-07', tokens: 1_000_000, cost: 1.5, count: 10 }], currency: 'CNY', dimension: 'day', refreshing: false },
     { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 }, { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2_500_000, requests: 250 }], totalTokens: 3_500_000 },
-    { phase: 'ready', items: [], error: 'unsupported_provider' },
+    { phase: 'ready', byProvider: { 'opencode-go': { phase: 'error', code: 'unsupported_provider' } } },
     DEFAULT_SETTINGS,
     'day',
     { count: 0, force: false },
@@ -942,7 +959,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const trendTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
   stateQueue.length = 0;
   assert.ok(walk(trendTree, (node) => hasClass(node, 'aup-src')).length === 1, 'one source row per session source');
-  assert.ok(walk(trendTree, (node) => hasClass(node, 'aup-src-fill')).length === 1, 'the source row shows a share bar');
+  assert.equal(walk(trendTree, (node) => /track|fill/.test(String(node.props && node.props.className))).length, 0, 'statistics rows carry numbers only, no share bar');
   assert.equal(walk(trendTree, (node) => hasClass(node, 'aup-series-row') && !hasClass(node, 'aup-skeleton-row')).length, 0, 'no per-period rows unless the list is enabled');
 
   const mixedAccount = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
@@ -967,9 +984,17 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const mixedWallet = walk(mixedWalletTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const mixedWalletText = flat(mixedWallet);
   assert.ok(mixedWalletText.includes('542.52'), 'DeepSeek wallet still renders in a mixed session');
-  const sourceTabs = walk(mixedWallet, (node) => hasClass(node, 'aup-src-tab')).map(flat);
-  assert.deepEqual(sourceTabs, ['DeepSeek API', 'OpenRouter'], 'one tab per source: ' + JSON.stringify(sourceTabs));
-  assert.equal(walk(mixedWallet, (node) => hasClass(node, 'aup-badge')).length, 0, 'no partial badge once tabs exist');
+  const balanceRows = walk(mixedWallet, (node) => hasClass(node, 'aup-acct-src')).map((node) => flat(walk(node, (n) => hasClass(n, 'aup-acct-src-label'))[0]));
+  assert.deepEqual(balanceRows, ['DeepSeek API', 'OpenRouter'], 'one aligned row per source: ' + JSON.stringify(balanceRows));
+  assert.ok(mixedWalletText.includes('$11.04') && !mixedWalletText.includes('$8.96') && !mixedWalletText.includes('已用'), 'the balance card shows what is left, never costs: ' + mixedWalletText);
+  // DeepSeek API format (user 2026-11-08): name left, `余额 542.52¥ 赠送 10.00¥` right.
+  const deepseekRow = walk(mixedWallet, (node) => hasClass(node, 'aup-acct-src'))[0];
+  assert.equal(flat(walk(deepseekRow, (node) => hasClass(node, 'aup-acct-src-value'))[0]), '余额 542.52¥ 赠送 10.00¥', 'DeepSeek reads Balance x Bonus y on the right: ' + flat(deepseekRow));
+  for (const row of walk(mixedWallet, (node) => hasClass(node, 'aup-acct-src'))) {
+    assert.equal(row.children.length, 2, 'every source row has exactly two cells');
+  }
+  assert.equal(walk(mixedWallet, (node) => node.props && node.props.role === 'tab').length, 0, 'no tabs to switch');
+  assert.equal(walk(mixedWallet, (node) => hasClass(node, 'aup-badge')).length, 0, 'no partial badge in the source table');
   // The account card opens on the provider the session is currently using.
   stateQueue.push(
     accountState,
@@ -988,9 +1013,10 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const autoTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
   stateQueue.length = 0;
   const autoCard = walk(autoTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
-  const activeTab = walk(autoCard, (node) => hasClass(node, 'aup-src-tab') && node.props['data-active'] === true).map(flat);
-  assert.deepEqual(activeTab, ['OpenCode Go'], 'the tab of the provider in use is preselected: ' + JSON.stringify(activeTab));
-  assert.ok(flat(autoCard).includes('套餐剩余'), 'preselected provider tab shows its balance');
+  // No decoration without information (user 2026-11-08): the old "current source" dot is gone.
+  assert.equal(walk(autoCard, (node) => node.props && (node.props['data-current'] !== undefined || node.props['aria-current'] !== undefined)).length, 0, 'no current-source dot');
+  assert.ok(!source.includes('data-current] .aup-acct-src-label::after'), 'the dot style is gone');
+  assert.ok(flat(autoCard).includes('5HW 99% WEK 98% MON 97%') && flat(autoCard).includes('542.52'), 'plan and wallet render side by side: ' + flat(autoCard));
 
   // Card titles stay clean: the provider name lives in the tab row, never next to the title.
   for (const node of walk(mixedWalletTree, (n) => n.type === 'section' && hasClass(n, 'aup-card'))) {
@@ -1003,7 +1029,12 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
     if (head === undefined) continue;
     assert.ok(!/OpenCode|OpenRouter|Anthropic|OpenAI|DeepSeek/.test(flat(head)), 'no provider name inside a card head: ' + flat(head));
   }
-  assert.equal(walk(mixedWallet, (node) => hasClass(node, 'aup-account-body')).length, 1, 'tab bodies share one fixed-height box');
+  assert.equal(walk(mixedWallet, (node) => hasClass(node, 'aup-account-body')).length, 1, 'one balance body');
+  assert.ok(source.includes('row && row.provider === source.id'), 'provider fallback only uses selected source totals');
+  assert.ok(!source.includes('const code = providerBalances.error'), 'errors are never shared between providers');
+  assert.ok(source.includes('data: { ...result, provider }'), 'requested source identity overrides provider aliases');
+  assert.ok(source.includes("'account.status.unsupported': 'Unsupported'"), 'the English unsupported status stays one short word');
+  assert.ok(source.includes('const busy = offAccountAll !== true && platformBusy'), 'canceled platform requests cannot lock provider refresh');
   assert.ok(!mixedWalletText.includes('部分'), 'no 部分 prefix anywhere');
 }
 

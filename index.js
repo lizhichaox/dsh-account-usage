@@ -482,36 +482,49 @@ function finiteNumber(value) {
 async function resolveProviderKey(ctx, spec, provider) {
   const credentials = typeof ctx.get === 'function' ? ctx.get('credentials') : undefined;
   if (credentials === undefined || credentials === null) return undefined;
-  try {
-    const envRef = spec.keyEnv || provider.toUpperCase().replaceAll('-', '_') + '_API_KEY';
-    if (typeof credentials.resolve === 'function') {
+  let failed = false;
+  const envRef = spec.keyEnv || provider.toUpperCase().replaceAll('-', '_') + '_API_KEY';
+  if (typeof credentials.resolve === 'function') {
+    try {
       const hit = await credentials.resolve(envRef);
       if (hit !== undefined && hit !== null && typeof hit.value === 'string' && hit.value.trim() !== '') return hit.value;
+    } catch {
+      failed = true;
     }
-    if (typeof credentials.readRecord === 'function') {
+  }
+  // The record store is an independent fallback, even when ref resolution throws.
+  if (typeof credentials.readRecord === 'function') {
+    try {
       const record = await credentials.readRecord('llm-pi-ai/' + provider);
       if (record !== undefined && record !== null && record.kind === 'api-key' && typeof record.key === 'string' && record.key.trim() !== '') return record.key;
+    } catch {
+      failed = true;
     }
-  } catch (error) {
-    return undefined;
   }
+  // Never describe an unreadable store as an unconfigured key, or expose its error.
+  if (failed) throw codedError('credential_failed', 'provider credential lookup failed');
   return undefined;
 }
 
 async function getJson(url, key, signal) {
-  let response;
+  let text;
   try {
-    response = await fetch(url, {
+    const response = await fetch(url, {
       headers: { authorization: 'Bearer ' + key, accept: 'application/json' },
       redirect: 'manual',
       signal
     });
+    if (response.status === 401 || response.status === 403) throw codedError('auth_failed', 'provider rejected the API key', response.status);
+    if (response.status !== 200) throw codedError('invalid_response', 'provider returned HTTP ' + String(response.status), response.status);
+    // Fetch resolves on headers; the same deadline must cover consuming the body.
+    text = await response.text();
   } catch (error) {
-    throw codedError(error && error.name === 'TimeoutError' ? 'timeout' : 'fetch_failed', 'provider balance request failed');
+    if (signal.aborted || (error && (error.name === 'TimeoutError' || error.name === 'AbortError'))) {
+      throw codedError('timeout', 'provider balance request timed out');
+    }
+    if (error && (error.code === 'auth_failed' || error.code === 'invalid_response')) throw error;
+    throw codedError('fetch_failed', 'provider balance request failed');
   }
-  if (response.status === 401 || response.status === 403) throw codedError('auth_failed', 'provider rejected the API key', response.status);
-  if (response.status !== 200) throw codedError('invalid_response', 'provider returned HTTP ' + String(response.status), response.status);
-  const text = await response.text();
   if (Buffer.byteLength(text, 'utf8') > 262144) throw codedError('invalid_response', 'provider response too large');
   try {
     return JSON.parse(text);
@@ -526,17 +539,21 @@ async function readOpenRouterBalance(key, signal) {
     const data = payload !== null && typeof payload === 'object' && payload.data !== null && typeof payload.data === 'object' ? payload.data : {};
     const total = finiteNumber(data.total_credits);
     const used = finiteNumber(data.total_usage);
-    if (total !== undefined) {
+    // Both amounts are required: unknown usage is not zero spending.
+    if (total !== undefined && used !== undefined) {
       return {
         provider: 'openrouter',
         kind: 'openrouter',
+        scope: 'account',
         currency: 'USD',
-        remaining: Math.max(0, total - (used === undefined ? 0 : used)),
-        ...used === undefined ? {} : { used },
+        remaining: Math.max(0, total - used),
+        used,
         total
       };
     }
   } catch (error) {
+    // A fallback cannot succeed after the shared request deadline has expired.
+    if (error && error.code === 'timeout') throw error;
     /* fall back to the per-key view below */
   }
   const payload = await getJson('https://openrouter.ai/api/v1/key', key, signal);
@@ -549,6 +566,7 @@ async function readOpenRouterBalance(key, signal) {
   return {
     provider: 'openrouter',
     kind: 'openrouter',
+    scope: 'key',
     currency: 'USD',
     ...remaining === undefined ? {} : { remaining },
     ...used === undefined ? {} : { used }
@@ -606,9 +624,9 @@ function createProviderBalanceReader(ctx) {
     if (spec === undefined) return { ok: false, code: 'unsupported_provider' };
     const hit = cache.get(provider);
     if (force !== true && hit !== undefined && Date.now() - hit.at < 60000) return hit.data;
-    const key = await resolveProviderKey(ctx, spec, provider);
-    if (key === undefined) return { ok: false, code: 'no_credential' };
     try {
+      const key = await resolveProviderKey(ctx, spec, provider);
+      if (key === undefined) return { ok: false, code: 'no_credential' };
       const signal = AbortSignal.timeout(TIMEOUT_MS);
       const data =
         spec.kind === 'openrouter'
@@ -616,7 +634,9 @@ function createProviderBalanceReader(ctx) {
           : spec.kind === 'opencode-plan'
             ? await readOpenCodePlan(key, signal)
             : await readDeepSeekKeyBalance(key, signal);
-      const result = { ok: true, data: { ...data, fetchedAt: Date.now() } };
+      // Endpoint readers share canonical shapes, but UI identity/cache keys must
+      // remain the requested provider (aliases may use different credentials).
+      const result = { ok: true, data: { ...data, provider, fetchedAt: Date.now() } };
       cache.set(provider, { at: Date.now(), data: result });
       return result;
     } catch (error) {

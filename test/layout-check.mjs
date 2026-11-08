@@ -15,10 +15,24 @@
  * Usage: node test/layout-check.mjs [--keep]
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync as createTemp, realpathSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { panelHtml } from './render-fixture.mjs';
+
+const ownedTempRoots = new Set();
+function mkdtempSync(prefix) {
+  const dir = createTemp(prefix);
+  ownedTempRoots.add(realpathSync(dir));
+  return dir;
+}
+process.on('exit', () => {
+  if (process.argv.includes('--keep') || process.argv.includes('--shot')) return;
+  for (const dir of ownedTempRoots) {
+    // Delete only canonical directories created and recorded by this invocation.
+    if (existsSync(dir) && realpathSync(dir) === dir && dir.startsWith(realpathSync(tmpdir()) + '/aup-')) rmSync(dir, { recursive: true });
+  }
+});
 
 const CHROME_CANDIDATES = [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -177,7 +191,7 @@ const cardsEl = document.querySelector('.aup-cards');
 const rectOf = (el) => el.getBoundingClientRect();
 const leaves = [];
 for (const el of document.querySelectorAll('.aup-cards *')) {
-  if (el.children.length > 0) continue;
+  if (el.children.length > 0 || getComputedStyle(el).visibility === 'hidden') continue;
   const text = (el.textContent || '').trim();
   if (text === '') continue;
   const rect = rectOf(el);
@@ -193,7 +207,7 @@ for (let i = 0; i < leaves.length; i += 1) {
   }
 }
 for (const card of document.querySelectorAll('.aup-card')) {
-  out.cards.push({ classes: card.className, height: Math.round(rectOf(card).height) });
+  out.cards.push({ classes: card.className, height: rectOf(card).height, top: rectOf(card).top, bottom: rectOf(card).bottom });
   if (card.scrollHeight > card.clientHeight + 1 || card.scrollWidth > card.clientWidth + 1) {
     out.cardOverflow.push(card.className + ' ' + card.scrollHeight + '>' + card.clientHeight + ' / ' + card.scrollWidth + '>' + card.clientWidth);
   }
@@ -210,13 +224,14 @@ const columnEdges = (groupSelector, probeSelector, edge) => {
   return [...edges].sort((a, b) => a - b);
 };
 out.align = {
-  srcTrackLeft: columnEdges('.aup-srcs', '.aup-src-track', 'left'),
+  srcLabelLeft: columnEdges('.aup-srcs', '.aup-src-label', 'left'),
   srcSideRight: columnEdges('.aup-srcs', '.aup-src-side', 'right'),
-  seriesTrackLeft: columnEdges('.aup-card-stats .aup-series', '.aup-series-track', 'left'),
-  seriesValueRight: columnEdges('.aup-card-stats .aup-series', '.aup-series-value', 'right')
+  seriesLabelLeft: columnEdges('.aup-card-stats .aup-series', '.aup-series-label', 'left'),
+  acctLabelLeft: columnEdges('.aup-acct-srcs', '.aup-acct-src-label, .aup-acct-label', 'left'),
+  acctValueRight: columnEdges('.aup-acct-srcs', '.aup-acct-src-value', 'right')
 };
-// One strict table: the provider rows and the period rows must share all four
-// columns, so every bar starts on one line and every figure ends on one.
+// One strict table: the provider rows and the period rows share all three columns,
+// so every label starts on one line and every figure ends on one.
 const edgesOf = (selector, edge) => {
   const edges = new Set();
   for (const el of document.querySelectorAll('.aup-card-stats ' + selector)) {
@@ -227,7 +242,7 @@ const edgesOf = (selector, edge) => {
   return [...edges].sort((a, b) => a - b);
 };
 out.table = {
-  barLeft: edgesOf('.aup-src-track, .aup-series-track', 'left'),
+  labelLeft: edgesOf('.aup-src-label, .aup-series-label', 'left'),
   tokensRight: edgesOf('.aup-src-tokens, .aup-series-tokens', 'right'),
   amountRight: edgesOf('.aup-src-side, .aup-series-cost', 'right')
 };
@@ -256,9 +271,9 @@ const centring = (groupSelector, probeSelector) => {
   return Math.round(worst * 10) / 10;
 };
 out.centring = {
-  srcBar: centring('.aup-srcs', '.aup-src-track'),
   srcLabel: centring('.aup-srcs', '.aup-src-label'),
-  seriesBar: centring('.aup-card-stats .aup-series', '.aup-series-track')
+  seriesTokens: centring('.aup-card-stats .aup-series', '.aup-series-tokens'),
+  acctValue: centring('.aup-acct-srcs', '.aup-acct-src-value')
 };
 const partHeights = {};
 for (const [name, selector] of Object.entries({ srcs: '.aup-srcs', series: '.aup-card-stats .aup-series', summary: '.aup-stats-summary' })) {
@@ -270,6 +285,7 @@ const summaryEl = document.querySelector('.aup-stats-summary');
 out.summaryCells = summaryEl === null ? [] : [...summaryEl.children].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
 out.sourceRows = [...document.querySelectorAll('.aup-card-stats .aup-src')].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
 out.seriesRows = [...document.querySelectorAll('.aup-card-stats .aup-series-row')].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
+out.acctRows = [...document.querySelectorAll('.aup-acct-src, .aup-acct-row')].map((el) => Math.round(el.getBoundingClientRect().height) + ':' + el.textContent.slice(0, 40));
 out.scrolls = cardsEl.scrollHeight > cardsEl.clientHeight + 1;
 out.scrollInfo = cardsEl.scrollHeight + '/' + cardsEl.clientHeight;
 const lastCard = document.querySelector('.aup-cards > .aup-card:last-child');
@@ -284,7 +300,8 @@ function page(css, height, testCase, extraCss = '', width = 420) {
     usageState: testCase.usageState,
     projection: testCase.projection,
     sessionModels: testCase.sessionModels,
-    providerBalances: testCase.providerBalances
+    providerBalances: testCase.providerBalances,
+    locale: testCase.locale
   });
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <style>${THEME}</style><style>${css}</style><style>${extraCss}</style></head>
@@ -302,12 +319,35 @@ function measure(css, dir, height, testCase, extraCss = '', width = 420) {
   return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
 }
 
+const EXTRA_SOURCES = [
+  { provider: 'openai', model: 'gpt', tokens: 1260000, requests: 13 },
+  { provider: 'anthropic', model: 'claude', tokens: 1890000, requests: 9 },
+  { provider: 'google', model: 'gemini', tokens: 420000, requests: 4 },
+  { provider: 'xai', model: 'grok', tokens: 120000, requests: 2 }
+];
+function sourcesCase(count, locale) {
+  const fixture = caseOf('day');
+  fixture.id = 'sources-' + count + '-' + locale;
+  fixture.locale = locale;
+  fixture.sessionModels = { ...SESSION_MODELS, lastProvider: 'openai', items: [...SESSION_MODELS.items, ...EXTRA_SOURCES.slice(0, count - 3)] };
+  fixture.providerBalances = { phase: 'ready', byProvider: {
+    'opencode-go': { phase: 'ready', data: PROVIDER_BALANCES.items[0] },
+    openrouter: { phase: 'error', code: 'timeout' },
+    openai: { phase: 'error', code: 'unsupported_provider' },
+    anthropic: { phase: 'error', code: 'unsupported_provider' },
+    google: { phase: 'error', code: 'unsupported_provider' },
+    xai: { phase: 'error', code: 'no_credential' }
+  } };
+  return fixture;
+}
 // `--shot <paneHeight> [dimension] [width]` writes one ready-to-look-at page so a
 // human (or an agent with an image viewer) can see the real rendering.
 if (process.argv.includes('--shot')) {
   const index = process.argv.indexOf('--shot');
   const shotHeight = Number(process.argv[index + 1]) || 1080;
-  const shotCase = caseOf(process.argv[index + 2] || 'day');
+  const shotArg = process.argv[index + 2] || 'day';
+  // `--shot 1000 sources-5-en 340` renders a mixed five-source English session.
+  const shotCase = shotArg.startsWith('sources-') ? sourcesCase(Number(shotArg.split('-')[1]), shotArg.split('-')[2] || 'zh') : caseOf(shotArg);
   const shotWidth = Number(process.argv[index + 3]) || 420;
   const file = join(tmpdir(), 'aup-shot-' + shotHeight + '-' + shotCase.id + '-' + shotWidth + '.html');
   writeFileSync(file, page(css, shotHeight, shotCase, '', shotWidth));
@@ -321,11 +361,13 @@ if (process.argv.includes('--tiers')) {
   // Exactly the production shedding order (see the @container ladder in client.js).
   const STEP = [
     ['− token bar', '.aup-compose'],
-    ['− model rows', '.aup-card-session .aup-models'],
-    ['− stat table', '.aup-card-session .aup-stat-list'],
-    ['− context block', '.aup-context'],
+    ['− model rows', '.aup-card-session .aup-models,.aup-card-session .aup-sep-models'],
+    ['− stat table', '.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats'],
+    ['− context block', '.aup-context,.aup-card-session .aup-sep-context'],
     ['− token 2×2', '.aup-card-session .aup-session-grid']
   ];
+  // `--tiers 5` measures a five-source mixed session (per-source ladder budget).
+  const tierSources = Number(process.argv[process.argv.indexOf('--tiers') + 1]) || 3;
   const TIERS = [['all', '']];
   for (let index = 0; index < STEP.length; index += 1) {
     const hidden = STEP.slice(0, index + 1).map(([, selector]) => selector + '{display:none}').join('');
@@ -337,7 +379,7 @@ if (process.argv.includes('--tiers')) {
     // Keep the pane tall so no ladder step fires, and stop the last card from
     // stretching, then add the card heights up: that is the natural content height.
     const extraCss = extra + '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}';
-    const measured = measure(css, tierDir, 1600, caseOf('day'), extraCss);
+    const measured = measure(css, tierDir, 1600, tierSources > 3 ? sourcesCase(tierSources, 'zh') : caseOf('day'), extraCss);
     if (measured === undefined) {
       console.log(label.padEnd(20) + 'no measurement');
       continue;
@@ -348,16 +390,49 @@ if (process.argv.includes('--tiers')) {
   process.exit(0);
 }
 
+// Mixed sessions list every source in the balance card (no tabs). More sources add
+// one statistics row and one balance row each; the per-count CSS budget must keep
+// every state free of overlap, overflow, scrolling and a bottom dead band.
+if (process.argv.includes('--debug-sources')) {
+  for (const [loc, w, n] of [['en', 340, 5], ['zh', 340, 5]]) { const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-debug-')), 1600, sourcesCase(n, loc), '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', w); console.log(loc, w, n, r.cards.map((c) => c.height).join('/'), JSON.stringify(r.acctRows), JSON.stringify(r.sourceRows)); }
+  process.exit(0);
+}
+const providerFailures = [];
+let providerChecks = 0;
+const providerDir = mkdtempSync(join(tmpdir(), 'aup-provider-rows-'));
+for (const locale of ['zh', 'en']) for (const width of [340, 420]) for (const height of [700, 900, 1080]) {
+  // Seven sources need at least 755px even with every optional block shed
+  // (474px base + 16px + 4 × 52px + 57px chrome), so 700px is checked up to five.
+  for (const count of height < 755 ? [3, 4, 5] : [3, 4, 5, 7]) {
+    const result = measure(css, providerDir, height, sourcesCase(count, locale), '', width);
+    const label = `${locale} ${width}×${height} ${count} sources`;
+    if (!result || result.cards.length !== 3) { providerFailures.push(label + ': missing cards'); continue; }
+    if (result.overlaps.length || result.cardOverflow.length || result.horizontal.length || result.scrolls || result.deadBand > 2) {
+      providerFailures.push(label + ': geometry invalid ' + JSON.stringify({ overlaps: result.overlaps, cardOverflow: result.cardOverflow, horizontal: result.horizontal, scroll: result.scrollInfo, deadBand: result.deadBand }));
+    }
+    for (const name of ['acctLabelLeft', 'acctValueRight']) {
+      if ((result.align?.[name] ?? []).length > 1) providerFailures.push(`${label}: ${name} not aligned -> ${result.align[name].join(' / ')}`);
+    }
+    if ((result.centring?.acctValue ?? 0) > 1) providerFailures.push(`${label}: balance values not centred`);
+    providerChecks++;
+  }
+}
+console.log(`provider rows: ${providerChecks} states; zh/en, 340/420 wide, 700/900/1080 high, 3/4/5 sources (7 from 900)`);
+if (process.argv.includes('--providers')) {
+  if (providerFailures.length) { console.error(providerFailures.join('\n')); process.exit(1); }
+  console.log('provider row geometry passed'); process.exit(0);
+}
 const SWEEPS = [
-  // 895/896 straddle the first shedding step (hide the token bar at <= 895).
-  { width: 420, heights: [700, 810, 890, 895, 896, 1000, 1080, 1200] },
+  // 850/851 straddle the first shedding step (hide the token bar at <= 850);
+  // 838/771/680 sit on the later steps.
+  { width: 420, heights: [700, 771, 838, 850, 851, 1000, 1080, 1200] },
   // The documented minimum pane: six range tabs and both tables must still fit.
   { width: 340, heights: [900, 1080] }
 ];
 const CASES = [caseOf('day'), caseOf('month'), caseOf('all')];
 
 const dir = mkdtempSync(join(tmpdir(), 'aup-layout-'));
-const failures = [];
+const failures = [...providerFailures];
 const rows = [];
 for (const sweep of SWEEPS) {
   for (const height of sweep.heights) {
