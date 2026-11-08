@@ -371,6 +371,10 @@ window.__ModuleLoader__.load({
       '.aup-acct-src-amount{color:var(--dsw-alias-label-primary);font-weight:600}',
       '.aup-acct-src-amount.aup-minor{font-weight:500}',
       '.aup-acct-src-amount.aup-muted{color:var(--aup-label-2);font-weight:500}',
+      // The source the session is using right now gets a quiet tint: no dot, no pill,
+      // no layout change (a background cannot shift the shared column edges).
+      '.aup-acct-src[data-current]{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 10%,transparent);border-radius:6px}',
+      '.aup-acct-src[data-current] .aup-acct-src-label{font-weight:600}',
       '.aup-acct-pairs{display:inline-flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 8px}',
       '.aup-acct-pair{display:inline-flex;align-items:baseline;gap:3px;white-space:nowrap}',
       '.aup-acct-pair-label{color:var(--aup-label-2);font-weight:500}',
@@ -1628,7 +1632,7 @@ window.__ModuleLoader__.load({
      * (name | remaining | note) so nothing is hidden behind tabs,
      * nothing wraps into a second tab row and no pane reserves blank space.
      */
-    function AccountSection({ state, t, providerBalances, sources, locale: uiLocale }) {
+    function AccountSection({ state, t, providerBalances, sources, currentSource, locale: uiLocale }) {
       const result = state.result;
       const accountLocale = result === undefined ? undefined : result.locale;
       const locale = uiLocale === undefined ? accountLocale : uiLocale;
@@ -1750,9 +1754,17 @@ window.__ModuleLoader__.load({
         h('div', { className: 'aup-acct-srcs', role: 'list', 'aria-label': t('account.title') },
           list.map((source) => {
             const summary = source.isAccount === true ? accountSummary() : providerSummary(source);
+            // Which row belongs to the provider this session is using right now
+            // (user 2026-11-08). Unknown or stale providers simply highlight nothing.
+            const current =
+              typeof currentSource === 'string' &&
+              currentSource !== '' &&
+              (source.isAccount === true ? currentSource === 'account' : currentSource === source.id);
             return h('div', {
               key: source.id, className: 'aup-acct-src', role: 'listitem',
-              'aria-busy': summary.busy === true ? true : undefined
+              'aria-busy': summary.busy === true ? true : undefined,
+              'data-current': current ? true : undefined,
+              'aria-current': current ? 'true' : undefined
             },
               h('span', { className: 'aup-acct-src-label' }, sourceLabel(source, t)),
               // Name left, figures right: every row ends on the card edge, and the
@@ -2265,6 +2277,11 @@ window.__ModuleLoader__.load({
           .map((provider) => ({ id: 'account', isAccount: true, provider })),
         ...offAccountProviders.map((provider) => ({ id: provider, isAccount: false, provider }))
       ];
+      // The provider of the newest assistant message is the account in use; the
+      // account card highlights its row instead of adding a status dot.
+      const lastProvider = typeof sessionModels.lastProvider === 'string' ? sessionModels.lastProvider : '';
+      const currentSource =
+        lastProvider === '' ? undefined : isAccountProvider(lastProvider) ? 'account' : lastProvider;
       const providerSessionUsage = offAccountProviders.map((provider) => {
         const items = (sessionModels.items || []).filter((item) => item !== null && item !== undefined && item.provider === provider);
         return {
@@ -2749,6 +2766,7 @@ window.__ModuleLoader__.load({
               t,
               providerBalances,
               sources: accountSources,
+              currentSource,
               locale: displayLocale
             })
           : null,

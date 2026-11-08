@@ -58,6 +58,19 @@ const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'ut
 
 // ------------------------------------------------------------- client boot --
 const source = fs.readFileSync(path.join(root, 'client.js'), 'utf8');
+const iconSvg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
+{
+  // The listed icon has to convey usage (user 2026-11-08): three rising bars on the
+  // app tile, no wallet silhouette left over from the balance-only design.
+  const bars = [...iconSvg.matchAll(/<rect x="([\d.]+)" y="([\d.]+)" width="3" height="([\d.]+)"/g)]
+    .map(([, x, y, h]) => ({ x: Number(x), y: Number(y), h: Number(h) }));
+  assert.equal(bars.length, 3, 'the icon draws three usage bars');
+  assert.ok(bars[0].x < bars[1].x && bars[1].x < bars[2].x, 'the bars march left to right');
+  assert.ok(bars[0].h < bars[1].h && bars[1].h < bars[2].h, 'the bars rise like a usage trend');
+  assert.ok(iconSvg.includes('aria-label="Account usage"'), 'the icon keeps an accessible name');
+  assert.ok(!/wallet|["']aup-wallet/i.test(iconSvg), 'the wallet artwork is gone');
+  assert.ok(!/#93c5fd/i.test(iconSvg), 'no leftover wallet flap colour');
+}
 {
   // One family + one size per text category: every declaration goes through the tokens.
   const rawSizes = source.match(/font-size:[0-9.]+px/g) || [];
@@ -1013,9 +1026,15 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const autoTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
   stateQueue.length = 0;
   const autoCard = walk(autoTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
-  // No decoration without information (user 2026-11-08): the old "current source" dot is gone.
-  assert.equal(walk(autoCard, (node) => node.props && (node.props['data-current'] !== undefined || node.props['aria-current'] !== undefined)).length, 0, 'no current-source dot');
-  assert.ok(!source.includes('data-current] .aup-acct-src-label::after'), 'the dot style is gone');
+  // The account in use gets a quiet highlight (user 2026-11-08): exactly one row,
+  // matched by the newest assistant message's provider, drawn as a background tint
+  // so no column edge moves; the old decorative dot stays gone.
+  const currentRows = walk(autoCard, (node) => hasClass(node, 'aup-acct-src') && node.props['data-current'] === true);
+  assert.equal(currentRows.length, 1, 'exactly one account row is highlighted');
+  assert.equal(flat(walk(currentRows[0], (node) => hasClass(node, 'aup-acct-src-label'))[0]), 'OpenCode Go', 'the row in use is the highlighted one');
+  assert.equal(currentRows[0].props['aria-current'], 'true', 'the highlight is exposed to assistive tech');
+  assert.ok(source.includes('.aup-acct-src[data-current]{background:color-mix('), 'the highlight is a background tint, not a pill');
+  assert.ok(!source.includes('data-current] .aup-acct-src-label::after'), 'no dot decoration');
   assert.ok(flat(autoCard).includes('5HW 99% WEK 98% MON 97%') && flat(autoCard).includes('542.52'), 'plan and wallet render side by side: ' + flat(autoCard));
 
   // Card titles stay clean: the provider name lives in the tab row, never next to the title.

@@ -329,7 +329,7 @@ function sourcesCase(count, locale) {
   const fixture = caseOf('day');
   fixture.id = 'sources-' + count + '-' + locale;
   fixture.locale = locale;
-  fixture.sessionModels = { ...SESSION_MODELS, lastProvider: 'openai', items: [...SESSION_MODELS.items, ...EXTRA_SOURCES.slice(0, count - 3)] };
+  fixture.sessionModels = { ...SESSION_MODELS, lastProvider: 'opencode-go', items: [...SESSION_MODELS.items, ...EXTRA_SOURCES.slice(0, count - 3)] };
   fixture.providerBalances = { phase: 'ready', byProvider: {
     'opencode-go': { phase: 'ready', data: PROVIDER_BALANCES.items[0] },
     openrouter: { phase: 'error', code: 'timeout' },

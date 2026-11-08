@@ -37,7 +37,10 @@ for (const locale of ['zh', 'en']) {
     assert.deepEqual(Object.keys(rows), ['DeepSeek API', 'OpenCode Go', 'OpenAI', 'OpenRouter']);
     for (const row of Object.values(rows)) assert.equal(row.children.length, 2, 'two cells per row');
     assert.equal(nodes(tree, n => n.props?.role === 'tab').length, 0, 'no tabs');
-    assert.equal(Object.values(rows).filter(row => row.props['data-current'] !== undefined || row.props['aria-current'] !== undefined).length, 0, 'no current-source dot');
+    const highlighted = Object.values(rows).filter(row => row.props['data-current'] === true);
+    assert.equal(highlighted.length, 1, 'exactly one account row is highlighted');
+    assert.equal(txt(highlighted[0]), locale === 'en' ? 'OpenAI Unsupported' : 'OpenAI 插件暂不支持', 'the session provider row is the highlighted one');
+    assert.equal(highlighted[0].props['aria-current'], 'true', 'the highlight is exposed to assistive tech');
     assert.equal(txt(rows['OpenCode Go']), 'OpenCode Go 5HW 96% WEK 84% MON 92%', 'plan windows show the share left in fixed order');
     assert.equal(txt(rows.OpenAI), locale === 'en' ? 'OpenAI Unsupported' : 'OpenAI 插件暂不支持');
     assert.match(txt(rows['DeepSeek API']), locale === 'en' ? /^DeepSeek API Balance \S+¥ Bonus \S+¥$/ : /^DeepSeek API 余额 \S+¥ 赠送 \S+¥$/, 'DeepSeek reads Balance x Bonus y');
@@ -46,6 +49,34 @@ for (const locale of ['zh', 'en']) {
     assert.equal(nodes(tree, n => n.props?.className === 'aup-retry').length, 0);
   }
 }
+// The highlighted row follows the newest assistant message (user 2026-11-08); an
+// unknown provider highlights nothing, and a single-account session has no row list.
+{
+  const mixed = { phase: 'ready', lastProvider: 'opencode-go', items: [
+    { provider: 'deepseek-account', model: 'chat', tokens: 1, requests: 1 },
+    { provider: 'opencode-go', model: 'flash', tokens: 2, requests: 2 },
+    { provider: 'openrouter', model: 'x', tokens: 0, requests: 1 }
+  ] };
+  const balances = { phase: 'ready', byProvider: {
+    'opencode-go': { phase: 'ready', data: plan },
+    openrouter: { phase: 'error', code: 'no_credential' }
+  } };
+  let rows = rowsOf(accountCard({ sessionModels: mixed, providerBalances: balances }));
+  assert.equal(rows['OpenCode Go'].props['data-current'], true, 'the provider in use is highlighted');
+  assert.equal(rows['DeepSeek API'].props['data-current'], undefined, 'other rows stay plain');
+  assert.equal(rows.OpenRouter.props['data-current'], undefined, 'other rows stay plain');
+
+  rows = rowsOf(accountCard({ sessionModels: { ...mixed, lastProvider: 'deepseek-account' }, providerBalances: balances }));
+  assert.equal(rows['DeepSeek API'].props['data-current'], true, 'the DeepSeek account row is highlighted for account sessions');
+  assert.equal(rows['OpenCode Go'].props['data-current'], undefined);
+
+  rows = rowsOf(accountCard({ sessionModels: { ...mixed, lastProvider: 'anthropic' }, providerBalances: balances }));
+  assert.equal(Object.values(rows).filter(row => row.props['data-current'] !== undefined).length, 0, 'an unknown or stale provider highlights nothing');
+
+  const single = accountCard({ sessionModels: { phase: 'ready', lastProvider: 'deepseek-account', items: [{ provider: 'deepseek-account', tokens: 1 }] } });
+  assert.equal(nodes(single, n => n.props?.['data-current'] !== undefined).length, 0, 'a single-account session has no row highlight');
+}
+
 for (const code of ['loading','no_credential','auth_failed','credential_failed','timeout','invalid_response','fetch_failed','unsupported_provider']) {
   const calls = [];
   const tree = accountCard({ sessionModels: models, onRetry: id => calls.push(id), providerBalances: {

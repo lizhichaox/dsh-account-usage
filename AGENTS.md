@@ -3,7 +3,7 @@
 > 这是用户对本插件的**长期要求清单**。接手前先读本文件，不要重复询问已经写在这里的偏好；
 > 用户不想反复重申。若实现与本文件冲突，以用户当次明确指示为准，并在完成后回写本文件。
 
-最后更新：2026-11-08 · 插件版本：`1.0.5`
+最后更新：2026-11-08 · 插件版本：`1.0.6`
 
 - 插件目录：`/Users/lizhichao/vc/macos/dsh/dsh-preset/account-usage-panel`
 - GitHub：<https://github.com/lizhichaox/dsh-account-usage>
@@ -71,6 +71,8 @@
 | 35 | **余额卡只写剩余，不写 costs**（2026-11-08） | 只显示 Balance / Bonus / Key / 套餐剩余；`Used`、本月花费一律不出现；花费在用量统计卡 | `the balance card shows what is left, never costs` / `no spend (Used) in the balance card` |
 | 36 | **额度显示规范** | 套餐：`5HW 63%  WEK 70%  MON 85%`（全是剩余，不写 left）；DeepSeek：`Balance 199.54¥  Bonus 0.00¥`（中文 `余额 / 赠送`） | `plan windows read 5HW / WEK / MON as the share left` / `DeepSeek reads Balance x Bonus y on the right` |
 | 37 | **不需要 Retry 按钮，获取不到就算了**（2026-11-08） | 所有卡片失败只显示状态，不显示重试按钮、不添加失败后自动重试；保留既有顶部刷新及定时刷新 | `failed reads never render Retry buttons` / provider-client 全部错误态无按钮、顶部刷新和旧响应回归 |
+| 38 | **上架图标要体现 usage**（2026-11-08：「一点也没体现出来 usage 的概念」） | `icon.svg` = 蓝色圆角块 + 三条递增白色柱状条；设置里的已安装列表与市场 Discover 共用这份图 | `the icon draws three usage bars` / `the wallet artwork is gone` |
+| 39 | **当前会话在用的 Account 要凸显**（2026-11-08） | 最新 assistant 消息的 provider 对应的那一行：整行淡品牌色背景 + 名称加粗；无圆点、无胶囊、不改变列宽与左右边缘；`aria-current` 暴露给读屏 | `exactly one account row is highlighted` / `the row in use is the highlighted one` / `the highlight is exposed to assistive tech` / `the highlight is a background tint, not a pill` |
 
 ## 1. 产品定位
 
@@ -102,6 +104,10 @@
   只有平台登录态或接口失败时才回退本地估算，且金额必须带 `≈` 并说明原因。
 - 界面统一用语 **「DeepSeek API」**（替代「DeepSeek 账号 / DeepSeek 平台」）；API Key 路线叫「DeepSeek API Key」。
 - 不显示账号身份信息（头像、姓名、手机号、邮箱、内部 ID 一律不要）。
+- **插件图标表达「用量」**（2026-11-08 用户：「一点也没体现出来 usage 的概念」）：
+  蓝色圆角应用块 + **三条递增的白色柱状条**，一眼读成 usage / statistics；
+  **不要**再用钱包、时钟、问号这类「余额」隐喻。24px 设计，缩到 16px 仍要能分辨。
+  这份 `icon.svg` 同时用于设置里的「已安装插件」列表和市场 `market/index.json` 的 data URI，两处不能各画一套。
 - 不放置「查看用量 / 充值」等跳转链接。
 
 ## 2. 卡片与布局
@@ -300,6 +306,12 @@
   **不加任何装饰**（曾给当前来源加小圆点，用户：「没有用就删掉，别浪费注意力」）；没有任何切换，因此不存在「点 tab 改变高度」的问题；
   第三方余额与 DeepSeek 钱包一样实时读取（opencode 走套餐百分比）；
   用量统计卡统一为**一张三列表**：`描述 | 用量 | 金额`（见 §2），卡标题不挂任何徽标
+- **当前会话正在使用的来源要凸显**（用户 2026-11-08：「给当前会话正在使用的 Account 加个凸显样式」）：
+  判定 = 会话日志里**最新一条 assistant 消息的 `source.provider`**（`deepseek-account` 映射到 DeepSeek API 那一行），
+  对应行加整行淡品牌色背景（`color-mix(in srgb, brand-primary 10%, transparent)`）+ 名称字重 600，
+  `aria-current="true"` 暴露给读屏。
+  **禁止**为此加圆点 / 胶囊 / 徽标，**禁止**改内边距或列宽——背景不会移动左右边缘，`verify:ui` 的
+  `acctLabelLeft` / `acctValueRight` 唯一性断言必须继续通过；单账号会话（只有 DeepSeek 钱包、没有行列表）不加强调。
 - 设置里的「用量明细列表」打开后，在来源行下方追加逐期 `Token · 金额` 明细（悬浮可看完整日期/Token/金额）
 - 明细列表**高度恒定由固定槽位保证**：`SERIES_ROW_SLOTS = 4`，不足的槽位用不可见占位行（`min-height:21px`）补齐，
   切维度（日↔季↔年）时列表高度不变、下方卡片与 tab 行不闪动；行高只设 `min-height` 不设死高度，
@@ -398,10 +410,13 @@
 
 - **账户卡来源行**（§7、§7.1）：取代「来源 tab + 共享网格等高 pane」（tab 换行、短 pane 留白，被用户点名不美观）。独立原始身份与状态保留。
 - **获取不到就算了，不提供 Retry 按钮**：取代「余额失败时定向重试」，并移除统计卡错误态的重试按钮；只保留既有顶部刷新及定时刷新，不新增失败重试循环。
+- **图标从钱包换成用量柱状图**（1.0.6）：取代「钱包 + 时钟」图标，已安装列表与市场索引共用 `icon.svg`。
+- **当前 Account 用整行背景凸显**（1.0.6）：取代「当前来源小圆点」（当时被判为无信息量而删除）；
+  现在这条信息有意义，但只用**背景 + 字重**表达，不加任何新元素、不产生布局位移。
 - **余额卡只写剩余**：取代「OpenRouter 显示已用」「OpenAI/Anthropic 显示本月花费 + 需管理员密钥」；也取代「当前来源小圆点」。
 - **只有会话卡保留进度条**：取代「用量统计四列表含胶囊条」「账户卡胶囊条」。
 - 793px/851px 是三来源、420px 宽夹具基准，多来源追加 `16 + (n-3)×52`，英文窄栏的长状态会换行增高（因此英文状态都用短词）。
-- 本轮 1.0.5 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
+- 本轮 1.0.6 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
 
 - 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
 - **卡片**不使用 `container-type: size`（内容高度会塌陷成 0）；但**面板根节点必须用**
