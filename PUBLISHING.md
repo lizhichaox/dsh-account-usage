@@ -15,7 +15,7 @@ Harness 的「插件市场」（Discover）不是中心化商店，而是**索�
 | 包名 / 版本 | `dsh-account-usage` / **1.0.8** |
 | 兼容性 | `engines.dsh: ^0.2.2-rc.1`（与当前 runtime 匹配） |
 | npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.8`，2026-11-08 11:08:29Z，本地 19:08） |
-| 校验 | `npm run verify` + `npm run verify:ui` 全绿；npm 包 15 个文件 / 62.4 kB（shasum `70ad1a5d`，与本地 `npm pack` 逐字节一致）；CI `verify` 全绿（含 macOS 真机几何任务）；Pages 索引已切到 1.0.8（20 字以内介绍语），并用官方 `parseMarketIndex` 复核通过（本地 + 线上） |
+| 校验 | `npm run verify` + `npm run verify:ui` 全绿；npm 包 15 个文件 / 62.6 kB（shasum `70ad1a5d`，与本地 `npm pack` 逐字节一致）；CI `verify` 全绿（含 macOS 真机几何任务）；Pages 索引已切到 1.0.8（20 字以内介绍语），并用官方 `parseMarketIndex` 复核通过（本地 + 线上） |
 
 安装侧使用：
 
