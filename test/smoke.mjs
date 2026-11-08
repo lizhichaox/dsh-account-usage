@@ -134,6 +134,10 @@ assert.ok(source.includes('grid-template-columns:minmax(7ch,max-content) minmax(
 // column is sized per row, so bars start at different x positions and the right
 // edge does not line up either (user report: 左侧没对齐).
 assert.ok(source.includes('.aup-srcs{flex:none;display:grid;grid-template-columns:max-content minmax(0,1fr) auto auto;align-items:center;gap:8px}'), 'the source rows share one grid');
+// Inside a shared grid the row itself must still centre its cells: without
+// align-items the bar track sticks to the top and the row reads as misaligned.
+assert.ok(source.includes('grid-template-columns:subgrid;grid-column:1/-1;align-items:center'), 'subgrid rows centre their cells vertically');
+assert.ok(source.includes('.aup-series-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center'), 'period rows centre their cells vertically');
 assert.ok(source.includes('display:grid;grid-template-columns:subgrid'), 'rows take their columns from the shared grid');
 assert.ok(source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:grid;grid-template-columns:minmax(7ch,max-content) minmax(0,1fr) minmax(52px,max-content);align-content:start;gap:2px 8px}'), 'the period rows share one grid');
 assert.ok(source.includes('const skeletonCount = DIMENSION_ROW_CAP[dimension]'), 'the loading frame matches the target row count');

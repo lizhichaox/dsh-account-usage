@@ -242,6 +242,25 @@ out.align = {
   seriesTrackLeft: columnEdges('.aup-card-stats .aup-series', '.aup-series-track', 'left'),
   seriesValueRight: columnEdges('.aup-card-stats .aup-series', '.aup-series-value', 'right')
 };
+// Vertical centring: the bar track must sit on the row's own centre line, not at
+// its top (a subgrid row that lost align-items:center top-aligns everything).
+const centring = (groupSelector, probeSelector) => {
+  let worst = 0;
+  for (const row of document.querySelectorAll(groupSelector + ' > *')) {
+    const probe = row.querySelector(probeSelector);
+    if (probe === null) continue;
+    const rowRect = row.getBoundingClientRect();
+    const probeRect = probe.getBoundingClientRect();
+    if (rowRect.height < 1) continue;
+    worst = Math.max(worst, Math.abs((probeRect.top + probeRect.bottom) / 2 - (rowRect.top + rowRect.bottom) / 2));
+  }
+  return Math.round(worst * 10) / 10;
+};
+out.centring = {
+  srcBar: centring('.aup-srcs', '.aup-src-track'),
+  srcLabel: centring('.aup-srcs', '.aup-src-label'),
+  seriesBar: centring('.aup-card-stats .aup-series', '.aup-series-track')
+};
 out.scrolls = cardsEl.scrollHeight > cardsEl.clientHeight + 1;
 out.scrollInfo = cardsEl.scrollHeight + '/' + cardsEl.clientHeight;
 const lastCard = document.querySelector('.aup-cards > .aup-card:last-child');
@@ -324,6 +343,9 @@ for (const height of HEIGHTS) {
     if (result.scrolls) failures.push(`${height}px rows=${rowsCount}: the card column scrolls (${result.scrollInfo}) - the panel must never scroll`);
     for (const [name, edges] of Object.entries(result.align ?? {})) {
       if (edges.length > 1) failures.push(`${height}px rows=${rowsCount}: ${name} is not aligned across rows -> ${edges.join(' / ')}`);
+    }
+    for (const [name, offset] of Object.entries(result.centring ?? {})) {
+      if (offset > 1) failures.push(`${height}px rows=${rowsCount}: ${name} is not vertically centred -> off by ${offset}px`);
     }
   }
 }

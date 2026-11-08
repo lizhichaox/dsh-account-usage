@@ -354,7 +354,7 @@ window.__ModuleLoader__.load({
       '.aup-card-stats{justify-content:flex-start}',
       '.aup-stats-body{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:10px}',
       '.aup-srcs{flex:none;display:grid;grid-template-columns:max-content minmax(0,1fr) auto auto;align-items:center;gap:8px}',
-      '.aup-src{display:grid;grid-template-columns:subgrid;grid-column:1/-1;min-width:0;font-size:var(--aup-fs-text);line-height:18px;font-variant-numeric:tabular-nums}',
+      '.aup-src{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-width:0;font-size:var(--aup-fs-text);line-height:18px;font-variant-numeric:tabular-nums}',
       '.aup-src-label{min-width:0;color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
       '.aup-src-tokens{color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
       '.aup-src-side{color:var(--aup-label-2);white-space:nowrap;min-width:44px;text-align:right}',

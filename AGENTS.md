@@ -56,7 +56,7 @@
 | 20 | **切维度不许抖动** | 固定槽位 `SERIES_ROW_SLOTS=4` + 固定行距 + 骨架行数对齐 + 全维度预热 | `the list keeps a constant slot count` / `spare slots pad the list in quarter/year` / `period rows keep a fixed pitch across dimensions` / `the loading frame matches the target row count` / `every dimension is warmed widest-first` |
 | 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 实测媒体查询阶梯按窗口高度减内容 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
 | 22 | **不允许滚动、不允许出现滚动条** | 实测阶梯（989/959/929/889/789/739）+ 阶梯写在样式表末尾带 `!important` + `scrollbar-width:none` | `short windows shed the decorative token bar via CSS only` / `the measured shedding ladder contains: …` / `the ladder is declared after the base rules it overrides` / `the card column never shows a scrollbar` / `no visible scrollbar either` |
-| 23 | **同一组行左右必须对齐** | 父级网格 + 行 `grid-template-columns:subgrid` | `the source rows share one grid` / `rows take their columns from the shared grid` / `the period rows share one grid` / layout-check 的 `srcTrackLeft` 等断言 |
+| 23 | **同一组行左右对齐 + 行内垂直居中** | 父级网格 + 行 `grid-template-columns:subgrid` + 行 `align-items:center` | `the source rows share one grid` / `rows take their columns from the shared grid` / `the period rows share one grid` / `subgrid rows centre their cells vertically` / layout-check 的 `srcTrackLeft`、`srcBar`（居中）断言 |
 
 ## 1. 产品定位
 
@@ -130,6 +130,8 @@
   每行用 `display:grid;grid-template-columns:subgrid;grid-column:1/-1` 继承父级列宽。
   **禁止每行各写一套 `grid-template-columns`**：那样标签列按行取 `max-content`，
   进度条起点和右侧数值都会随行漂移（实测差 13px）。
+  另外**行内单元格必须垂直居中**：subgrid 行要显式写 `align-items:center`，
+  漏掉就会退化成 stretch/顶对齐，进度条会比文字高出一截（实测偏 7px，用户报「没居中对齐」）。
 - 所有可用空间应尽量被有意义的内容覆盖；不要出现卡片内部的大块空白。
 
 ## 3. 文本与排版（重点，多次强调）
