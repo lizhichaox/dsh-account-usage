@@ -48,6 +48,16 @@ git tag -a v1.0.3 -m "dsh-account-usage v1.0.3" && git push --tags
 > 每次更新都必须重新生成 `market/index.json`；市场按 **精确版本** 安装。
 > 纯 Git 分发也可以用 `npm run market:index`（commit pin），但当前索引走 npm。
 
+## 连续发版（同一天多次）的约定
+
+2026-11-08 用户说明：当天会**持续更新**，npm token 先不吊销，更新全部结束后再处理。因此：
+
+- 每轮发版只做：`npm version patch` → `npm run verify && npm run verify:ui` → `npm publish`
+  → `npm run market:index:npm` → commit/push → `git tag`/push → 等 Pages → 官方 `parseMarketIndex` 复核
+- token 用临时 npmrc（`/tmp`，chmod 600，从会话记录取），**发布后立刻删除临时文件**，不在仓库或长期配置里落盘
+- 不要每轮都提醒吊销；用户说「更新完了」时提醒一次
+- 版本号逐次 patch（1.0.4、1.0.5…），索引每次都要重新生成，确保市场按精确版本安装
+
 ## npm 发布（可选，后续推荐）
 
 开通 npm 分发只需要一次登录：
