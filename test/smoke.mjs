@@ -107,7 +107,21 @@ assert.ok(source.includes('Math.max(0, SERIES_ROW_SLOTS - periodRows.length)'), 
 assert.ok(source.includes('.aup-series-slot{min-height:21px;pointer-events:none}'), 'the padding rows stay invisible');
 assert.ok(!source.includes('rowBudget') && !source.includes('ROW_PITCH_PX'), 'no measured row budget remains');
 assert.ok(!source.includes('data-aup-compact'), 'no height-driven compact attribute remains');
-assert.ok(source.includes('@media (max-height:900px){.aup-compose{display:none}}'), 'short windows shed the decorative token bar via CSS only');
+assert.ok(source.includes('@media (max-height:989px){.aup-compose{display:none!important}}'), 'short windows shed the decorative token bar via CSS only');
+// The panel must never scroll: the ladder has to outrank the base declarations it
+// overrides (a media query adds no specificity), and every scrollbar is removed.
+for (const rule of [
+  '@media (max-height:959px){.aup-context-breakdown{display:none!important}}',
+  '@media (max-height:929px){.aup-card-session .aup-models{display:none!important}}',
+  '@media (max-height:889px){.aup-card-session .aup-stat-list{display:none!important}}',
+  '@media (max-height:789px){.aup-context{display:none!important}}',
+  '@media (max-height:739px){.aup-card-session .aup-session-grid{display:none!important}}'
+]) {
+  assert.ok(source.includes(rule), 'the measured shedding ladder contains: ' + rule);
+}
+assert.ok(source.indexOf('@media (max-height:989px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
+assert.ok(source.includes('scrollbar-width:none'), 'the card column never shows a scrollbar');
+assert.ok(source.includes('.aup-cards::-webkit-scrollbar{width:0;height:0;display:none}'), 'no webkit scrollbar either');
 assert.ok(!source.includes('@container aup-card'), 'no dead container queries remain');
 assert.ok(!/\.aup-stats-summary\{[^}]*position:/.test(source), 'the summary is in normal flow, never positioned over the rows');
 assert.ok(!/\.aup-card\{[^}]*overflow:hidden/.test(source), 'cards never clip their content');

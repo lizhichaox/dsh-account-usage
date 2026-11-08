@@ -174,16 +174,16 @@ function accountCard() {
   </section>`;
 }
 
-function page(css, height, options) {
+function page(css, height, options, extraCss = '') {
   const cards = [sessionCard(), statsCard(options.sources, options.rows), accountCard()].join('');
   return `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<style>${THEME}</style><style>${css}</style></head>
-<body><div id="pane" style="height:${height}px"><div class="aup-root" style="height:${height}px">${
+<style>${THEME}</style><style>${css}</style><style>${extraCss}</style></head>
+<body><div id="pane" style="height:100vh"><div class="aup-root" style="height:100%">${
     '<div class="aup-head"><div class="aup-head-actions"><button type="button" class="aup-icon-button">⚙</button></div><span class="aup-head-greeting">Good morning</span><div class="aup-head-actions"><button type="button" class="aup-icon-button">⟳</button></div></div>'
   }<div class="aup-cards">${cards}</div></div></div>
 <pre id="result">pending</pre>
 <script>
-const out = { height: ${height}, overlaps: [], cardOverflow: [], horizontal: [], scrolls: false, deadBand: 0, cards: [] };
+const out = { height: ${height}, paneHeight: innerHeight, overlaps: [], cardOverflow: [], horizontal: [], scrolls: false, deadBand: 0, cards: [] };
 const cardsEl = document.querySelector('.aup-cards');
 const rectOf = (el) => el.getBoundingClientRect();
 const leaves = [];
@@ -210,6 +210,20 @@ for (const card of document.querySelectorAll('.aup-card')) {
   }
 }
 if (cardsEl.scrollWidth > cardsEl.clientWidth + 1) out.horizontal.push(cardsEl.scrollWidth + '>' + cardsEl.clientWidth);
+out.media = {
+  q989: matchMedia('(max-height:989px)').matches,
+  q959: matchMedia('(max-height:959px)').matches,
+  q929: matchMedia('(max-height:929px)').matches,
+  q889: matchMedia('(max-height:889px)').matches,
+  q789: matchMedia('(max-height:789px)').matches,
+  q739: matchMedia('(max-height:739px)').matches,
+  viewport: innerHeight
+};
+out.shedding = {};
+for (const selector of ['.aup-compose', '.aup-context-breakdown', '.aup-card-session .aup-models', '.aup-card-session .aup-stat-list', '.aup-context', '.aup-card-session .aup-session-grid']) {
+  const el = document.querySelector(selector);
+  out.shedding[selector] = el === null ? 'missing' : getComputedStyle(el).display;
+}
 out.scrolls = cardsEl.scrollHeight > cardsEl.clientHeight + 1;
 out.scrollInfo = cardsEl.scrollHeight + '/' + cardsEl.clientHeight;
 const lastCard = document.querySelector('.aup-cards > .aup-card:last-child');
@@ -218,7 +232,7 @@ document.getElementById('result').textContent = JSON.stringify(out);
 </script></body></html>`;
 }
 
-const HEIGHTS = [700, 810, 900, 1000, 1080, 1200];
+const HEIGHTS = [700, 760, 810, 900, 1000, 1080, 1200];
 const SOURCES = [
   ['DeepSeek API', '543M', 'CNY23.28'],
   ['OpenCode Go', '251M', 'session'],
@@ -232,6 +246,40 @@ if (chrome === undefined) {
 }
 
 const css = readStylesheet();
+
+// `--tiers` prints the panel's content height at every shedding tier so the
+// media-query thresholds can be chosen from measurements instead of guesses.
+if (process.argv.includes('--tiers')) {
+  const TIERS = [
+    ['all', ''],
+    ['no compose', '.aup-compose{display:none}'],
+    ['+ no pct legend', '.aup-compose,.aup-context-breakdown{display:none}'],
+    ['+ no models', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models{display:none}'],
+    ['+ no stat list', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list{display:none}'],
+    ['+ no context', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list,.aup-context{display:none}'],
+    ['+ no token grid', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list,.aup-context,.aup-session-grid{display:none}'],
+    ['+ no plan rows', '.aup-compose,.aup-context-breakdown,.aup-card-session .aup-models,.aup-card-session .aup-stat-list,.aup-context,.aup-session-grid,.aup-plan-windows,.aup-provider-updated{display:none}']
+  ];
+  const tierDir = mkdtempSync(join(tmpdir(), 'aup-tiers-'));
+  const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8');
+  const startIndex = source.indexOf('const CSS = [');
+  const endIndex = source.indexOf('].join(', startIndex);
+  const tierCss = eval(source.slice(startIndex + 'const CSS = '.length, endIndex + 1)).join('\n');
+  console.log('tier'.padEnd(20) + 'content   pane needed   cards');
+  for (const [label, extra] of TIERS) {
+    const file = join(tierDir, label.replace(/[^a-z0-9]+/gi, '-') + '.html');
+    const measureCss = extra + '.aup-cards>.aup-card:last-child{flex:0 0 auto}';
+    writeFileSync(file, page(tierCss.replace('.aup-root{', '.aup-root{height:auto!important;'), 2000, { sources: SOURCES, rows: 4 }, measureCss));
+    const dom = execFileSync(chrome, ['--headless=new', '--disable-gpu', '--no-sandbox', '--window-size=520,2000', `--user-data-dir=${join(tierDir, 'profile')}`, '--virtual-time-budget=3000', '--dump-dom', `file://${file}`], { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] });
+    const match = dom.match(/<pre id="result">([\s\S]*?)<\/pre>/);
+    const measured = JSON.parse(match[1].replace(/&quot;/g, '"'));
+    const content = measured.scrollInfo !== undefined ? Number(measured.scrollInfo.split('/')[0]) : 0;
+    const head = measured.scrollInfo !== undefined ? 0 : 0;
+    console.log(label.padEnd(20) + String(content).padEnd(10) + '~' + String(content + 60).padEnd(13) + measured.cards.map((card) => card.height).join('/'));
+  }
+  process.exit(0);
+}
+
 const dir = mkdtempSync(join(tmpdir(), 'aup-layout-'));
 const failures = [];
 const rows = [];
@@ -241,7 +289,7 @@ for (const height of HEIGHTS) {
     writeFileSync(file, page(css, height, { sources: SOURCES, rows: rowsCount }));
     const dom = execFileSync(
       chrome,
-      ['--headless=new', '--disable-gpu', '--no-sandbox', `--window-size=480,${height}`, `--user-data-dir=${join(dir, 'profile')}`, '--virtual-time-budget=4000', '--dump-dom', `file://${file}`],
+      ['--headless=new', '--disable-gpu', '--no-sandbox', `--window-size=520,${height + 200}`, `--user-data-dir=${join(dir, 'profile')}`, '--virtual-time-budget=4000', '--dump-dom', `file://${file}`],
       { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] }
     );
     const match = dom.match(/<pre id="result">([\s\S]*?)<\/pre>/);
@@ -255,15 +303,16 @@ for (const height of HEIGHTS) {
     if (result.cardOverflow.length > 0) failures.push(`${height}px rows=${rowsCount}: card content overflows -> ${result.cardOverflow.join(' | ')}`);
     if (result.horizontal.length > 0) failures.push(`${height}px rows=${rowsCount}: horizontal overflow -> ${result.horizontal.join(' | ')}`);
     if (result.deadBand > 2) failures.push(`${height}px rows=${rowsCount}: dead band at the pane bottom -> ${result.deadBand}px`);
+    if (result.scrolls) failures.push(`${height}px rows=${rowsCount}: the card column scrolls (${result.scrollInfo}) - the panel must never scroll`);
   }
 }
 
 console.log('pane   rows  scrolls  scrollH/clientH  bottom-gap  card heights');
 for (const result of rows) {
-  const label = result.height + 'px';
+  const label = result.paneHeight + 'px';
   console.log(
     label.padEnd(7) +
-      String(result.cardOverflow.length === 0 ? 'ok' : 'BAD').padEnd(6) +
+      (result.cardOverflow.length === 0 ? 'ok' : 'BAD').padEnd(6) +
       (result.scrolls ? 'yes' : 'no ').padEnd(9) +
       String(result.scrollInfo).padEnd(17) +
       (result.deadBand + 'px').padEnd(12) +

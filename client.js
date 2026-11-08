@@ -343,18 +343,12 @@ window.__ModuleLoader__.load({
       '.aup-toggle[data-on] .aup-toggle-knob{transform:translateX(14px)}',
       '.aup-toggle:focus-visible,.aup-pop-link:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob{transition:none}}',
-      '@media (max-height:900px){.aup-compose{display:none}}',
-      '@media (max-height:820px){.aup-context-breakdown{display:none}}',
-      '@media (max-height:920px){.aup-card-session .aup-models{display:none}}',
-      '@media (max-height:840px){.aup-card-session .aup-stat-list{display:none}}',
       '.aup-empty{padding:12px;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:18px;font-weight:500;text-align:center}',      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
-      '.aup-cards{flex:1 1 auto;min-height:0;width:100%;display:flex;flex-direction:column;justify-content:flex-start;gap:8px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}',
+      '.aup-cards{flex:1 1 auto;min-height:0;width:100%;display:flex;flex-direction:column;justify-content:flex-start;gap:8px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none}',
       '.aup-cards>.aup-card:last-child{flex:1 1 auto}',
-      '.aup-cards::-webkit-scrollbar{width:6px}',
-      '.aup-cards::-webkit-scrollbar-thumb{border-radius:999px;background:var(--dsw-alias-bg-skeleton)}',
-      '.aup-cards::-webkit-scrollbar-track{background:transparent}',
+      '.aup-cards::-webkit-scrollbar{width:0;height:0;display:none}',
       '.aup-card{flex:0 0 auto;min-height:auto;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:visible}',
       '.aup-card-session{justify-content:flex-start}',
       '.aup-card-stats{justify-content:flex-start}',
@@ -527,6 +521,16 @@ window.__ModuleLoader__.load({
       '.aup-card-account .aup-balance-label{font-size:var(--aup-fs-text);line-height:16px;font-weight:500}',
       '.aup-hint{font-size:var(--aup-fs-text);line-height:16px}',
       // ---- content shedding on short windows: pure media queries, no measurement ----
+      // Measured ladder (test/layout-check.mjs --tiers): each step keeps the whole
+      // panel inside the window so the card column never has to scroll. These rules
+      // must stay LAST: a media query adds no specificity, so a later base rule such
+      // as `.aup-compose{display:flex}` would otherwise win and defeat the ladder.
+      '@media (max-height:989px){.aup-compose{display:none!important}}',
+      '@media (max-height:959px){.aup-context-breakdown{display:none!important}}',
+      '@media (max-height:929px){.aup-card-session .aup-models{display:none!important}}',
+      '@media (max-height:889px){.aup-card-session .aup-stat-list{display:none!important}}',
+      '@media (max-height:789px){.aup-context{display:none!important}}',
+      '@media (max-height:739px){.aup-card-session .aup-session-grid{display:none!important}}'
     ].join('\n');
 
     // --------------------------------------------------------------- glyphs --

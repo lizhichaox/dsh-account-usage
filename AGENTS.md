@@ -54,7 +54,8 @@
 | 18 | **要求写进 AGENTS.md，别让人重复** | 本节 §0 | 见各条 |
 | 19 | **英文文本不许看着浅** | 拉丁字体栈优先 + 根 500 基线 + `--aup-label-2` 混色 | `Latin families precede CJK ones in the stack` / `secondary text is darkened from theme tokens` / `the panel root sets a 500 baseline weight` |
 | 20 | **切维度不许抖动** | 固定槽位 `SERIES_ROW_SLOTS=4` + 固定行距 + 骨架行数对齐 + 全维度预热 | `the list keeps a constant slot count` / `spare slots pad the list in quarter/year` / `period rows keep a fixed pitch across dimensions` / `the loading frame matches the target row count` / `every dimension is warmed widest-first` |
-| 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 媒体查询按窗口高度减内容 + 超长时卡片列滚动 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
+| 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 实测媒体查询阶梯按窗口高度减内容 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
+| 22 | **不允许滚动、不允许出现滚动条** | 实测阶梯（989/959/929/889/789/739）+ 阶梯写在样式表末尾带 `!important` + `scrollbar-width:none` | `short windows shed the decorative token bar via CSS only` / `the measured shedding ladder contains: …` / `the ladder is declared after the base rules it overrides` / `the card column never shows a scrollbar` / `no visible scrollbar either` |
 
 ## 1. 产品定位
 
@@ -102,19 +103,27 @@
      面板底部不会出现空白带；账户卡内部的余额/套餐块用 `flex:1` + 均匀分布填满这块空间。
   3. **明细列表固定槽位**：`SERIES_ROW_SLOTS = 4`，按维度渲染 1..N 行，剩余用**不可见占位行**
      （`.aup-series-slot`，`min-height:21px`）补齐；这样**切维度时列表高度恒定**，下面的卡片一动不动。
-  4. **列高不够时用媒体查询减内容**（纯 CSS，不测量），按此顺序：
-     `max-height:900px` 隐藏 Token 构成彩条 → `920px` 隐藏按模型明细 → `840px` 隐藏统计表 →
-     `820px` 隐藏上下文百分比图例。窗口再矮就由卡片列滚动（`.aup-cards{overflow-y:auto}`），
-     **滚动可以，遮挡不行**。阈值是用真机浏览器量出来的（见下条）。
+  4. **绝不允许滚动、绝不出现滚动条**（用户 2026-11-08：「不要出现滚动轴 高度合理利用 不允许滚动」）。
+     做法是一条**实测出来的媒体查询阶梯**，窗口越矮按顺序丢内容，保证任何高度下内容都装得下：
+     `989px` 隐藏 Token 构成彩条 → `959px` 隐藏上下文百分比图例 → `929px` 隐藏按模型明细 →
+     `889px` 隐藏统计表 → `789px` 隐藏整个上下文块 → `739px` 隐藏 Token 2×2 明细。
+     阈值不是猜的：由 `node test/layout-check.mjs --tiers` 在真机 Chrome 里逐级量出内容高度，
+     取「内容高度 + 60px（顶部横条+间距）」再留余量。
+     **阶梯规则必须写在样式表最后并带 `!important`**：媒体查询不增加特异性，
+     否则后面的 `.aup-compose{display:flex}` 会盖掉它（这个坑已经踩过一次，导致阶梯长期无效）。
+     同时 `scrollbar-width:none` + `::-webkit-scrollbar{width:0;height:0;display:none}` 去掉滚动条外观，
+     `overflow-y:auto` 只作为「阶梯万一没算准」的隐形兜底。
   5. 明令禁止：用 `ResizeObserver`/`getBoundingClientRect` 的内容高度去反推行数并 `setState`
      （09:29 崩溃的成因）、用 `overflow:hidden` 或省略号假装解决放不下。
   6. **必须用真机浏览器验证几何**：`npm run verify:ui`（`test/layout-check.mjs`）用本机 Chrome
-     无头模式在 700/810/900/1000/1080/1200px 六种窗口高度下测量真实布局，断言
-     **任意两个文本叶子不重叠、卡片内容不溢出、无横向溢出、最后一张卡贴住面板底部（无空白带）**。
+     无头模式、让面板高度 = 视口高度（媒体查询就是按视口算的），在 700/760/810/900/1000/1080/1200px
+     七档测量真实布局，断言 **任意两个文本叶子不重叠、卡片内容不溢出、无横向溢出、
+     最后一张卡贴住面板底部（无空白带）、卡片列从不滚动**。
      几何承诺不能只靠字符串断言——这就是「改了却没生效」反复发生的原因。
-- **卡内不允许滚动**，但**卡片列可以滚动**：`.aup-cards` 允许 `overflow-y:auto`（细滚动条），
-  作为最后一道保险——内容再高也不会把「账户余额」卡顶出可视区、更不会被裁切。
-  优先级：先减内容（明细行封顶）→ 再让卡片列滚动，绝不裁切。
+- **任何地方都不允许滚动**（用户 2026-11-08，取代旧的「卡内不滚、卡片列可滚」）：
+  `.aup-cards` 的 `overflow-y:auto` 只是一层**不可见的兜底**（滚动条已 `display:none`），
+  正常情况由上面的媒体查询阶梯保证内容装得下，永远滚不动。优先级：
+  **先减内容（阶梯）→ 装不下才轮到隐形兜底 → 绝不裁切、绝不遮挡**。
 - 所有可用空间应尽量被有意义的内容覆盖；不要出现卡片内部的大块空白。
 
 ## 3. 文本与排版（重点，多次强调）
@@ -293,8 +302,9 @@
   取代了此前「次要文字直接用 `label-secondary`、字重从默认 400 继承」的写法（那样英文会明显发浅）
 - **切维度零抖动**：明细列表固定 `SERIES_ROW_SLOTS=4` 槽位（不足补不可见行）、固定行距而非 space-between、
   骨架行数对齐 `DIMENSION_ROW_CAP`、后台预热全部维度
-- **绝不遮挡**：卡片按内容撑开、永不被压缩（遮挡从结构上不可能）；窗口矮时用 `@media (max-height:…)`
-  依次隐藏 Token 构成彩条 / 上下文百分比图例 / 按模型明细；再矮就让卡片列滚动；
+- **绝不遮挡 + 绝不滚动**：卡片按内容撑开、永不被压缩（遮挡从结构上不可能）；窗口矮时按实测阶梯
+  （989/959/929/889/789/739）依次隐藏彩条 / 百分比图例 / 按模型明细 / 统计表 / 上下文块 / 2×2 明细，
+  保证内容永远装得下；滚动条外观全部去掉，`overflow-y:auto` 只作隐形兜底；
   **禁止**任何基于运行时测量的行数调整（09:29 崩溃成因），也禁止 `overflow:hidden` 假装修好
 - 面板最小宽度 340px，低于它会被自动纠正；万一纠正失败，模型行 `Provider - 模型名` 换行显示（不降字号）
   （`.aup-model-row` 用 `flex-wrap`），token 数值 `margin-left:auto`，绝不压到文字上

@@ -17,6 +17,17 @@
 
 - 卡片列只在内容真的超出时才出现滚动条，不再因为预留槽位导致右侧多出一条空带
 
+### 优化（不许滚动）
+
+- **面板任何情况下都不滚动、不出现滚动条**：
+  - 实测阶梯（`test/layout-check.mjs --tiers` 在真机 Chrome 里逐级量出内容高度）：
+    窗口 `989px` 以下隐藏 Token 构成彩条、`959px` 隐藏上下文百分比图例、`929px` 隐藏按模型明细、
+    `889px` 隐藏统计表、`789px` 隐藏整个上下文块、`739px` 隐藏 Token 2×2 明细
+  - 阶梯规则放在样式表**最末并带 `!important`**（媒体查询不增加特异性，早先被后面的
+    `.aup-compose{display:flex}` 盖掉，是「阶梯一直不生效」的真正原因）
+  - `scrollbar-width:none` + `::-webkit-scrollbar{width:0;height:0;display:none}` 去掉滚动条外观，
+    `overflow-y:auto` 仅作隐形兜底
+
 ### 测试
 
 - 新增 `test/layout-check.mjs` + `npm run verify:ui`：用本机 Chrome 无头模式渲染真实样式表与面板结构，
