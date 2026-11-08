@@ -94,12 +94,25 @@ assert.equal((source.match(/text-overflow:ellipsis/g) || []).length, 0, 'card te
 assert.ok(/document\.head\.appendChild\(tag\)/.test(source), 'the stylesheet is injected into document.head');
 assert.ok(source.includes("root.setAttribute('data-account-usage-hide-stats'"), 'the composer dock stats are hidden by default');
 
+// A dimension switch must not move anything: card heights come from the pane
+// (flex-basis 0), rows keep a fixed pitch instead of re-spreading, and the
+// loading frame uses the target dimension's row count (not a taller 7-row
+// placeholder), while every dimension is warmed in the background.
+assert.ok(source.includes('.aup-card{flex:1 1 0;min-height:auto;'), 'card heights do not follow their content');
+assert.ok(source.includes('.aup-card-stats .aup-series{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}'), 'period rows keep a fixed pitch across dimensions');
+assert.ok(!source.includes('justify-content:space-between;gap:2px}'), 'period rows are not re-spread when their count changes');
+assert.ok(source.includes('grid-template-columns:minmax(7ch,max-content) minmax(0,1fr)'), 'the period label column is pinned to 7ch so the bar never shifts sideways');
+assert.ok(source.includes('const skeletonCount = DIMENSION_ROW_CAP[dimension]'), 'the loading frame matches the target row count');
+assert.ok(!source.includes('for (let index = 0; index < 7; index += 1)'), 'no fixed 7-row loading placeholder');
+assert.ok(source.includes("const WARM_ORDER = ['year', 'quarter', 'month', 'week', 'day']"), 'every dimension is warmed widest-first');
+assert.ok(source.includes('for (const warmId of WARM_ORDER)'), 'the warm-up loop covers the whole order');
+
 // The panel fills the right sidebar: cards grow with the pane instead of leaving a
 // blank band, the column never reserves a scrollbar gutter, and invisible padding
 // rows are gone now that growth (not filler) keeps the height constant.
-assert.ok(source.includes('.aup-card{flex:1 1 auto;min-height:auto;'), 'cards grow to fill the pane height');
-assert.ok(source.includes('.aup-card-account-provider{flex:1 1 auto;min-height:auto;'), 'the provider account card fills too');
-assert.ok(source.includes('.aup-card-session-fixed{flex:1 1 auto}'), 'the session card is not pinned to content height');
+assert.ok(source.includes('.aup-card{flex:1 1 0;min-height:auto;'), 'cards grow to fill the pane height');
+assert.ok(source.includes('.aup-card-account-provider{flex:1 1 0;min-height:auto;'), 'the provider account card fills too');
+assert.ok(source.includes('.aup-card-session-fixed{flex:1 1 0}'), 'the session card is not pinned to content height');
 assert.ok(!source.includes('scrollbar-gutter'), 'the card column spans the full pane width');
 assert.ok(!source.includes('aup-series-slot'), 'no invisible padding rows remain');
 assert.ok(source.includes('.aup-card-session .aup-session-body>.aup-context{margin-top:auto}'), 'session footer sits on the card bottom');
@@ -478,7 +491,9 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
 }
 {
   const loadingTree = render({ phase: 'loading', days: [], refreshing: false, dimension: 'day' });
-  assert.equal(walk(loadingTree, (n) => hasClass(n, 'aup-skeleton-row')).length, 7, 'skeleton rows while loading');
+  assert.equal(walk(loadingTree, (n) => hasClass(n, 'aup-skeleton-row')).length, 4, 'skeleton rows match the day row cap');
+  const loadingQuarter = render({ phase: 'loading', days: [], refreshing: false, dimension: 'quarter' }, undefined, 'quarter');
+  assert.equal(walk(loadingQuarter, (n) => hasClass(n, 'aup-skeleton-row')).length, 3, 'skeleton rows match the quarter row cap');
   const readyTree = render({
     phase: 'ready',
     ok: true,

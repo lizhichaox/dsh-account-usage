@@ -350,10 +350,10 @@ window.__ModuleLoader__.load({
       '.aup-cards::-webkit-scrollbar{width:6px}',
       '.aup-cards::-webkit-scrollbar-thumb{border-radius:999px;background:var(--dsw-alias-bg-skeleton)}',
       '.aup-cards::-webkit-scrollbar-track{background:transparent}',
-      '.aup-card{flex:1 1 auto;min-height:auto;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:visible}',
+      '.aup-card{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:visible}',
       '.aup-card-session{justify-content:flex-start}',
       '.aup-card-stats{justify-content:flex-start}',
-      '.aup-stats-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:10px}',
+      '.aup-stats-body{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;justify-content:flex-start;gap:10px}',
       '.aup-srcs{flex:none;display:flex;flex-direction:column;gap:8px}',
       '.aup-src{display:grid;grid-template-columns:max-content minmax(0,1fr) auto auto;align-items:center;gap:8px;min-width:0;font-size:var(--aup-fs-text);line-height:18px;font-variant-numeric:tabular-nums}',
       '.aup-src-label{min-width:0;color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
@@ -362,8 +362,8 @@ window.__ModuleLoader__.load({
       '.aup-src-track{min-width:24px;height:4px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
       '.aup-src-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary);opacity:.75}',
       '.aup-stats-head{flex:none;display:flex;flex-direction:column;gap:6px}',
-      '.aup-card-account{flex:1 1 auto;min-height:auto;justify-content:flex-start}',
-      '.aup-account-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}',
+      '.aup-card-account{flex:1 1 0;min-height:auto;justify-content:flex-start}',
+      '.aup-account-body{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}',
       '.aup-plan-windows{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 12px;font-size:var(--aup-fs-text);line-height:16px;font-weight:500;color:var(--aup-label-2)}',
       '.aup-plan-window{display:inline-flex;align-items:baseline;gap:6px;white-space:nowrap}',
       '.aup-plan-window-value{color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
@@ -393,8 +393,8 @@ window.__ModuleLoader__.load({
       '.aup-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}',
       '.aup-retry{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;background:transparent;color:var(--dsw-alias-label-primary);font:inherit;font-size:var(--aup-fs-text);line-height:18px;cursor:pointer}',
       '.aup-retry:hover{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.aup-card-session-fixed{flex:1 1 auto}',
-      '.aup-card-session .aup-session-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:10px;justify-content:flex-start}',
+      '.aup-card-session-fixed{flex:1 1 0}',
+      '.aup-card-session .aup-session-body{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;gap:10px;justify-content:flex-start}',
       '.aup-card-session .aup-session-grid{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;align-content:space-evenly;justify-items:stretch;margin:0;padding:0;width:100%}',
       '.aup-card-session .aup-session-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}',
       '.aup-card-session .aup-session-cell:nth-child(even){align-items:flex-end;text-align:right}',
@@ -425,11 +425,11 @@ window.__ModuleLoader__.load({
       '.aup-src-tab[data-active]{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:inset 0 0 0 .5px var(--dsw-alias-border-l2)}',
       '@media (hover:hover){.aup-src-tab:hover:not([data-active]){color:var(--dsw-alias-label-primary)}}',
       '.aup-src-tab:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
-      '.aup-card-account-provider{flex:1 1 auto;min-height:auto;justify-content:flex-start}',
+      '.aup-card-account-provider{flex:1 1 0;min-height:auto;justify-content:flex-start}',
       '.aup-card-account-provider .aup-balance{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;align-content:center}',
       '.aup-card-account-provider .aup-balance-value{font-size:var(--aup-fs-text);line-height:22px}',
       '.aup-card-account-provider .aup-balance-value.aup-minor{font-size:var(--aup-fs-text);line-height:22px}',
-                  '.aup-provider-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px;justify-content:space-evenly}',
+                  '.aup-provider-body{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;gap:8px;justify-content:space-evenly}',
       '.aup-provider-hero{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}',
       '.aup-value-long{letter-spacing:-.02em}',
       '.aup-value-longer{letter-spacing:-.04em}',
@@ -469,7 +469,7 @@ window.__ModuleLoader__.load({
       '.aup-stats-summary{margin-top:auto;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-variant-numeric:tabular-nums;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2)}',
       '.aup-stats-summary>span{min-width:0;white-space:normal;overflow-wrap:anywhere}',
       '.aup-stats-total{flex:none;font-size:var(--aup-fs-text);line-height:26px;font-weight:600;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
-      '.aup-card-stats .aup-series{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:space-between;gap:2px}',
+      '.aup-card-stats .aup-series{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}',
       '.aup-card-session .aup-session-body>.aup-context{margin-top:auto}',
       '.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:21px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
       '.aup-card-stats .aup-series-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
@@ -479,7 +479,7 @@ window.__ModuleLoader__.load({
       '.aup-card-stats .aup-series-row[data-zero] .aup-series-track{opacity:.6}',
       '.aup-card-stats .aup-series-row[data-current]:hover{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 16%, transparent)}',
       '.aup-card-stats .aup-series-track{height:8px}',
-      '.aup-series-row{display:grid;grid-template-columns:minmax(46px,max-content) minmax(0,1fr) minmax(52px,max-content);align-items:center;gap:8px;font-size:var(--aup-fs-text);line-height:18px}',
+      '.aup-series-row{display:grid;grid-template-columns:minmax(7ch,max-content) minmax(0,1fr) minmax(52px,max-content);align-items:center;gap:8px;font-size:var(--aup-fs-text);line-height:18px}',
       '.aup-series-label{color:var(--aup-label-2);white-space:nowrap;font-variant-numeric:tabular-nums}',
       '.aup-series-tokens{white-space:nowrap}',
       '.aup-series-cost{white-space:nowrap}',
@@ -514,7 +514,7 @@ window.__ModuleLoader__.load({
       '.aup-card-stats .aup-series-label,.aup-card-stats .aup-series-tokens{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-card-stats .aup-series-cost{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-card-account .aup-balance-item{flex-direction:row;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}',
-      '.aup-card-account .aup-balance{flex:1 1 auto;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 16px;align-content:space-evenly;padding:2px 0}',
+      '.aup-card-account .aup-balance{flex:1 1 0;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 16px;align-content:space-evenly;padding:2px 0}',
       '.aup-card-account .aup-balance-value{font-size:var(--aup-fs-text);line-height:22px;letter-spacing:0}',
       '.aup-card-account .aup-balance-value.aup-minor{font-size:var(--aup-fs-text);line-height:22px;font-weight:500;color:var(--dsw-alias-label-primary)}',
       '.aup-card-account .aup-balance-value.aup-value-long{font-size:var(--aup-fs-text)}',
@@ -788,6 +788,9 @@ window.__ModuleLoader__.load({
 
     /** Shortcut id shared by the registered command and the guide card's key hint. */
     const SHORTCUT_ID = 'accountUsage.open';
+
+    /** Background warm-up order: widest window first, so later switches hit the cache. */
+    const WARM_ORDER = ['year', 'quarter', 'month', 'week', 'day'];
 
     /** Maximum periods rendered in the detail list per dimension (older ones are dropped). */
     const DIMENSION_ROW_CAP = { day: 4, week: 4, month: 4, quarter: 3, year: 3 };
@@ -1839,7 +1842,8 @@ window.__ModuleLoader__.load({
 
       if (state.phase === 'loading') {
         const skeletonRows = [];
-        for (let index = 0; index < 7; index += 1) {
+        const skeletonCount = DIMENSION_ROW_CAP[dimension] === undefined ? 4 : DIMENSION_ROW_CAP[dimension];
+        for (let index = 0; index < skeletonCount; index += 1) {
           skeletonRows.push(
             h(
               'div',
@@ -2353,15 +2357,17 @@ window.__ModuleLoader__.load({
               if (!dimensionsWarmed && result.source === 'platform') {
                 dimensionsWarmed = true;
                 const currentDimension = dimension;
-                // Year is the widest window: warming it also fills the month cache that
-                // every narrower dimension reuses, so one background pass is enough.
-                if (currentDimension !== 'year' && !dimensionResults.has('year')) {
-                  setTimeout(() => {
-                    (async () => {
+                // Warm every other dimension so a later switch renders cached data
+                // instead of a loading frame. Widest window first: the year pass fills
+                // the month cache that all narrower windows reuse, so the rest is cheap.
+                setTimeout(() => {
+                  (async () => {
+                    for (const warmId of WARM_ORDER) {
+                      if (warmId === currentDimension || dimensionResults.has(warmId)) continue;
                       try {
-                        const warm = await readUsage('year', false, currencyRef.current);
-                        if (warm.ok === true && warm.source === 'platform' && !dimensionResults.has('year')) {
-                          dimensionResults.set('year', {
+                        const warm = await readUsage(warmId, false, currencyRef.current);
+                        if (warm.ok === true && warm.source === 'platform' && !dimensionResults.has(warmId)) {
+                          dimensionResults.set(warmId, {
                             source: warm.source,
                             days: warm.days || [],
                             currency: warm.currency,
@@ -2371,9 +2377,9 @@ window.__ModuleLoader__.load({
                       } catch (error) {
                         /* warm-up is best effort */
                       }
-                    })();
-                  }, 1500);
-                }
+                    }
+                  })();
+                }, 1500);
               }
               setUsage((previous) => {
                 if (previous.dimension !== dimension) return previous;
