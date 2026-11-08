@@ -99,7 +99,19 @@ assert.ok(source.includes("root.setAttribute('data-account-usage-hide-stats'"), 
 // loading frame uses the target dimension's row count (not a taller 7-row
 // placeholder), while every dimension is warmed in the background.
 assert.ok(source.includes('.aup-card{flex:1 1 0;min-height:auto;'), 'card heights do not follow their content');
-assert.ok(source.includes('.aup-card-stats .aup-series{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}'), 'period rows keep a fixed pitch across dimensions');
+assert.ok(source.includes('.aup-card-stats .aup-series{flex:1 1 0;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}'), 'period rows keep a fixed pitch across dimensions');
+// The period list may never overflow its box: the row count is derived from the
+// pane height (cards split it evenly), so rows can never paint over the summary.
+// The measurement reads only pane/flex geometry, so it cannot feed back.
+assert.ok(source.includes('const ROW_PITCH_PX = 23'), 'the row pitch is a named constant');
+assert.ok(source.includes('const share = (cardsEl.clientHeight - gaps) / cardCount'), 'the row budget comes from the pane, not from content');
+assert.ok(source.includes('const chrome = cardEl.clientHeight - seriesEl.clientHeight'), 'fixed card chrome is measured once');
+assert.ok(source.includes('const rowCap = Math.min(dimensionRowCap, rowBudget)'), 'rendered rows are clamped by the measured budget');
+assert.ok(source.includes('rowCap > 0 ? periodRows : null'), 'no row is drawn when not even one fits, but the list box stays measurable');
+assert.ok(source.includes('Math.min(share, cardEl.clientHeight) - chrome'), 'a squeezed card uses its real height, an inflated one earns no extra rows');
+assert.ok(source.includes('.aup-root[data-aup-compact="1"] .aup-compose{display:none}'), 'short panes shed the decorative token bar');
+assert.ok(source.includes('height >= 900 ? 0 : height >= 820 ? 1 : 2'), 'the compact level is a pure function of the pane height');
+assert.ok(!/\.aup-card-stats \.aup-series\{min-height:0\}/.test(source.replace('.aup-card-stats .aup-series{flex:1 1 0;min-height:0;', '')), 'the series box has a single min-height rule');
 assert.ok(!source.includes('justify-content:space-between;gap:2px}'), 'period rows are not re-spread when their count changes');
 assert.ok(source.includes('grid-template-columns:minmax(7ch,max-content) minmax(0,1fr)'), 'the period label column is pinned to 7ch so the bar never shifts sideways');
 assert.ok(source.includes('const skeletonCount = DIMENSION_ROW_CAP[dimension]'), 'the loading frame matches the target row count');

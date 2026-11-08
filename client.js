@@ -343,6 +343,8 @@ window.__ModuleLoader__.load({
       '.aup-toggle[data-on] .aup-toggle-knob{transform:translateX(14px)}',
       '.aup-toggle:focus-visible,.aup-pop-link:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob{transition:none}}',
+      '.aup-root[data-aup-compact="1"] .aup-compose{display:none}',
+      '.aup-root[data-aup-compact="2"] .aup-compose,.aup-root[data-aup-compact="2"] .aup-context-breakdown{display:none}',
       '.aup-empty{padding:12px;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:18px;font-weight:500;text-align:center}',      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
@@ -469,7 +471,7 @@ window.__ModuleLoader__.load({
       '.aup-stats-summary{margin-top:auto;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-variant-numeric:tabular-nums;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2)}',
       '.aup-stats-summary>span{min-width:0;white-space:normal;overflow-wrap:anywhere}',
       '.aup-stats-total{flex:none;font-size:var(--aup-fs-text);line-height:26px;font-weight:600;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
-      '.aup-card-stats .aup-series{flex:1 1 0;min-height:auto;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}',
+      '.aup-card-stats .aup-series{flex:1 1 0;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}',
       '.aup-card-session .aup-session-body>.aup-context{margin-top:auto}',
       '.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:21px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
       '.aup-card-stats .aup-series-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
@@ -508,7 +510,6 @@ window.__ModuleLoader__.load({
       '.aup-context-head{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-stats-summary{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-stats-total{font-size:var(--aup-fs-text);line-height:26px}',
-      '.aup-card-stats .aup-series{min-height:0}',
       '.aup-card-stats .aup-series-row{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-card-stats .aup-series-track{height:6px}',
       '.aup-card-stats .aup-series-label,.aup-card-stats .aup-series-tokens{font-size:var(--aup-fs-text);line-height:16px}',
@@ -794,6 +795,9 @@ window.__ModuleLoader__.load({
 
     /** Maximum periods rendered in the detail list per dimension (older ones are dropped). */
     const DIMENSION_ROW_CAP = { day: 4, week: 4, month: 4, quarter: 3, year: 3 };
+
+    /** One period row plus the list gap: the pitch the row budget divides by. */
+    const ROW_PITCH_PX = 23;
 
     /** Minimum usable panel width: below this the no-wrap rows would collide. */
     const PANEL_MIN_WIDTH = 340;
@@ -1803,6 +1807,53 @@ window.__ModuleLoader__.load({
         if (buttons[next] !== undefined) buttons[next].focus();
       };
       const sectionRef = React.useRef(null);
+      const seriesRef = React.useRef(null);
+      // How many period rows actually fit in the card's share of the pane. The
+      // number is derived from the pane height alone (the cards split it evenly),
+      // never from the rendered content, so growing or shrinking the list can
+      // never feed back into the measurement that produced it.
+      const fallbackRowCap = DIMENSION_ROW_CAP[dimension] === undefined ? 4 : DIMENSION_ROW_CAP[dimension];
+      const [rowBudget, setRowBudget] = React.useState(fallbackRowCap);
+      const useLayoutEffect = React.useLayoutEffect === undefined ? React.useEffect : React.useLayoutEffect;
+      useLayoutEffect(() => {
+        if (listMode !== true || sessionOnly === true || state.phase !== 'ready') return undefined;
+        const measure = () => {
+          const rootEl = document.querySelector('.aup-root');
+          const cardsEl = rootEl === null ? null : rootEl.querySelector('.aup-cards');
+          const cardEl = sectionRef.current;
+          const seriesEl = seriesRef.current;
+          if (cardsEl === null || cardEl === null || seriesEl === null) return;
+          const cardCount = cardsEl.children.length;
+          if (cardCount < 1) return;
+          const gaps = 8 * (cardCount - 1);
+          const share = (cardsEl.clientHeight - gaps) / cardCount;
+          // Everything in the card except the period list has a content-fixed height.
+          const chrome = cardEl.clientHeight - seriesEl.clientHeight;
+          // A squeezed card gets its real height; an inflated one never earns extra
+          // rows, so one card's overflow can never inflate another card's budget.
+          const available = Math.min(share, cardEl.clientHeight) - chrome;
+          const fit = Math.max(0, Math.floor(available / ROW_PITCH_PX));
+          setRowBudget((previous) => (previous === fit ? previous : fit));
+        };
+        let frame = 0;
+        const schedule = () => {
+          if (frame !== 0) return;
+          if (typeof requestAnimationFrame !== 'function') {
+            measure();
+            return;
+          }
+          frame = requestAnimationFrame(() => {
+            frame = 0;
+            measure();
+          });
+        };
+        measure();
+        window.addEventListener('resize', schedule);
+        return () => {
+          if (frame !== 0 && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
+          window.removeEventListener('resize', schedule);
+        };
+      }, [listMode, sessionOnly, state.phase, dimension]);
 
       const dimensions = h(
         'div',
@@ -1886,7 +1937,10 @@ window.__ModuleLoader__.load({
       const series = buildSeries(state.days || [], dimension);
       // Keep the card compact with a fixed cap: drop the OLDEST periods, keep the newest.
       // No measurement and no observer, so this can never feed back into layout.
-      const rowCap = DIMENSION_ROW_CAP[dimension] === undefined ? 5 : DIMENSION_ROW_CAP[dimension];
+      const dimensionRowCap = DIMENSION_ROW_CAP[dimension] === undefined ? 5 : DIMENSION_ROW_CAP[dimension];
+      // The pane, not the data, decides how many rows fit: never overflow the card
+      // (which would paint rows over the summary), never render a phantom gap.
+      const rowCap = Math.min(dimensionRowCap, rowBudget);
       const visibleCells = series.cells.slice(Math.max(0, series.cells.length - rowCap));
       const shownTotal = visibleCells.reduce((sum, cell) => sum + cell.total, 0);
       const shownCost = visibleCells.reduce((sum, cell) => sum + cell.cost, 0);
@@ -1987,8 +2041,8 @@ window.__ModuleLoader__.load({
               listMode === true && sessionOnly !== true && series.total > 0
                 ? h(
                     'div',
-                    { className: 'aup-series' },
-                    periodRows
+                    { className: 'aup-series', ref: seriesRef },
+                    rowCap > 0 ? periodRows : null
                   )
                 : null,
               h(
@@ -2576,7 +2630,16 @@ window.__ModuleLoader__.load({
           window.addEventListener('pointerup', onPointerUp, true);
           window.addEventListener('pointercancel', onPointerUp, true);
         }
+        // Short panes shed the two purely decorative blocks (the token mix bar and the
+        // context percentage legend). The level is a pure function of the pane height,
+        // and hiding them never changes that height, so this cannot feed back.
+        const applyCompact = (height) => {
+          const level = height >= 900 ? 0 : height >= 820 ? 1 : 2;
+          if (node.getAttribute('data-aup-compact') !== String(level)) node.setAttribute('data-aup-compact', String(level));
+        };
+        applyCompact(node.getBoundingClientRect().height);
         const observer = new ResizeObserver(() => {
+          applyCompact(node.getBoundingClientRect().height);
           if (pressed) return;
           if (tooNarrow()) schedule();
         });

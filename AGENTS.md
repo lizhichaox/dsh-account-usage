@@ -54,6 +54,7 @@
 | 18 | **要求写进 AGENTS.md，别让人重复** | 本节 §0 | 见各条 |
 | 19 | **英文文本不许看着浅** | 拉丁字体栈优先 + 根 500 基线 + `--aup-label-2` 混色 | `Latin families precede CJK ones in the stack` / `secondary text is darkened from theme tokens` / `the panel root sets a 500 baseline weight` |
 | 20 | **切维度不许抖动** | `flex:1 1 0` + 固定行距 + 骨架行数对齐 + 全维度预热 | `card heights do not follow their content` / `period rows keep a fixed pitch across dimensions` / `the loading frame matches the target row count` / `every dimension is warmed widest-first` |
+| 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 行数按面板高度算（`rowBudget`，可为 0）+ 短面板去装饰块 + 卡片 `min-height:auto` 安全阀 | `the row budget comes from the pane, not from content` / `rendered rows are clamped by the measured budget` / `no row is drawn when not even one fits, but the list box stays measurable` / `short panes shed the decorative token bar` |
 
 ## 1. 产品定位
 
@@ -118,6 +119,19 @@
   4. **切换前就该有数据**：首次平台数据成功后，后台按 `WARM_ORDER`
      （year → quarter → month → week → day，宽窗口优先，年窗口会顺带填满月份缓存）
      把所有维度预热进 `dimensionResults`，之后切维度直接命中缓存、不出现加载帧。
+- **放不下就少放点：任何情况下卡内内容都不许互相遮挡/压字**（用户 2026-11-08 连说六次「不要遮挡」）。
+  实现方式（**先减内容，再谈滚动，绝不动裁切**）：
+  1. **明细行数由面板高度算出，不由数据量决定**：`ROW_PITCH_PX = 23`，
+     `rowBudget = floor(可用高度 / 23)`，其中「可用高度」=
+     `min(卡片均分高度, 卡片实际高度) - 卡片固定部分高度`；
+     渲染行数 = `min(DIMENSION_ROW_CAP[维度], rowBudget)`，**算出 0 行就一行都不画**。
+     测量只读面板/弹性几何（`.aup-cards` 高度、卡片高度差），
+     **不读内容高度、不用 ResizeObserver 观察内容**，所以不会形成布局→setState 的自反馈环。
+  2. **卡片高度不够时先去掉装饰性内容**：面板高度 < 900px 隐藏 Token 构成彩条（`.aup-compose`），
+     < 820px 再隐藏上下文百分比图例（`.aup-context-breakdown`）。
+     级别是**面板高度的纯函数**（写在根节点 `data-aup-compact`），隐藏内容不会改变面板高度，因此不可能抖动。
+  3. 卡片仍保留 `min-height:auto` 作为最后安全阀：万一算错，卡片会长高、卡片列滚动，**绝不允许叠字**。
+  4. 禁止用 `overflow:hidden` / 省略号「解决」放不下——那是遮挡，用户明确禁止。
 - **卡内不允许滚动**，但**卡片列可以滚动**：`.aup-cards` 允许 `overflow-y:auto`（细滚动条），
   作为最后一道保险——内容再高也不会把「账户余额」卡顶出可视区、更不会被裁切。
   优先级：先减内容（明细行封顶）→ 再让卡片列滚动，绝不裁切。
@@ -296,6 +310,8 @@
 - **英文（拉丁）文字墨色与中文对齐**：字体栈拉丁优先、根 500 基线、次要色 `--aup-label-2`（color-mix 30% 主色）；
   取代了此前「次要文字直接用 `label-secondary`、字重从默认 400 继承」的写法（那样英文会明显发浅）
 - **切维度零抖动**：卡片 `flex-basis` 必须是 `0`（不是 auto，auto 会让内容变化移动卡片边界）、
+- **放不下就少放点，绝不遮挡**：明细行数 = floor(面板算出的可用高度 / 23)，可为 0；
+  短面板隐藏 Token 构成彩条与上下文百分比图例；卡片保留 `min-height:auto` 兜底（宁可滚动也不叠字）
   列表用固定行距而非 space-between、骨架行数对齐 `DIMENSION_ROW_CAP`、后台预热全部维度；
   取代了此前「卡片 `flex:1 1 auto` + 明细用 space-between 摊开」的写法
 - 面板最小宽度 340px，低于它会被自动纠正；万一纠正失败，模型行 `Provider - 模型名` 换行显示（不降字号）
