@@ -56,6 +56,7 @@
 | 20 | **切维度不许抖动** | 固定槽位 `SERIES_ROW_SLOTS=4` + 固定行距 + 骨架行数对齐 + 全维度预热 | `the list keeps a constant slot count` / `spare slots pad the list in quarter/year` / `period rows keep a fixed pitch across dimensions` / `the loading frame matches the target row count` / `every dimension is warmed widest-first` |
 | 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 实测媒体查询阶梯按窗口高度减内容 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
 | 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（886→790px）+ 面板容器查询阶梯（856/835/776/702/680）+ 阶梯末尾带 `!important` + `scrollbar-width:none` | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 4` / `the card column never shows a scrollbar` |
+| 24 | **用量统计是四列严格对齐的表** | 描述 / 胶囊条 / 用量 / 金额共用一个网格；每行 4 格；第三方行第 4 列写 `SUBSCRIPTION`（中文「订阅」） | `one shared table` / `the card declares the four columns once` / `the English marker is SUBSCRIPTION in capitals` / layout-check 的 `table` 断言（barLeft、tokensRight、amountRight 唯一） |
 | 23 | **同一组行左右对齐 + 行内垂直居中** | 父级网格 + 行 `grid-template-columns:subgrid` + 行 `align-items:center` | `the source rows share one grid` / `rows take their columns from the shared grid` / `the period rows share one grid` / `subgrid rows centre their cells vertically` / layout-check 的 `srcTrackLeft`、`srcBar`（居中）断言 |
 
 ## 1. 产品定位
@@ -146,6 +147,17 @@
   进度条起点和右侧数值都会随行漂移（实测差 13px）。
   另外**行内单元格必须垂直居中**：subgrid 行要显式写 `align-items:center`，
   漏掉就会退化成 stretch/顶对齐，进度条会比文字高出一截（实测偏 7px，用户报「没居中对齐」）。
+- **用量统计卡是一张四列表**（用户 2026-11-08：「左侧描述列 胶囊进度条 用量 金额 分为四个列 严谨对齐」）：
+  `描述 | 胶囊进度条 | 用量 | 金额`。实现必须满足：
+  - **整张卡只声明一次列模板**：`.aup-stats-body{display:grid;grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(52px,max-content) minmax(0,max-content)}`；
+    来源组与逐期组都用 `display:contents` 把行提升为这张表的行。
+  - **每行 4 个单元格**（`grid-template-columns:subgrid;grid-column:1/-1`），
+    空值也要输出空 `span`，**绝不允许条件性少一个单元格**——少一个会把后面所有列错位（踩过）。
+  - 第 2 列是**同样的胶囊条**（`border-radius:999px`，高度 6px，两组一致）；第 3、4 列一律 `justify-self:end` 右对齐。
+  - 第 4 列的含义：DeepSeek API 行是**真实金额**；第三方 Provider 行没有平台金额，
+    显示**订阅标记**——英文大写 `SUBSCRIPTION`、中文 `订阅`（用户 2026-11-08：
+    「这里写 session 不如写 Subscribe 对应的名词，然后大写」）。**禁止**再用 `session` / `本会话` 这类作用域提示。
+  - 两行组之间用 `::before` 画一条 hairline 分隔，**不能用 padding/border 撑行高**（会让行内元素偏离中线，被 `verify:ui` 的居中断言抓到）。
 - 所有可用空间应尽量被有意义的内容覆盖；不要出现卡片内部的大块空白。
 
 ## 3. 文本与排版（重点，多次强调）
@@ -240,7 +252,7 @@
   所有 tab 共用一个内容盒（`aup-account-body`，min-height 96px、内容顶部对齐），
   **切换 tab 不允许改变卡片高度**；tab 模式下省略 Provider 说明/更新时间等附加行；
   第三方余额与 DeepSeek 钱包一样实时读取（opencode 走套餐百分比）；
-  用量统计卡统一为「按来源一行 + 占比条 + 合计」（见 §13），卡标题不挂任何徽标
+  用量统计卡统一为**一张四列表**：`描述 | 胶囊进度条 | 用量 | 金额`（见 §13），卡标题不挂任何徽标
 - 设置里的「用量明细列表」打开后，在来源行下方追加逐期 `Token · 金额` 明细（悬浮可看完整日期/Token/金额）
 - 明细列表**高度恒定由固定槽位保证**：`SERIES_ROW_SLOTS = 4`，不足的槽位用不可见占位行补齐，
   切维度（日↔季↔年）时列表高度不变、下方卡片与 tab 行不闪动；行高只设 `min-height` 不设死高度，

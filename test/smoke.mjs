@@ -101,10 +101,17 @@ assert.ok(source.includes("root.setAttribute('data-account-usage-hide-stats'"), 
 // the same number of slots so a dimension switch cannot move the cards below it.
 assert.ok(source.includes('.aup-card{flex:0 0 auto;min-height:auto;'), 'cards size to their content and are never squeezed');
 assert.ok(source.includes('.aup-cards>.aup-card-session-fixed{flex:1 1 auto;min-height:auto}'), 'the dense session card absorbs the leftover height');
-assert.ok(source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:grid;'), 'the detail list is content sized');
+// One strict four-column table for the whole card: description | pill bar |
+// tokens | amount. Both the provider rows and the period rows are rows of it,
+// so every bar starts on one line and every figure ends on one.
+assert.ok(source.includes('.aup-srcs,.aup-series{display:contents}'), 'both row groups feed one shared table');
+assert.ok(source.includes('grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(52px,max-content) minmax(0,max-content)'), 'the card declares the four columns once');
+assert.ok(!source.includes('.aup-srcs{flex:none;display:grid'), 'no private grid for the provider rows');
+assert.ok(!source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:grid'), 'no private grid for the period rows');
+assert.ok(source.includes('.aup-card-stats .aup-series>.aup-series-row:first-child::before'), 'a hairline marks the second group without breaking the columns');
 assert.ok(source.includes('const SERIES_ROW_SLOTS = 4'), 'the list keeps a constant slot count');
 assert.ok(source.includes('Math.max(0, SERIES_ROW_SLOTS - periodRows.length)'), 'spare slots pad the list in quarter/year');
-assert.ok(source.includes('.aup-series-slot{min-height:19px;pointer-events:none}'), 'the padding rows stay invisible');
+assert.ok(source.includes('.aup-series-slot{min-height:21px;pointer-events:none}'), 'the padding rows stay invisible');
 assert.ok(!source.includes('rowBudget') && !source.includes('ROW_PITCH_PX'), 'no measured row budget remains');
 assert.ok(!source.includes('data-aup-compact'), 'no height-driven compact attribute remains');
 // The panel must never scroll. The ladder measures the PANEL, not the window:
@@ -112,21 +119,21 @@ assert.ok(!source.includes('data-aup-compact'), 'no height-driven compact attrib
 // viewport breakpoints fired too late (that is why the pane still scrolled).
 assert.ok(source.includes('container-type:size;container-name:aup-panel'), 'the panel root is a size container');
 for (const rule of [
-  '@container aup-panel (max-height:856px){.aup-compose{display:none!important}}',
-  '@container aup-panel (max-height:835px){.aup-card-session .aup-models{display:none!important}}',
-  '@container aup-panel (max-height:776px){.aup-card-session .aup-stat-list{display:none!important}}',
-  '@container aup-panel (max-height:702px){.aup-context{display:none!important}}',
-  '@container aup-panel (max-height:680px){.aup-card-session .aup-session-grid{display:none!important}}'
+  '@container aup-panel (max-height:866px){.aup-compose{display:none!important}}',
+  '@container aup-panel (max-height:855px){.aup-card-session .aup-models{display:none!important}}',
+  '@container aup-panel (max-height:795px){.aup-card-session .aup-stat-list{display:none!important}}',
+  '@container aup-panel (max-height:711px){.aup-context{display:none!important}}',
+  '@container aup-panel (max-height:689px){.aup-card-session .aup-session-grid{display:none!important}}'
 ]) {
   assert.ok(source.includes(rule), 'the measured shedding ladder contains: ' + rule);
 }
 assert.ok(!source.includes('@media (max-height:'), 'the old viewport ladder is gone');
-assert.ok(source.indexOf('@container aup-panel (max-height:856px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
+assert.ok(source.indexOf('@container aup-panel (max-height:866px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
 // Compacted so a typical pane still shows every block: the measured full content
 // height dropped from 886px to 790px.
 assert.ok(source.includes("'.aup-card{gap:4px;padding:8px}'"), 'cards are padding 8 / gap 4');
 assert.ok(source.includes('line-height:18px}'), 'the stat table rows are 18px');
-assert.ok(source.includes('.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:19px;'), 'period rows are 19px');
+assert.ok(source.includes('.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:21px;') && source.includes('.aup-src{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-height:21px;'), 'both row groups share the same 21px pitch');
 assert.ok(source.includes('scrollbar-width:none'), 'the card column never shows a scrollbar');
 assert.ok(source.includes('.aup-cards::-webkit-scrollbar{width:0;height:0;display:none}'), 'no webkit scrollbar either');
 assert.ok(!source.includes('@container aup-card'), 'no dead container queries remain');
@@ -136,17 +143,17 @@ assert.ok(!/\.aup-card\{[^}]*overflow:hidden/.test(source), 'cards never clip th
 // pane height (cards split it evenly), so rows can never paint over the summary.
 // The measurement reads only pane/flex geometry, so it cannot feed back.
 assert.ok(!source.includes('justify-content:space-between;gap:2px}'), 'period rows are not re-spread when their count changes');
-assert.ok(source.includes('grid-template-columns:minmax(7ch,max-content) minmax(0,1fr)'), 'the period label column is pinned to 7ch so the bar never shifts sideways');
+assert.ok(source.includes('.aup-srcs,.aup-series{display:contents}'), 'the label column is shared, so the bar cannot shift sideways');
 // Rows of one table must share a single grid: with a grid per row the label
 // column is sized per row, so bars start at different x positions and the right
 // edge does not line up either (user report: 左侧没对齐).
-assert.ok(source.includes('.aup-srcs{flex:none;display:grid;grid-template-columns:max-content minmax(0,1fr) auto auto;align-items:center;gap:8px}'), 'the source rows share one grid');
+assert.ok(source.includes('grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(52px,max-content) minmax(0,max-content)'), 'the source rows share the card grid');
 // Inside a shared grid the row itself must still centre its cells: without
 // align-items the bar track sticks to the top and the row reads as misaligned.
 assert.ok(source.includes('grid-template-columns:subgrid;grid-column:1/-1;align-items:center'), 'subgrid rows centre their cells vertically');
 assert.ok(source.includes('.aup-series-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center'), 'period rows centre their cells vertically');
 assert.ok(source.includes('display:grid;grid-template-columns:subgrid'), 'rows take their columns from the shared grid');
-assert.ok(source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:grid;grid-template-columns:minmax(7ch,max-content) minmax(0,1fr) minmax(52px,max-content);align-content:start;gap:2px 8px}'), 'the period rows share one grid');
+assert.ok(source.includes('.aup-srcs,.aup-series{display:contents}'), 'the period rows share the card grid');
 assert.ok(source.includes('const skeletonCount = DIMENSION_ROW_CAP[dimension]'), 'the loading frame matches the target row count');
 assert.ok(!source.includes('for (let index = 0; index < 7; index += 1)'), 'no fixed 7-row loading placeholder');
 assert.ok(source.includes("const WARM_ORDER = ['year', 'quarter', 'month', 'week', 'day', 'all']"), 'every dimension is warmed, ALL last');
@@ -178,7 +185,7 @@ assert.ok(source.includes('aup-series-slot'), 'invisible slot rows keep the list
 assert.ok(source.includes('.aup-card-session .aup-session-body>.aup-context{margin-top:0}'), 'the context block rides the even spread, not a bottom anchor');
 assert.ok(source.includes('.aup-stat-list::before{content:""'), 'a hairline separates the two stat columns');
 assert.ok(!source.includes('buildDetailStats'), 'the dead provider-detail stat builder is gone');
-assert.ok(source.includes('.aup-stats-summary{margin-top:auto;'), 'stats footer sits on the card bottom');
+assert.ok(source.includes('.aup-stats-summary{grid-column:1/-1;margin-top:2px;'), 'the total row spans the whole table');
 
 // Theme contract: only tokens the installed UI theme defines in both light and dark.
 // Values resolved from the shipped theme bundle (light | dark):
@@ -633,6 +640,38 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const allSummary = flat(walk(allTree, (node) => hasClass(node, 'aup-stats-summary'))[0]);
   assert.ok(allSummary.includes('6.5M'), 'the ALL total still counts every year: ' + allSummary);
   assert.ok(allSummary.includes('¥65.00'), 'the ALL spend counts every year: ' + allSummary);
+
+  // Third-party rows are billed by their subscription, not by a platform amount:
+  // the amount column says SUBSCRIPTION (订阅 in Chinese) instead of a scope hint.
+  const mixedStats = render(
+    {
+      phase: 'ready',
+      ok: true,
+      source: 'platform',
+      days: [{ date: new Date().toISOString().slice(0, 10), tokens: 1_000_000, cost: 10, count: 5 }],
+      currency: 'CNY',
+      dimension: 'day',
+      refreshing: false
+    },
+    (key) => (key === 'sessionStats' ? { turns: 5, steps: 9 } : undefined),
+    'day',
+    DEFAULT_SETTINGS,
+    false,
+    {
+      phase: 'ready',
+      totalTokens: 3_000_000,
+      lastProvider: 'opencode-go',
+      items: [
+        { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2_000_000, requests: 7 },
+        { provider: 'openrouter', model: 'deepseek-flash-latest', tokens: 1_000_000, requests: 3 }
+      ]
+    }
+  );
+  const sideTexts = walk(mixedStats, (node) => hasClass(node, 'aup-src-side')).map(flat);
+  assert.deepEqual(sideTexts, ['订阅', '订阅'], 'every provider row carries the subscription marker: ' + JSON.stringify(sideTexts));
+  assert.ok(!sideTexts.includes('本会话'), 'the session-scope wording is gone from the table');
+  assert.ok(source.includes("'stats.subscriptionScope': 'SUBSCRIPTION'"), 'the English marker is SUBSCRIPTION in capitals');
+  assert.ok(source.includes("side: t('stats.subscriptionScope')"), 'provider rows use the subscription marker');
   assert.equal(flat(total), '5.92B', 'session total uses B unit with two decimals');
   const header = walk(readyTree, (n) => hasClass(n, 'aup-head'))[0];
   const headerGroups = header.children.filter((child) => child && hasClass(child, 'aup-head-actions'));
@@ -667,8 +706,8 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(flat(preciseSummary).includes('78.77M'), 'stats token total keeps at most two decimals: ' + flat(preciseSummary));
   const preciseRow = walk(preciseTree, (n) => hasClass(n, 'aup-series-tokens')).map(flat).find((value) => value.includes('M'));
   assert.equal(preciseRow, '78.77M', 'per-period token value keeps at most two decimals');
-  const preciseCost = walk(preciseTree, (n) => hasClass(n, 'aup-series-cost'))[0];
-  assert.equal(flat(preciseCost), '¥3.80', 'spend keeps the two-decimal platform style');
+  const preciseCost = walk(preciseTree, (n) => hasClass(n, 'aup-series-cost')).map(flat).find((value) => value !== '');
+  assert.equal(preciseCost, '¥3.80', 'spend keeps the two-decimal platform style');
 
   const fallbackTree = render({
     phase: 'ready',
@@ -1010,7 +1049,7 @@ function walkRoles(node, role, out = []) {
   assert.equal(walk(hidden, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-session')).length, 0, 'session card hidden by settings');
   assert.equal(walk(hidden, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-account')).length, 0, 'account card hidden by settings');
   assert.equal(walk(hidden, (node) => node.props && node.props.className === 'aup-stats-total').length, 0, 'spend hidden when the option is off');
-  assert.equal(walk(hidden, (node) => node.props && node.props.className === 'aup-series-cost').length, 0, 'per-row spend hidden');
+  assert.equal(walk(hidden, (node) => node.props && node.props.className === 'aup-series-cost').map(flat).filter((value) => value !== '').length, 0, 'per-row spend hidden');
 
   // All cards hidden -> empty hint, settings still reachable.
   const empty = render({ phase: 'loading', days: [], refreshing: false, dimension: 'day' }, () => undefined, 'day', {

@@ -130,6 +130,7 @@ window.__ModuleLoader__.load({
       'account.offAccountAll': '本次会话由 {provider} 提供，不消耗 DeepSeek API 余额。',
       'stats.platformBadge': 'DeepSeek API',
       'stats.sessionScope': '本会话',
+      'stats.subscriptionScope': '订阅',
       'stats.platformBadgeHint': '平台用量只统计 DeepSeek API，不含第三方 Provider。',
       'balance.bonus': '赠送额度',
       'balance.failed': '余额读取失败',
@@ -239,6 +240,7 @@ window.__ModuleLoader__.load({
       'account.offAccountAll': 'This session runs on {provider}; it does not use your DeepSeek balance.',
       'stats.platformBadge': 'DeepSeek API',
       'stats.sessionScope': 'session',
+      'stats.subscriptionScope': 'SUBSCRIPTION',
       'stats.platformBadgeHint': 'Platform usage covers the DeepSeek API only, not third-party providers.',
       'balance.bonus': 'Bonus credit',
       'balance.failed': 'Could not read the balance',
@@ -354,13 +356,19 @@ window.__ModuleLoader__.load({
       '.aup-card{flex:0 0 auto;min-height:auto;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:visible}',
       '.aup-card-session{justify-content:flex-start}',
       '.aup-card-stats{justify-content:flex-start}',
-      '.aup-stats-body{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}',
-      '.aup-srcs{flex:none;display:grid;grid-template-columns:max-content minmax(0,1fr) auto auto;align-items:center;gap:8px}',
-      '.aup-src{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-width:0;font-size:var(--aup-fs-text);line-height:18px;font-variant-numeric:tabular-nums}',
+      '.aup-stats-body{flex:0 0 auto;display:grid;grid-template-columns:minmax(0,max-content) minmax(24px,1fr) minmax(52px,max-content) minmax(0,max-content);align-content:start;column-gap:10px;row-gap:4px}',
+      '.aup-srcs,.aup-series{display:contents}',
+      '.aup-card-stats .aup-src+.aup-src{margin-top:2px}',
+      // The provider rows and the date rows are one table, so a hairline marks where
+      // the second group starts instead of a gap that would break the column grid.
+      '.aup-card-stats .aup-series>.aup-series-row:first-child{position:relative;margin-top:3px}',
+      '.aup-card-stats .aup-series>.aup-series-row:first-child::before{content:"";position:absolute;left:0;right:0;top:-2px;border-top:.5px solid var(--dsw-alias-border-l2);pointer-events:none}',
+      
+      '.aup-src{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-height:21px;min-width:0;font-size:var(--aup-fs-text);line-height:18px;font-variant-numeric:tabular-nums}',
       '.aup-src-label{min-width:0;color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
-      '.aup-src-tokens{color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
-      '.aup-src-side{color:var(--aup-label-2);white-space:nowrap;min-width:44px;text-align:right}',
-      '.aup-src-track{min-width:24px;height:4px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
+      '.aup-src-tokens{justify-self:end;color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
+      '.aup-src-side{justify-self:end;color:var(--aup-label-2);white-space:nowrap;text-align:right}',
+      '.aup-src-track{min-width:24px;height:6px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
       '.aup-src-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary);opacity:.75}',
       '.aup-stats-head{flex:none;display:flex;flex-direction:column;gap:6px}',
       '.aup-card-account{flex:0 0 auto;min-height:auto;justify-content:flex-start}',
@@ -468,13 +476,13 @@ window.__ModuleLoader__.load({
       '.aup-dim:hover{background:var(--dsw-alias-interactive-bg-hover)}',
       '.aup-dim[data-active]{background:var(--dsw-alias-bg-layer-1);border-color:var(--dsw-alias-border-l3);box-shadow:0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 9%,transparent);color:var(--dsw-alias-label-primary);font-weight:500}',
       '.aup-dim:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
-      '.aup-stats-summary{margin-top:auto;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-variant-numeric:tabular-nums;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2)}',
+      '.aup-stats-summary{grid-column:1/-1;margin-top:2px;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-variant-numeric:tabular-nums;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2)}',
       '.aup-stats-summary>span{min-width:0;white-space:normal;overflow-wrap:anywhere}',
       '.aup-stats-total{flex:none;font-size:var(--aup-fs-text);line-height:26px;font-weight:600;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
-      '.aup-card-stats .aup-series{flex:0 0 auto;display:grid;grid-template-columns:minmax(7ch,max-content) minmax(0,1fr) minmax(52px,max-content);align-content:start;gap:2px 8px}',
-      '.aup-series-slot{min-height:19px;pointer-events:none}',,
+      
+      '.aup-series-slot{min-height:21px;pointer-events:none}',,
       '.aup-card-session .aup-session-body>.aup-context{margin-top:0}',
-      '.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:19px;padding:0 6px;margin:0 -6px;border-radius:8px;transition:background-color .12s}',
+      '.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:21px;border-radius:8px;transition:background-color .12s}',
       '.aup-card-stats .aup-series-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
       '.aup-card-stats .aup-series-row[data-current]{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent)}',
       '.aup-card-stats .aup-series-row[data-zero]{opacity:.62}',
@@ -484,13 +492,13 @@ window.__ModuleLoader__.load({
       '.aup-card-stats .aup-series-track{height:8px}',
       '.aup-series-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;font-size:var(--aup-fs-text);line-height:18px}',
       '.aup-series-label{color:var(--aup-label-2);white-space:nowrap;font-variant-numeric:tabular-nums}',
-      '.aup-series-tokens{white-space:nowrap}',
+      '.aup-series-tokens{justify-self:end;white-space:nowrap}',
       '.aup-series-cost{white-space:nowrap}',
       '.aup-series-track{height:6px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
       '.aup-series-fill{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--dsw-alias-brand-primary),color-mix(in srgb,var(--dsw-alias-brand-primary) 55%,var(--dsw-alias-bg-layer-1)))}',
       '.aup-series-value{display:flex;flex-direction:row;align-items:baseline;justify-content:flex-end;gap:6px;font-weight:500;line-height:16px;font-variant-numeric:tabular-nums;color:var(--aup-label-2)}',
       '.aup-series-tokens{font-size:var(--aup-fs-text);line-height:16px;font-variant-numeric:tabular-nums}',
-      '.aup-series-cost{font-size:var(--aup-fs-text);line-height:16px;color:var(--aup-label-2);font-variant-numeric:tabular-nums}',
+      '.aup-series-cost{justify-self:end;font-size:var(--aup-fs-text);line-height:16px;color:var(--aup-label-2);font-variant-numeric:tabular-nums}',
       '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-value{color:var(--dsw-alias-label-primary);font-weight:500}',
       '.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary)}',
       '.aup-tab-icon{flex:none;width:14px;height:14px;vertical-align:-2px;color:var(--dsw-alias-label-secondary)}',
@@ -530,11 +538,11 @@ window.__ModuleLoader__.load({
       // is shorter than the window (right-sidebar tab strip + header) and viewport
       // breakpoints fired ~90px too late, which is why the pane still scrolled.
       // They must stay LAST and carry !important: a query adds no specificity.
-      '@container aup-panel (max-height:856px){.aup-compose{display:none!important}}',
-      '@container aup-panel (max-height:835px){.aup-card-session .aup-models{display:none!important}}',
-      '@container aup-panel (max-height:776px){.aup-card-session .aup-stat-list{display:none!important}}',
-      '@container aup-panel (max-height:702px){.aup-context{display:none!important}}',
-      '@container aup-panel (max-height:680px){.aup-card-session .aup-session-grid{display:none!important}}',
+      '@container aup-panel (max-height:866px){.aup-compose{display:none!important}}',
+      '@container aup-panel (max-height:855px){.aup-card-session .aup-models{display:none!important}}',
+      '@container aup-panel (max-height:795px){.aup-card-session .aup-stat-list{display:none!important}}',
+      '@container aup-panel (max-height:711px){.aup-context{display:none!important}}',
+      '@container aup-panel (max-height:689px){.aup-card-session .aup-session-grid{display:none!important}}',
     ].join('\n');
 
     // --------------------------------------------------------------- glyphs --
@@ -2007,14 +2015,10 @@ window.__ModuleLoader__.load({
               }
             })
           ),
-          h(
-            'span',
-            { className: 'aup-series-value' },
-            h('span', { className: 'aup-series-tokens' }, formatTokens(cell.total)),
-            showCost !== false && cell.cost > 0
-              ? h('span', { className: 'aup-series-cost' }, formatCost(cell.cost, currency, locale, estimate))
-              : null
-          )
+          h('span', { className: 'aup-series-tokens' }, formatTokens(cell.total)),
+          showCost !== false && cell.cost > 0
+            ? h('span', { className: 'aup-series-cost' }, formatCost(cell.cost, currency, locale, estimate))
+            : h('span', { className: 'aup-series-cost', 'aria-hidden': true })
         );
       });
 
@@ -2037,7 +2041,7 @@ window.__ModuleLoader__.load({
           key: row.provider,
           label: row.label,
           tokens: row.tokens,
-          side: t('stats.sessionScope'),
+          side: t('stats.subscriptionScope'),
           note: t('tokens.requestsCount', { count: String(Number.isFinite(row.requests) ? row.requests : 0) })
         });
       }
@@ -2057,7 +2061,7 @@ window.__ModuleLoader__.load({
               h('span', { className: 'aup-src-fill', style: { width: Math.max(4, Math.round((row.tokens / sourceMax) * 100)) + '%' } })
             ),
             h('span', { className: 'aup-src-tokens' }, formatTokens(row.tokens)),
-            row.side === '' ? null : h('span', { className: 'aup-src-side' }, row.side)
+            h('span', { className: 'aup-src-side' }, row.side)
           )
         )
       );

@@ -202,6 +202,22 @@ out.align = {
   seriesTrackLeft: columnEdges('.aup-card-stats .aup-series', '.aup-series-track', 'left'),
   seriesValueRight: columnEdges('.aup-card-stats .aup-series', '.aup-series-value', 'right')
 };
+// One strict table: the provider rows and the period rows must share all four
+// columns, so every bar starts on one line and every figure ends on one.
+const edgesOf = (selector, edge) => {
+  const edges = new Set();
+  for (const el of document.querySelectorAll('.aup-card-stats ' + selector)) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 1) continue;
+    edges.add(Math.round(edge === 'right' ? rect.right : rect.left));
+  }
+  return [...edges].sort((a, b) => a - b);
+};
+out.table = {
+  barLeft: edgesOf('.aup-src-track, .aup-series-track', 'left'),
+  tokensRight: edgesOf('.aup-src-tokens, .aup-series-tokens', 'right'),
+  amountRight: edgesOf('.aup-src-side, .aup-series-cost', 'right')
+};
 const centring = (groupSelector, probeSelector) => {
   let worst = 0;
   for (const row of document.querySelectorAll(groupSelector + ' > *')) {
@@ -281,7 +297,7 @@ if (process.argv.includes('--tiers')) {
   for (const [label, extra] of TIERS) {
     // Keep the pane tall so no ladder step fires, and stop the last card from
     // stretching, then add the card heights up: that is the natural content height.
-    const extraCss = extra + '.aup-cards>.aup-card:last-child{flex:0 0 auto}';
+    const extraCss = extra + '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}';
     const measured = measure(css, tierDir, 1600, caseOf('day'), extraCss);
     if (measured === undefined) {
       console.log(label.padEnd(20) + 'no measurement');
@@ -321,7 +337,10 @@ for (const sweep of SWEEPS) {
       for (const [name, edges] of Object.entries(result.align ?? {})) {
         if (edges.length > 1) failures.push(`${label}: ${name} is not aligned across rows -> ${edges.join(' / ')}`);
       }
-      for (const [name, offset] of Object.entries(result.centring ?? {})) {
+      for (const [name, edges] of Object.entries(result.table ?? {})) {
+      if (edges.length > 1) failures.push(`${label}: the usage table column ${name} is not shared -> ${edges.join(' / ')}`);
+    }
+    for (const [name, offset] of Object.entries(result.centring ?? {})) {
         if (offset > 1) failures.push(`${label}: ${name} is not vertically centred -> off by ${offset}px`);
       }
     }
