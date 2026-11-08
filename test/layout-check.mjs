@@ -260,6 +260,16 @@ out.centring = {
   srcLabel: centring('.aup-srcs', '.aup-src-label'),
   seriesBar: centring('.aup-card-stats .aup-series', '.aup-series-track')
 };
+const partHeights = {};
+for (const [name, selector] of Object.entries({ srcs: '.aup-srcs', series: '.aup-card-stats .aup-series', summary: '.aup-stats-summary' })) {
+  const el = document.querySelector(selector);
+  partHeights[name] = el === null ? 0 : Math.round(el.getBoundingClientRect().height * 10) / 10;
+}
+out.parts = partHeights;
+const summaryEl = document.querySelector('.aup-stats-summary');
+out.summaryCells = summaryEl === null ? [] : [...summaryEl.children].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
+out.sourceRows = [...document.querySelectorAll('.aup-card-stats .aup-src')].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
+out.seriesRows = [...document.querySelectorAll('.aup-card-stats .aup-series-row')].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
 out.scrolls = cardsEl.scrollHeight > cardsEl.clientHeight + 1;
 out.scrollInfo = cardsEl.scrollHeight + '/' + cardsEl.clientHeight;
 const lastCard = document.querySelector('.aup-cards > .aup-card:last-child');
@@ -339,8 +349,8 @@ if (process.argv.includes('--tiers')) {
 }
 
 const SWEEPS = [
-  // 903/904 straddle the first shedding step (hide the token bar at <= 903).
-  { width: 420, heights: [700, 810, 900, 903, 904, 1000, 1080, 1200] },
+  // 895/896 straddle the first shedding step (hide the token bar at <= 895).
+  { width: 420, heights: [700, 810, 890, 895, 896, 1000, 1080, 1200] },
   // The documented minimum pane: six range tabs and both tables must still fit.
   { width: 340, heights: [900, 1080] }
 ];
@@ -394,6 +404,38 @@ for (const sweep of SWEEPS) {
   }
 }
 
+// Switching a range must not move anything while the window stays put: every range,
+// its loading frame and its empty variant have to measure identically.
+const stabilityDir = mkdtempSync(join(tmpdir(), 'aup-stability-'));
+const STABLE_PANE = 1080;
+const base = [];
+for (const dimension of ['day', 'week', 'month', 'quarter', 'year', 'all']) {
+  const readyCase = caseOf(dimension);
+  const variants = {
+    ready: readyCase,
+    loading: { ...readyCase, usageState: { phase: 'loading', dimension } },
+    empty: { ...readyCase, usageState: { ...readyCase.usageState, days: [] } }
+  };
+  for (const [name, variant] of Object.entries(variants)) {
+    const result = measure(css, stabilityDir, STABLE_PANE, variant);
+    if (result === undefined) {
+      failures.push(`range stability: ${dimension}/${name} produced no result`);
+      continue;
+    }
+    const heights = result.cards.map((card) => Math.round(card.height));
+    if (base.length === 0) {
+      base.push(...heights);
+      continue;
+    }
+    heights.forEach((height, index) => {
+      if (Math.abs(height - base[index]) > 1) {
+        failures.push(`range stability: ${dimension}/${name} card ${String(index + 1)} is ${height}px, but ${base[index]}px for the others`);
+      }
+    });
+  }
+}
+console.log('range stability: every range + loading + empty frame measures ' + base.join('/') + 'px at pane ' + STABLE_PANE + 'px');
+
 // Space allocation: the leftover height must go to the information-dense card, so
 // the session card grows with the pane while the two-row balance card stays put.
 const heightOf = (result, className) => {
@@ -418,6 +460,31 @@ if (small !== undefined && large !== undefined) {
       failures.push(`space allocation: the dense session card does not grow with the pane (${smallSession}px -> ${largeSession}px)`);
     }
   }
+}
+
+// `--dims [paneHeight]` renders every range at one pane size: clicking a tab must
+// not move anything when the window stays the same.
+if (process.argv.includes('--dims')) {
+  const index = process.argv.indexOf('--dims');
+  const height = Number(process.argv[index + 1]) || 1080;
+  const dir = mkdtempSync(join(tmpdir(), 'aup-dims-'));
+  for (const dimension of ['day', 'week', 'month', 'quarter', 'year', 'all']) {
+    const ready = measure(css, dir, height, caseOf(dimension));
+    const loading = measure(css, dir, height, {
+      ...caseOf(dimension),
+      usageState: { phase: 'loading', dimension }
+    });
+    const list = (result) => (result === undefined ? 'n/a' : result.cards.map((card) => Math.round(card.height)).join('/'));
+    const parts = (result) => (result === undefined ? 'n/a' : 'sum:' + JSON.stringify(result.summaryCells) + ' src:' + JSON.stringify(result.sourceRows) + ' rows:' + JSON.stringify(result.seriesRows));
+    const unusedParts = (result) => (result === undefined || result.parts === undefined ? 'n/a' : Object.entries(result.parts).map(([key, value]) => key + ':' + value).join(' '));
+    console.log(
+      dimension.padEnd(9),
+      'ready', list(ready).padEnd(18), parts(ready).padEnd(34),
+      'loading', list(loading).padEnd(18), parts(loading),
+      'scroll', ready === undefined ? 'n/a' : ready.scrollInfo
+    );
+  }
+  process.exit(0);
 }
 
 // `--debug-footers` prints the measured footer geometry, so a passing run is

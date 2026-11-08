@@ -119,16 +119,16 @@ assert.ok(!source.includes('data-aup-compact'), 'no height-driven compact attrib
 // viewport breakpoints fired too late (that is why the pane still scrolled).
 assert.ok(source.includes('container-type:size;container-name:aup-panel'), 'the panel root is a size container');
 for (const rule of [
-  '@container aup-panel (max-height:903px){.aup-compose{display:none!important}}',
-  '@container aup-panel (max-height:891px){.aup-card-session .aup-models{display:none!important}}',
-  '@container aup-panel (max-height:831px){.aup-card-session .aup-stat-list{display:none!important}}',
-  '@container aup-panel (max-height:747px){.aup-context{display:none!important}}',
-  '@container aup-panel (max-height:689px){.aup-card-session .aup-session-grid{display:none!important}}'
+  '@container aup-panel (max-height:895px){.aup-compose{display:none!important}}',
+  '@container aup-panel (max-height:883px){.aup-card-session .aup-models{display:none!important}}',
+  '@container aup-panel (max-height:823px){.aup-card-session .aup-stat-list{display:none!important}}',
+  '@container aup-panel (max-height:739px){.aup-context{display:none!important}}',
+  '@container aup-panel (max-height:681px){.aup-card-session .aup-session-grid{display:none!important}}'
 ]) {
   assert.ok(source.includes(rule), 'the measured shedding ladder contains: ' + rule);
 }
 assert.ok(!source.includes('@media (max-height:'), 'the old viewport ladder is gone');
-assert.ok(source.indexOf('@container aup-panel (max-height:903px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
+assert.ok(source.indexOf('@container aup-panel (max-height:895px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
 // Compacted so a typical pane still shows every block: the measured full content
 // height dropped from 886px to 790px.
 assert.ok(source.includes("'.aup-card{gap:4px;padding:8px}'"), 'cards are padding 8 / gap 4');
@@ -154,7 +154,15 @@ assert.ok(source.includes('grid-template-columns:subgrid;grid-column:1/-1;align-
 assert.ok(source.includes('.aup-series-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center'), 'period rows centre their cells vertically');
 assert.ok(source.includes('display:grid;grid-template-columns:subgrid'), 'rows take their columns from the shared grid');
 assert.ok(source.includes('.aup-srcs,.aup-series{display:contents}'), 'the period rows share the card grid');
-assert.ok(source.includes('const skeletonCount = DIMENSION_ROW_CAP[dimension]'), 'the loading frame matches the target row count');
+// The loading frame keeps the ready card's height: same source rows, four period
+// slots, same summary row. Clicking a range must not move the panel.
+assert.ok(source.includes('const skeletonPeriodRows = Array.from({ length: SERIES_ROW_SLOTS }'), 'the loading frame reserves all four period slots');
+assert.ok(source.includes("const loadingSourceCount = sessionOnly === true ? loadingProviderRows.length : loadingProviderRows.length + 1"), 'the loading frame reserves one row per source');
+assert.ok(source.includes("const skeletonSummary = h("), 'the loading frame keeps the summary row');
+assert.ok(!source.includes('const skeletonCount = DIMENSION_ROW_CAP[dimension]'), 'the loading frame no longer varies with the target range');
+// An empty range keeps the four slots too, so switching to it cannot collapse the card.
+assert.ok(!source.includes('listMode === true && sessionOnly !== true && series.total > 0'), 'the period list is not hidden for an empty range');
+assert.ok(source.includes('series.total === 0 && providerRows.length === 0 && listMode !== true'), 'the empty hint only replaces the body when the list is off');
 // Every period label carries its year: short "11-05" dates left a ragged gap and
 // the table read as uneven.
 assert.ok(source.includes("return year + '-' + pad(month + 1) + '-' + pad(start.getDate())"), 'day and week labels carry the year');
@@ -581,9 +589,15 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
 }
 {
   const loadingTree = render({ phase: 'loading', days: [], refreshing: false, dimension: 'day' });
-  assert.equal(walk(loadingTree, (n) => hasClass(n, 'aup-skeleton-row')).length, 4, 'skeleton rows match the day row cap');
+  const skeletonOf = (className) => {
+    const group = walk(loadingTree, (n) => hasClass(n, className))[0];
+    return group === undefined ? 0 : walk(group, (n) => hasClass(n, 'aup-skeleton-row')).length;
+  };
+  assert.equal(skeletonOf('aup-series'), 4, 'the loading frame reserves four period slots');
+  assert.equal(skeletonOf('aup-srcs'), 1, 'the loading frame reserves one row for the account source');
   const loadingQuarter = render({ phase: 'loading', days: [], refreshing: false, dimension: 'quarter' }, undefined, 'quarter');
-  assert.equal(walk(loadingQuarter, (n) => hasClass(n, 'aup-skeleton-row')).length, 3, 'skeleton rows match the quarter row cap');
+  const quarterSeries = walk(loadingQuarter, (n) => hasClass(n, 'aup-series'))[0];
+  assert.equal(walk(quarterSeries, (n) => hasClass(n, 'aup-skeleton-row')).length, 4, 'quarter reserves four period slots too, like every other range');
   const readyTree = render({
     phase: 'ready',
     ok: true,

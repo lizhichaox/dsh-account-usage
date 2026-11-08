@@ -498,7 +498,6 @@ window.__ModuleLoader__.load({
       '.aup-bar{height:6px}',
       '.aup-context{gap:4px}',
       '.aup-context-head{font-size:var(--aup-fs-text);line-height:16px}',
-      '.aup-stats-total{font-size:var(--aup-fs-text);line-height:26px}',
       '.aup-card-stats .aup-series-row{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-card-stats .aup-series-track{height:6px}',
       '.aup-card-stats .aup-series-label,.aup-card-stats .aup-series-tokens{font-size:var(--aup-fs-text);line-height:16px}',
@@ -518,11 +517,11 @@ window.__ModuleLoader__.load({
       // is shorter than the window (right-sidebar tab strip + header) and viewport
       // breakpoints fired ~90px too late, which is why the pane still scrolled.
       // They must stay LAST and carry !important: a query adds no specificity.
-      '@container aup-panel (max-height:903px){.aup-compose{display:none!important}}',
-      '@container aup-panel (max-height:891px){.aup-card-session .aup-models{display:none!important}}',
-      '@container aup-panel (max-height:831px){.aup-card-session .aup-stat-list{display:none!important}}',
-      '@container aup-panel (max-height:747px){.aup-context{display:none!important}}',
-      '@container aup-panel (max-height:689px){.aup-card-session .aup-session-grid{display:none!important}}',
+      '@container aup-panel (max-height:895px){.aup-compose{display:none!important}}',
+      '@container aup-panel (max-height:883px){.aup-card-session .aup-models{display:none!important}}',
+      '@container aup-panel (max-height:823px){.aup-card-session .aup-stat-list{display:none!important}}',
+      '@container aup-panel (max-height:739px){.aup-context{display:none!important}}',
+      '@container aup-panel (max-height:681px){.aup-card-session .aup-session-grid{display:none!important}}',
     ].join('\n');
 
     // --------------------------------------------------------------- glyphs --
@@ -1957,25 +1956,57 @@ window.__ModuleLoader__.load({
       const head = h('div', { className: 'aup-stats-head' }, sessionOnly === true ? headCore : [...headCore, dimensions]);
 
       if (state.phase === 'loading') {
-        const skeletonRows = [];
-        const skeletonCount = DIMENSION_ROW_CAP[dimension] === undefined ? 4 : DIMENSION_ROW_CAP[dimension];
-        for (let index = 0; index < skeletonCount; index += 1) {
-          skeletonRows.push(
-            h(
-              'div',
-              { key: 'skeleton-' + index, className: 'aup-series-row aup-skeleton-row' },
-              h('span', { className: 'aup-skeleton aup-skeleton-label' }),
-              h('span', { className: 'aup-skeleton aup-skeleton-track' }),
-              h('span', { className: 'aup-skeleton aup-skeleton-value' })
-            )
-          );
-        }
+        // The loading frame has to occupy exactly the height the ready card will:
+        // the same source rows, the same four period slots and the same summary row.
+        // Anything shorter makes clicking a range shove the whole panel around.
+        const loadingProviderRows = (Array.isArray(categories) ? categories : []).filter(
+          (row) => row !== null && row !== undefined && Number.isFinite(row.tokens) && row.tokens > 0
+        );
+        const loadingSourceCount = sessionOnly === true ? loadingProviderRows.length : loadingProviderRows.length + 1;
+        const skeletonCell = (key) => h('span', { key: 'skeleton-cell-' + key, className: 'aup-skeleton aup-skeleton-value' });
+        const skeletonSourceRows = Array.from({ length: loadingSourceCount }, (unused, index) =>
+          h(
+            'div',
+            { key: 'skeleton-src-' + String(index), className: 'aup-src aup-skeleton-row' },
+            h('span', { className: 'aup-skeleton aup-skeleton-label' }),
+            h('span', { className: 'aup-skeleton aup-skeleton-track' }),
+            skeletonCell('tokens-' + String(index)),
+            skeletonCell('side-' + String(index))
+          )
+        );
+        const skeletonPeriodRows = Array.from({ length: SERIES_ROW_SLOTS }, (unused, index) =>
+          h(
+            'div',
+            { key: 'skeleton-row-' + String(index), className: 'aup-series-row aup-skeleton-row' },
+            h('span', { className: 'aup-skeleton aup-skeleton-label' }),
+            h('span', { className: 'aup-skeleton aup-skeleton-track' }),
+            skeletonCell('value-' + String(index)),
+            skeletonCell('cost-' + String(index))
+          )
+        );
+        // inline-block keeps the line box (and therefore the row) exactly as tall as a
+        // text cell, so the loading summary row matches the ready one to the pixel.
+        const skeletonSummaryCell = (key) =>
+          h('span', { key }, h('span', { className: 'aup-skeleton aup-skeleton-label', style: { display: 'inline-block' } }));
+        const skeletonSummary = h(
+          'div',
+          { className: 'aup-stats-summary', 'aria-hidden': true },
+          skeletonSummaryCell('summary-left'),
+          skeletonSummaryCell('summary-mid'),
+          skeletonSummaryCell('summary-right')
+        );
         return h(
           'section',
           { className: 'aup-card aup-card-stats', 'aria-busy': true },
           head,
           h('span', { className: 'aup-sr-only' }, t('stats.loading')),
-          h('div', { className: 'aup-series', 'aria-hidden': true }, skeletonRows)
+          h(
+            'div',
+            { className: 'aup-stats-body', 'aria-hidden': true },
+            h('div', { className: 'aup-srcs' }, skeletonSourceRows),
+            listMode === true && sessionOnly !== true ? h('div', { className: 'aup-series' }, skeletonPeriodRows) : null,
+            skeletonSummary
+          )
         );
       }
       if (state.phase === 'error' || state.ok === false) {
@@ -2093,13 +2124,13 @@ window.__ModuleLoader__.load({
         'section',
         { className: 'aup-card aup-card-stats', ref: sectionRef },
         head,
-        series.total === 0 && providerRows.length === 0
+        series.total === 0 && providerRows.length === 0 && listMode !== true
           ? h(Hint, null, t('stats.empty'))
           : h(
               'div',
               { className: 'aup-stats-body' },
               sourceList,
-              listMode === true && sessionOnly !== true && series.total > 0
+              listMode === true && sessionOnly !== true
                 ? h(
                     'div',
                     { className: 'aup-series' },
