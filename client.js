@@ -1792,29 +1792,37 @@ window.__ModuleLoader__.load({
         const buttons = event.currentTarget.querySelectorAll('[role="tab"]');
         if (buttons[next] !== undefined) buttons[next].focus();
       };
-      const seriesRef = React.useRef(null);
-      const [fitCount, setFitCount] = React.useState(0);
+      const sectionRef = React.useRef(null);
+      const [hiddenRows, setHiddenRows] = React.useState(0);
       React.useEffect(() => {
-        const node = seriesRef.current;
-        if (node === null || node === undefined) return undefined;
+        setHiddenRows(0);
+      }, [dimension, listMode]);
+      React.useEffect(() => {
+        if (listMode !== true) return undefined;
+        const section = sectionRef.current;
+        if (section === null || section === undefined) return undefined;
+        const root = typeof document === 'undefined' ? null : document.querySelector('.aup-root');
+        if (root === null || root === undefined) return undefined;
+        // Trim the oldest periods until the whole panel (this card + the cards below it)
+        // fits the available height again.
         const measure = () => {
-          const height = typeof node.clientHeight === 'number' ? node.clientHeight : 0;
-          if (height <= 0) return;
-          const next = Math.max(1, Math.floor((height + 4) / 20));
-          setFitCount((previous) => (previous === next ? previous : next));
+          const rootRect = root.getBoundingClientRect();
+          let below = 0;
+          let sibling = section.nextElementSibling;
+          while (sibling !== null && sibling !== undefined) {
+            below += sibling.getBoundingClientRect().height + 8;
+            sibling = sibling.nextElementSibling;
+          }
+          const overflow = section.getBoundingClientRect().bottom + below - (rootRect.bottom - 6);
+          if (overflow > 2) setHiddenRows((previous) => previous + Math.max(1, Math.ceil(overflow / 21)));
         };
         measure();
-        if (typeof ResizeObserver === 'function') {
-          const observer = new ResizeObserver(measure);
-          observer.observe(node);
-          return () => observer.disconnect();
-        }
-        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-          window.addEventListener('resize', measure);
-          return () => window.removeEventListener('resize', measure);
-        }
-        return undefined;
-      }, [dimension, state.phase, state.days]);
+        if (typeof ResizeObserver !== 'function') return undefined;
+        const observer = new ResizeObserver(measure);
+        observer.observe(root);
+        observer.observe(section);
+        return () => observer.disconnect();
+      }, [listMode, dimension]);
 
       const dimensions = h(
         'div',
@@ -1896,8 +1904,9 @@ window.__ModuleLoader__.load({
       const currency = typeof state.currency === 'string' && state.currency !== '' ? state.currency : fallbackCurrency || 'CNY';
       const series = buildSeries(state.days || [], dimension);
       // Rows that no longer fit are dropped (never clipped); the totals follow what is shown.
-      const visibleCells =
-        fitCount > 0 && fitCount < series.cells.length ? series.cells.slice(series.cells.length - fitCount) : series.cells;
+      // Dropping rows always removes the OLDEST periods; the newest stay visible.
+      const droppedRows = Math.min(Math.max(0, hiddenRows), Math.max(0, series.cells.length - 1));
+      const visibleCells = series.cells.slice(droppedRows);
       const shownTotal = visibleCells.reduce((sum, cell) => sum + cell.total, 0);
       const shownCost = visibleCells.reduce((sum, cell) => sum + cell.cost, 0);
       const shownCount = visibleCells.reduce((sum, cell) => sum + (Number.isFinite(cell.count) ? cell.count : 0), 0);
@@ -1986,7 +1995,7 @@ window.__ModuleLoader__.load({
 
       return h(
         'section',
-        { className: 'aup-card aup-card-stats' },
+        { className: 'aup-card aup-card-stats', ref: sectionRef },
         head,
         series.total === 0 && providerRows.length === 0
           ? h(Hint, null, t('stats.empty'))
@@ -1995,7 +2004,7 @@ window.__ModuleLoader__.load({
               { className: 'aup-stats-body' },
               sourceList,
               listMode === true && sessionOnly !== true && series.total > 0
-                ? h('div', { className: 'aup-series', ref: seriesRef }, periodRows)
+                ? h('div', { className: 'aup-series' }, periodRows)
                 : null,
               h(
                 'div',
