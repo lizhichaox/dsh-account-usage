@@ -67,6 +67,24 @@ const source = fs.readFileSync(path.join(root, 'client.js'), 'utf8');
     assert.ok(source.includes(token + ':'), 'declares ' + token);
   }
   assert.ok(!source.includes('--aup-fs-num'), 'exactly one font size token exists');
+
+  // Latin text must look as solid as CJK: a Latin-first family stack (a CJK font
+  // renders Latin thin), a 500 baseline so nothing inherits 400, and a secondary
+  // text colour mixed towards label-primary (~8.6:1 on white) instead of bare
+  // label-secondary (~5.8:1).
+  const familyMatch = source.match(/--aup-font-ui:([^;]+);/);
+  assert.ok(familyMatch !== null, 'the family stack is declared');
+  const family = familyMatch[1];
+  const latinAt = family.indexOf('Helvetica Neue');
+  const cjkAt = family.indexOf('PingFang SC');
+  assert.ok(latinAt > -1 && cjkAt > -1 && latinAt < cjkAt, 'Latin families precede CJK ones in the stack');
+  assert.ok(source.includes('--aup-label-2:color-mix(in srgb,var(--dsw-alias-label-primary) 30%,var(--dsw-alias-label-secondary))'), 'secondary text is darkened from theme tokens');
+  assert.ok(source.includes('font-size:var(--aup-fs-text);font-weight:500;line-height:20px}'), 'the panel root sets a 500 baseline weight');
+  assert.equal((source.match(/font-weight:400/g) || []).length, 1, 'only the close glyph stays at 400');
+  for (const selector of ['.aup-stat-label{', '.aup-series-label{', '.aup-card-title{', '.aup-model-name{']) {
+    const rule = source.slice(source.indexOf(selector), source.indexOf(selector) + 400);
+    assert.ok(rule.includes('var(--aup-label-2)'), selector + ' text uses the darkened secondary colour');
+  }
 }
 assert.equal((source.match(/text-overflow:ellipsis/g) || []).length, 0, 'card text never uses ellipsis');
 

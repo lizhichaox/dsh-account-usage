@@ -52,6 +52,7 @@
 | 16 | 头部齿轮设置（7 项） | `.aup-pop` 弹层 + localStorage | `settings button` |
 | 17 | 不显示身份信息、不放跳转链接 | 不读用户资料、无外链 | `account reader does not fetch the profile` |
 | 18 | **要求写进 AGENTS.md，别让人重复** | 本节 §0 | 见各条 |
+| 19 | **英文文本不许看着浅** | 拉丁字体栈优先 + 根 500 基线 + `--aup-label-2` 混色 | `Latin families precede CJK ones in the stack` / `secondary text is darkened from theme tokens` / `the panel root sets a 500 baseline weight` |
 
 ## 1. 产品定位
 
@@ -110,9 +111,20 @@
 - **全局只有一个字号：13px**（`--aup-fs-text`）。中文、英文、数字、符号**全部同字号**，
   禁止出现任何第二档（不许 11/12/14/16/20px）。层级只能靠 **字重** 表达：
   主数字/合计 600，常规数值与标签 500，极少数说明文字 400。
-  - 字族：`--aup-font-ui`（`-apple-system, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif`），
+  - 字族：`--aup-font-ui`（`-apple-system, "Segoe UI", "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif`），
     中文、英文、数字、符号共用；数字容器加 `font-variant-numeric:tabular-nums`
   - 长数字/长模型名**不许降字号**：只能靠 `letter-spacing` 微调、换行或自适应列宽解决
+- **英文/拉丁文字必须和中文一样「实」，不许发灰发浅**（用户 2026-11-08：「英文文本看着过于浅了」）。
+  同字号同颜色下，拉丁字形比汉字笔画少、视觉墨色天然更浅，所以必须额外补偿，三条同时生效：
+  1. **字体栈拉丁优先**：`Helvetica Neue`、`Arial` 必须排在 `PingFang SC` **之前**——
+     一旦落到汉字字体的拉丁字形上会明显变细变浅（这是「英文发浅」最常见的原因）；
+  2. **根上打 500 基线**：`.aup-root{font-weight:500}`，任何没有显式字重的文字都继承 Medium，
+     **不允许出现继承默认 400 的情况**（全文件只保留 `.aup-pop-close-glyph` 的 × 是 400）；
+  3. **次要文字色从主题 token 混出来**：`--aup-label-2: color-mix(in srgb, label-primary 30%, label-secondary)`，
+     浅色约 8.6:1（裸 `label-secondary` 只有 5.8:1），深色自动反向变亮；
+     文字一律用 `--aup-label-2`，只有**图标/描边**继续用裸 `label-secondary`。
+  4. 0 用量行本来就淡化，叠上浅灰会看不见：`opacity` 提到 `.62`（轨道 `.6`），
+     可以淡，但不能读不出来。
 - **右侧卡片内所有文本禁止折叠、遮挡、省略、截断**。允许：
   - 自动换行（长模型名、Provider 名、说明、标签）
   - 简化文案（如「余额由 OpenRouter 提供」）
@@ -263,6 +275,8 @@
 - 统计区为**对齐两列表格**（标签列 `max-content`、值列右对齐，行高 20px、列间距 16px）；
   数值过长时只允许收紧字距（`statValueClass` → letter-spacing），**绝不能改字号、也不能与相邻列重叠**；时长使用紧凑格式（如 1时44分 / 2分57秒 / 1.7秒）；用量统计每日行单行显示 Token · 金额，行高有下限，禁止重叠
 - 卡片文本无省略号；长文本换行、长金额只收紧字距（字号恒 13px）
+- **英文（拉丁）文字墨色与中文对齐**：字体栈拉丁优先、根 500 基线、次要色 `--aup-label-2`（color-mix 30% 主色）；
+  取代了此前「次要文字直接用 `label-secondary`、字重从默认 400 继承」的写法（那样英文会明显发浅）
 - 面板最小宽度 340px，低于它会被自动纠正；万一纠正失败，模型行 `Provider - 模型名` 换行显示（不降字号）
   （`.aup-model-row` 用 `flex-wrap`），token 数值 `margin-left:auto`，绝不压到文字上
 - 底栏 dock + ContextMeter 一起隐藏（只隐藏 slot 不够）
