@@ -17,6 +17,15 @@
 
 - 卡片列只在内容真的超出时才出现滚动条，不再因为预留槽位导致右侧多出一条空带
 
+### 修复（行不对齐）
+
+- **用量统计卡的行左右不再错位**：来源行（DeepSeek API / OpenCode Go / OpenRouter）和逐期行
+  改为「父级共用一个网格 + 行内 `grid-template-columns:subgrid`」，
+  进度条起点、Tokens、金额右边缘全部对齐（此前每行各写一套网格，标签列按行取 `max-content`，
+  实测起点差 13px）
+- `npm run verify:ui` 新增列对齐断言（`srcTrackLeft` / `srcSideRight` / `seriesTrackLeft` /
+  `seriesValueRight` 跨行必须唯一），并做了反向验证：改回逐行网格时会立刻失败
+
 ### 优化（不许滚动）
 
 - **面板任何情况下都不滚动、不出现滚动条**：

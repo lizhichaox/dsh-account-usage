@@ -101,7 +101,7 @@ assert.ok(source.includes("root.setAttribute('data-account-usage-hide-stats'"), 
 // the same number of slots so a dimension switch cannot move the cards below it.
 assert.ok(source.includes('.aup-card{flex:0 0 auto;min-height:auto;'), 'cards size to their content and are never squeezed');
 assert.ok(source.includes('.aup-cards>.aup-card:last-child{flex:1 1 auto}'), 'the last card absorbs the leftover pane height');
-assert.ok(source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:2px}'), 'the detail list is content sized');
+assert.ok(source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:grid;'), 'the detail list is content sized');
 assert.ok(source.includes('const SERIES_ROW_SLOTS = 4'), 'the list keeps a constant slot count');
 assert.ok(source.includes('Math.max(0, SERIES_ROW_SLOTS - periodRows.length)'), 'spare slots pad the list in quarter/year');
 assert.ok(source.includes('.aup-series-slot{min-height:21px;pointer-events:none}'), 'the padding rows stay invisible');
@@ -130,6 +130,12 @@ assert.ok(!/\.aup-card\{[^}]*overflow:hidden/.test(source), 'cards never clip th
 // The measurement reads only pane/flex geometry, so it cannot feed back.
 assert.ok(!source.includes('justify-content:space-between;gap:2px}'), 'period rows are not re-spread when their count changes');
 assert.ok(source.includes('grid-template-columns:minmax(7ch,max-content) minmax(0,1fr)'), 'the period label column is pinned to 7ch so the bar never shifts sideways');
+// Rows of one table must share a single grid: with a grid per row the label
+// column is sized per row, so bars start at different x positions and the right
+// edge does not line up either (user report: 左侧没对齐).
+assert.ok(source.includes('.aup-srcs{flex:none;display:grid;grid-template-columns:max-content minmax(0,1fr) auto auto;align-items:center;gap:8px}'), 'the source rows share one grid');
+assert.ok(source.includes('display:grid;grid-template-columns:subgrid'), 'rows take their columns from the shared grid');
+assert.ok(source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:grid;grid-template-columns:minmax(7ch,max-content) minmax(0,1fr) minmax(52px,max-content);align-content:start;gap:2px 8px}'), 'the period rows share one grid');
 assert.ok(source.includes('const skeletonCount = DIMENSION_ROW_CAP[dimension]'), 'the loading frame matches the target row count');
 assert.ok(!source.includes('for (let index = 0; index < 7; index += 1)'), 'no fixed 7-row loading placeholder');
 assert.ok(source.includes("const WARM_ORDER = ['year', 'quarter', 'month', 'week', 'day']"), 'every dimension is warmed widest-first');

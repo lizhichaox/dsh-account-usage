@@ -224,6 +224,24 @@ for (const selector of ['.aup-compose', '.aup-context-breakdown', '.aup-card-ses
   const el = document.querySelector(selector);
   out.shedding[selector] = el === null ? 'missing' : getComputedStyle(el).display;
 }
+// Column alignment: every row of the source list (and of the period list) must
+// share one grid, otherwise the bars start at different x positions.
+const columnEdges = (groupSelector, probeSelector, edge) => {
+  const edges = new Set();
+  for (const row of document.querySelectorAll(groupSelector + ' > *')) {
+    const probe = row.querySelector(probeSelector);
+    if (probe === null) continue;
+    const rect = probe.getBoundingClientRect();
+    edges.add(Math.round(edge === 'right' ? rect.right : rect.left));
+  }
+  return [...edges].sort((a, b) => a - b);
+};
+out.align = {
+  srcTrackLeft: columnEdges('.aup-srcs', '.aup-src-track', 'left'),
+  srcSideRight: columnEdges('.aup-srcs', '.aup-src-side', 'right'),
+  seriesTrackLeft: columnEdges('.aup-card-stats .aup-series', '.aup-series-track', 'left'),
+  seriesValueRight: columnEdges('.aup-card-stats .aup-series', '.aup-series-value', 'right')
+};
 out.scrolls = cardsEl.scrollHeight > cardsEl.clientHeight + 1;
 out.scrollInfo = cardsEl.scrollHeight + '/' + cardsEl.clientHeight;
 const lastCard = document.querySelector('.aup-cards > .aup-card:last-child');
@@ -304,6 +322,9 @@ for (const height of HEIGHTS) {
     if (result.horizontal.length > 0) failures.push(`${height}px rows=${rowsCount}: horizontal overflow -> ${result.horizontal.join(' | ')}`);
     if (result.deadBand > 2) failures.push(`${height}px rows=${rowsCount}: dead band at the pane bottom -> ${result.deadBand}px`);
     if (result.scrolls) failures.push(`${height}px rows=${rowsCount}: the card column scrolls (${result.scrollInfo}) - the panel must never scroll`);
+    for (const [name, edges] of Object.entries(result.align ?? {})) {
+      if (edges.length > 1) failures.push(`${height}px rows=${rowsCount}: ${name} is not aligned across rows -> ${edges.join(' / ')}`);
+    }
   }
 }
 
