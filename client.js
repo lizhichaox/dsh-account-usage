@@ -785,6 +785,9 @@ window.__ModuleLoader__.load({
     /** Shortcut id shared by the registered command and the guide card's key hint. */
     const SHORTCUT_ID = 'accountUsage.open';
 
+    /** Maximum periods rendered in the detail list per dimension (older ones are dropped). */
+    const DIMENSION_ROW_CAP = { day: 5, week: 5, month: 5, quarter: 4, year: 3 };
+
     /** Minimum usable panel width: below this the no-wrap rows would collide. */
     const PANEL_MIN_WIDTH = 340;
 
@@ -1793,61 +1796,6 @@ window.__ModuleLoader__.load({
         if (buttons[next] !== undefined) buttons[next].focus();
       };
       const sectionRef = React.useRef(null);
-      const totalCellsRef = React.useRef(0);
-      const [hiddenRows, setHiddenRows] = React.useState(0);
-      React.useEffect(() => {
-        setHiddenRows(0);
-      }, [dimension, listMode]);
-      React.useEffect(() => {
-        if (listMode !== true) return undefined;
-        const section = sectionRef.current;
-        if (section === null || section === undefined) return undefined;
-        const root = typeof document === 'undefined' ? null : document.querySelector('.aup-root');
-        if (root === null || root === undefined) return undefined;
-        let frame = 0;
-        let settled = false;
-        const measure = () => {
-          if (settled) return;
-          if (typeof requestAnimationFrame === 'function') {
-            cancelAnimationFrame(frame);
-            frame = requestAnimationFrame(measureNow);
-          } else {
-            measureNow();
-          }
-        };
-        // Trim the oldest periods until this card plus the cards below it fit the panel again.
-        // The count is clamped to the number of rows, so this can never loop forever.
-        const measureNow = () => {
-          const maxDrop = Math.max(0, totalCellsRef.current - 1);
-          if (maxDrop === 0) return;
-          const rootRect = root.getBoundingClientRect();
-          if (!(rootRect.height > 120)) return;
-          let below = 0;
-          let sibling = section.nextElementSibling;
-          while (sibling !== null && sibling !== undefined) {
-            below += sibling.getBoundingClientRect().height + 8;
-            sibling = sibling.nextElementSibling;
-          }
-          const overflow = section.getBoundingClientRect().bottom + below - (rootRect.bottom - 6);
-          if (overflow <= 2) return;
-          setHiddenRows((previous) => {
-            if (previous >= maxDrop) {
-              settled = true;
-              return previous;
-            }
-            return Math.min(maxDrop, previous + Math.max(1, Math.ceil(overflow / 21)));
-          });
-        };
-        measure();
-        if (typeof ResizeObserver !== 'function') return undefined;
-        const observer = new ResizeObserver(measure);
-        observer.observe(root);
-        observer.observe(section);
-        return () => {
-          if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame);
-          observer.disconnect();
-        };
-      }, [listMode, dimension]);
 
       const dimensions = h(
         'div',
@@ -1928,11 +1876,10 @@ window.__ModuleLoader__.load({
       const estimate = source !== 'platform';
       const currency = typeof state.currency === 'string' && state.currency !== '' ? state.currency : fallbackCurrency || 'CNY';
       const series = buildSeries(state.days || [], dimension);
-      // Rows that no longer fit are dropped (never clipped); the totals follow what is shown.
-      // Dropping rows always removes the OLDEST periods; the newest stay visible.
-      totalCellsRef.current = series.cells.length;
-      const droppedRows = Math.min(Math.max(0, hiddenRows), Math.max(0, series.cells.length - 1));
-      const visibleCells = series.cells.slice(droppedRows);
+      // Keep the card compact with a fixed cap: drop the OLDEST periods, keep the newest.
+      // No measurement and no observer, so this can never feed back into layout.
+      const rowCap = DIMENSION_ROW_CAP[dimension] === undefined ? 5 : DIMENSION_ROW_CAP[dimension];
+      const visibleCells = series.cells.slice(Math.max(0, series.cells.length - rowCap));
       const shownTotal = visibleCells.reduce((sum, cell) => sum + cell.total, 0);
       const shownCost = visibleCells.reduce((sum, cell) => sum + cell.cost, 0);
       const shownCount = visibleCells.reduce((sum, cell) => sum + (Number.isFinite(cell.count) ? cell.count : 0), 0);
