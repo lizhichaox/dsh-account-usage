@@ -181,7 +181,6 @@ window.__ModuleLoader__.load({
       'tokens.context': '上下文占用',
       'tokens.contextValue': '{used}/{window}（{percent}%）',
       'tokens.contextUnknown': '暂无上下文数据',
-      'tokens.moreModels': '另有 {count} 个模型',
       'tokens.stat.requests': '请求次数',
       'tokens.stat.cacheHit': '缓存命中',
       'tokens.stat.avg': '平均',
@@ -288,7 +287,6 @@ window.__ModuleLoader__.load({
       'tokens.context': 'Context usage',
       'tokens.contextValue': '{used}/{window} ({percent}%)',
       'tokens.contextUnknown': 'No context data yet',
-      'tokens.moreModels': '{count} more models',
       'tokens.stat.requests': 'Requests',
       'tokens.stat.cacheHit': 'Cache',
       'tokens.stat.avg': 'Avg',
@@ -419,17 +417,16 @@ window.__ModuleLoader__.load({
       '.aup-hint{margin:0;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2);white-space:normal;overflow:visible}',
       '.aup-error{margin:0;font-size:var(--aup-fs-text);line-height:18px;color:var(--dsw-alias-state-error-primary);white-space:normal;overflow:visible}',
       '.aup-card-session-fixed{flex:1 1 auto;min-height:auto}',
-      '.aup-card-session .aup-session-body{flex:1 1 auto;min-height:auto;display:flex;flex-direction:column;gap:6px;justify-content:space-evenly}',
-      '.aup-card-session .aup-session-grid{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;align-content:space-evenly;justify-items:stretch;margin:0;padding:0;width:100%}',
+      '.aup-card-session .aup-session-body{flex:1 1 auto;min-height:auto;display:flex;flex-direction:column;gap:4px;justify-content:space-evenly}',
+      '.aup-card-session .aup-session-grid{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;align-content:space-evenly;justify-items:stretch;margin:0;padding:0;width:100%}',
       '.aup-card-session .aup-session-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}',
       '.aup-card-session .aup-session-cell:nth-child(even){align-items:flex-end;text-align:right}',
       '.aup-models{display:flex;flex-direction:column;gap:0;flex:none;min-height:0}',
       '.aup-model-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 10px;min-width:0;font-size:var(--aup-fs-text);line-height:17px;font-variant-numeric:tabular-nums}',
-      '.aup-model-name{flex:1 1 auto;min-width:0;font-size:var(--aup-fs-text);line-height:18px;white-space:normal;overflow-wrap:anywhere;color:var(--aup-label-2)}',
+      '.aup-model-name{flex:1 1 auto;min-width:0;font-size:var(--aup-fs-text);line-height:17px;white-space:normal;overflow-wrap:anywhere;color:var(--aup-label-2)}',
                   '.aup-model-tokens{flex:none;margin-left:auto;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
-      '.aup-model-more{font-size:var(--aup-fs-text);line-height:16px;color:var(--aup-label-2)}',
       '.aup-token-dot{flex:none;width:6px;height:6px;border-radius:2px}',
-      '.aup-stat-list{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:2px 20px}',
+      '.aup-stat-list{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:1px 20px}',
       '.aup-stat-list::before{content:"";position:absolute;top:1px;bottom:1px;left:50%;width:.5px;background:var(--dsw-alias-border-l2);pointer-events:none}',
       '.aup-session-sep{flex:none;height:1px;background:var(--dsw-alias-border-l2)}',
       '.aup-stat-row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:baseline;gap:4px;min-width:0;font-size:var(--aup-fs-text);line-height:18px}',
@@ -452,13 +449,13 @@ window.__ModuleLoader__.load({
       '.aup-value-longer{letter-spacing:-.04em}',
       '.aup-card-session .aup-session-label{display:flex;align-items:center;gap:5px;margin:0;font-size:var(--aup-fs-text);line-height:16px;font-weight:500;color:var(--aup-label-2);white-space:nowrap}',
       '.aup-card-session .aup-session-value{margin:0;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;white-space:nowrap}',
-      '.aup-card-session .aup-bar{height:8px}',
+      '.aup-card-session .aup-bar{height:6px}',
       '.aup-session-total{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex:none;width:100%}',
-      '.aup-session-total-value{font-size:var(--aup-fs-text);line-height:26px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary);white-space:nowrap}',
+      '.aup-session-total-value{font-size:var(--aup-fs-text);line-height:24px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary);white-space:nowrap}',
       '.aup-session-total-label{font-size:var(--aup-fs-text);line-height:16px;font-weight:500;color:var(--aup-label-2);white-space:nowrap}',
       '.aup-compose{display:flex;height:8px;flex:none;gap:1px;border-radius:999px;overflow:hidden;background:var(--dsw-alias-bg-skeleton)}',
       '.aup-compose-seg{flex:1 1 0;min-width:2px;height:100%}',
-      '.aup-context{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
+      '.aup-context{display:flex;flex-direction:column;gap:3px;margin-top:2px}',
       '.aup-context-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;font-variant-numeric:tabular-nums;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2);min-width:0}',
       '.aup-context-head>span{min-width:0;white-space:nowrap}',
       '.aup-context-figures{flex:none;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary);text-align:right}',
@@ -490,7 +487,7 @@ window.__ModuleLoader__.load({
       '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-tokens,.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary);font-weight:500}',
       '.aup-tab-icon{flex:none;width:14px;height:14px;vertical-align:-2px;color:var(--dsw-alias-label-secondary)}',
       // ---- one shared type scale: every Chinese text is 13px, only numbers vary by role ----
-      '.aup-card{gap:4px;padding:8px}',
+      '.aup-card{gap:3px;padding:8px}',
       '.aup-card-title{font-size:var(--aup-fs-text);line-height:16px;font-weight:500}',
       '.aup-card-icon{width:15px;height:15px}',
       '.aup-card-icon svg{width:100%;height:100%}',
@@ -500,7 +497,7 @@ window.__ModuleLoader__.load({
       '.aup-session-label{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-session-value{font-size:var(--aup-fs-text);line-height:16px;font-weight:500}',
       '.aup-card-session .aup-session-grid{gap:6px 12px}',
-      '.aup-compose{height:6px}',
+      '.aup-compose{height:5px}',
       '.aup-bar{height:6px}',
       '.aup-context{gap:4px}',
       '.aup-context-head{font-size:var(--aup-fs-text);line-height:16px}',
@@ -528,20 +525,22 @@ window.__ModuleLoader__.load({
       // CONTAINER queries on the panel root, not media queries on the window: the pane
       // is shorter than the window (right-sidebar tab strip + header) and viewport
       // breakpoints fired ~90px too late, which is why the pane still scrolled.
+      // The session card never truncates: every model row is rendered (2026-11-09);
+      // these steps only shed whole blocks when the pane is physically too short.
       // They must stay LAST and carry !important: a query adds no specificity.
-      '@container aup-panel (max-height:850px){.aup-compose{display:none!important}}',
-      '@container aup-panel (max-height:838px){.aup-card-session .aup-models,.aup-card-session .aup-sep-models{display:none!important}}',
-      '@container aup-panel (max-height:771px){.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats{display:none!important}}',
-      '@container aup-panel (max-height:680px){.aup-context,.aup-card-session .aup-sep-context{display:none!important}}',
-      '@container aup-panel (max-height:615px){.aup-card-session .aup-session-grid{display:none!important}}',
+      '@container aup-panel (max-height:820px){.aup-compose{display:none!important}}',
+      '@container aup-panel (max-height:811px){.aup-card-session .aup-models,.aup-card-session .aup-sep-models{display:none!important}}',
+      '@container aup-panel (max-height:751px){.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats{display:none!important}}',
+      '@container aup-panel (max-height:667px){.aup-context,.aup-card-session .aup-sep-context{display:none!important}}',
+      '@container aup-panel (max-height:608px){.aup-card-session .aup-session-grid{display:none!important}}',
       // Measured with `layout-check --tiers N`: each source beyond three adds one
-      // statistics row and one balance row (52px), and the fourth model adds the
-      // "more models" line (16px). Budget by source count only - never by measured
-      // content - so no observer/state feedback can occur.
+      // statistics row, one balance row and one full model row (69px). Budget by
+      // source count only - never by measured content - so no observer/state
+      // feedback can occur.
       ...Array.from({ length: 13 }, (_, index) => {
         const count = index + 4;
-        const extra = 16 + (count - 3) * 52;
-        return [[850, ['.aup-compose']], [838, ['.aup-card-session .aup-models', '.aup-card-session .aup-sep-models']], [771, ['.aup-card-session .aup-stat-list', '.aup-card-session .aup-sep-stats']], [680, ['.aup-context', '.aup-card-session .aup-sep-context']], [615, ['.aup-card-session .aup-session-grid']]]
+        const extra = (count - 3) * 69;
+        return [[820, ['.aup-compose']], [811, ['.aup-card-session .aup-models', '.aup-card-session .aup-sep-models']], [751, ['.aup-card-session .aup-stat-list', '.aup-card-session .aup-sep-stats']], [667, ['.aup-context', '.aup-card-session .aup-sep-context']], [608, ['.aup-card-session .aup-session-grid']]]
           .map(([height, selectors]) => '@container aup-panel (max-height:' + (height + extra) + 'px){' + selectors.map((selector) => '.aup-cards[data-source-count="' + count + '"] ' + selector).join(',') + '{display:none!important}}').join('');
       }),
     ].join('\n');
@@ -2198,7 +2197,10 @@ window.__ModuleLoader__.load({
           : h(
               'div',
               { className: 'aup-models' },
-              modelRows.slice(0, 3).map((item) => {
+              // Every model stays visible: the session card never hides or truncates
+              // its information (user 2026-11-09). Height is bought by compressing the
+              // frame instead - see the `.aup-card` / session-body spacing above.
+              modelRows.map((item) => {
                 const text = modelRowLabel(item, t);
                 return h(
                   'div',
@@ -2206,8 +2208,7 @@ window.__ModuleLoader__.load({
                   h('span', { className: 'aup-model-name' + modelRowLabelClass(text) }, text),
                   h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
                 );
-              }),
-              modelRows.length > 3 ? h('span', { className: 'aup-model-more' }, t('tokens.moreModels', { count: String(modelRows.length - 3) })) : null
+              })
             );
 
       const contextParts = contextBreakdown === null || contextBreakdown === undefined

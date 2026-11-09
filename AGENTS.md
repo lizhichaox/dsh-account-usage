@@ -3,7 +3,7 @@
 > 这是用户对本插件的**长期要求清单**。接手前先读本文件，不要重复询问已经写在这里的偏好；
 > 用户不想反复重申。若实现与本文件冲突，以用户当次明确指示为准，并在完成后回写本文件。
 
-最后更新：2026-11-09 · 插件版本：`1.0.14`
+最后更新：2026-11-09 · 插件版本：`1.0.15`
 
 - 插件目录：`/Users/lizhichao/vc/macos/dsh/dsh-preset/account-usage-panel`
 - GitHub：<https://github.com/lizhichaox/dsh-account-usage>
@@ -55,7 +55,7 @@
 | 19 | **英文文本不许看着浅** | 拉丁字体栈优先 + 根 500 基线 + `--aup-label-2` 混色 | `Latin families precede CJK ones in the stack` / `secondary text is darkened from theme tokens` / `the panel root sets a 500 baseline weight` |
 | 20 | **切维度不许抖动** | 固定槽位 `SERIES_ROW_SLOTS=4` + 固定行距 + 全维度预热 | `the list keeps a constant slot count` / `spare slots pad the list in quarter/year` / `period rows keep a fixed pitch across dimensions` / `every dimension is warmed widest-first` |
 | 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ 实测媒体查询阶梯按窗口高度减内容 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the summary is in normal flow, never positioned over the rows` / `short windows shed the decorative token bar via CSS only` |
-| 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（三来源夹具内容 793px）+ 面板容器查询阶梯（850/838/771/680/615，按来源数追加预算）+ 阶梯末尾带 `!important` + `scrollbar-width:none` | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 4` / `the card column never shows a scrollbar` |
+| 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（三来源夹具内容 763px）+ 面板容器查询阶梯（820/811/751/667/608，按来源数追加预算）+ 阶梯末尾带 `!important` + `scrollbar-width:none`；会话卡永不截断行 | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 3` / `the card column never shows a scrollbar` |
 | 23 | **同一组行左右对齐 + 行内垂直居中** | 父级网格 + 行 `grid-template-columns:subgrid` + 行 `align-items:center` | `the source rows share one grid` / `rows take their columns from the shared grid` / `the period rows share one grid` / `subgrid rows centre their cells vertically` / layout-check 的 `srcLabelLeft`、`acctValueRight`、`srcLabel`（居中）断言 |
 | 24 | **用量统计是三列严格对齐的表（无胶囊条）** | 描述 / 用量 / 金额共用一个网格；每行 3 格；第三方行第 3 列写短标记 `PLAN`（中文「套餐」） | `one shared table` / `the card declares the three columns once` / `the English marker stays short: PLAN` / layout-check 的 `table` 断言（labelLeft、tokensRight、amountRight 唯一） |
 | 25 | **金额只留货币符号，且一律后置**（2026-11-08 扩展：所有货币） | `Intl.formatToParts` 重排，任何货币都是「数字 + 符号」：`23.28¥`、`9.50$`、`12.00€`；不显示货币代码 | `amounts use the narrow currency symbol` / `the spend row ends with the ¥ symbol` / `every currency keeps its symbol after the amount` / `no currency keeps the prefix form` |
@@ -78,6 +78,7 @@
 | 42 | **分隔符前后不留空格**（2026-11-09：「去掉-横向前后的空格以及其他空格」） | 所有用作分隔的符号紧贴两侧文字：模型行 `Provider-model`、轮/步 `106/11550`、上下文 `595K/1M（60%）`、中文 `轮/步`；只保留单词之间的必要空格 | `provider and model share one line without spaces around the dash` / `model rows merge provider and model without separator spaces` / smoke 的 `轮/步` 标签断言 |
 | 43 | **Command Code 额度也进右侧栏**（2026-11-09：「可以把这个插件集成到 usage 插件吗？」：装 `@mars-sea/dsh-commandcode-provider` 后额度只能在设置里看，用户习惯在右侧栏看） | Host 读 `GET https://api.commandcode.ai/alpha/billing/credits`（Bearer `COMMANDCODE_API_KEY`，只走 Host）；账户卡该来源一行：`5HW / WEK` 两档**剩余**百分比 + `CRED / 额度` 剩余金额（USD，符号后置）；`cap` 为 0 的窗口不画、缺额度就不写；**只写剩余不写 Used/花费**；用量统计卡照常显示该来源本会话 Token + `PLAN` | smoke `Command Code windows read the share left` / smoke `Command Code credits read the amount left with the symbol last` / provider-host `Command Code plan windows and credits come from the billing endpoint` / provider-client `windows read the share left in fixed order and credits stay the amount left` / verify:ui `command code` 单行断言 |
 | 44 | **入口图标与左侧快捷簇一致**（2026-11-09：「我们的插件 icon 也用左侧这个按钮的 icon 吧 保持一致」） | 右侧栏 tab、开始页卡片都用 `IconGaugeOutlineRegular`（宿主 primitives，失败回退同形内联 SVG），与 shell 的「用量」按钮同一符号；钱包图标不再用于入口 | smoke `the tab glyph is the shell quick-action gauge` / `the guide card uses the same gauge glyph` |
+| 45 | **会话卡里的信息一律不许隐藏**（2026-11-09：「session usage 里的任何信息都是不允许隐藏的」；截图圈出「1 more models」） | 模型行**全量渲染**，取消「最多 3 行 + 另有 N 个模型」截断；高度靠压缩框架换取（卡片 `gap:3px`、会话体 `gap:4px`、统计/网格间距收紧、`aup-model-more` 样式与文案删除），三来源整屏内容 793→763px；短面板仍按阶梯整块隐藏，但绝不截断行；layout-check 断言模型行要么全显示、要么整块被隐藏（绝不出现部分行） | smoke `all four model rows render, none truncated` / `the fourth model is a row, not a counter` / `no truncation line exists`；layout-check `model rows truncated` |
 
 ## 1. 产品定位
 
@@ -147,14 +148,14 @@
      （`.aup-series-slot`，`min-height:21px`）补齐；这样**切维度时列表高度恒定**，下面的卡片一动不动。
   4. **绝不允许滚动、绝不出现滚动条，并且尽量把信息全部显示出来**
      （用户 2026-11-08：「依然存在可滚动的窗口 优化一下 不滚动 显示全部信息」）。两层措施：
-     - **先压缩：不删信息，只压高度**。卡片 `padding:8px` / `gap:4px`、卡间距 6px、根底部 6px、
-       统计表行高 18px、逐期行 `min-height:21px`、会话体/统计体 gap 6px、Token 网格 gap 6px、模型行 gap 0。
-       三来源夹具实测整屏内容 **793px**（去掉胶囊条和账户 tab 后；之前 838px），面板 851px 即可全显示。
+     - **先压缩：不删信息，只压高度**。卡片 `padding:8px` / `gap:3px`、卡间距 6px、根底部 6px、
+       统计表行高 18px、逐期行 `min-height:21px`、会话体 gap 4px、Token 网格 gap 4px、模型行 gap 0。
+       三来源夹具实测整屏内容 **763px**（每个模型行都渲染、不再截断；之前 793px），面板 820px 即可全显示。
      - **再按面板自身高度逐级收窄，用 `@container`（不是 `@media`）**：
        `.aup-root{container-type:size;container-name:aup-panel}`，
-       阈值 `850px 去 Token 彩条 → 838px 去按模型明细 → 771px 去统计表 → 680px 去上下文块 → 615px 去 Token 2×2 明细`；
+       阈值 `820px 去 Token 彩条 → 811px 去按模型明细 → 751px 去统计表 → 667px 去上下文块 → 608px 去 Token 2×2 明细`；
        每个区块与引出它的分割线（`aup-sep-models/-stats/-context`）**一起隐藏**，绝不留下连续两条线。
-       来源 ≥4 时按 `data-source-count` 追加预算 `16 + (n-3)×52` px（`--tiers N` 实测：每多一个来源 = 一行统计 + 一行余额 52px，第 4 个模型多一行「另有 N 个模型」16px）。
+       来源 ≥4 时按 `data-source-count` 追加预算 `(n-3)×69` px（`--tiers N` 实测：每多一个来源 = 一行统计 + 一行余额 + 一行完整模型行 69px）。
        **必须用容器查询**：窗口比面板高（右侧栏 tab 条 + 面板横条约 90px），
        之前用 `@media (max-height)` 判定基准错了，所以「阶梯明明写了却还滚」——这是反复踩的坑。
      - 阈值由 `node test/layout-check.mjs --tiers` 用**真实面板 markup** 逐级量出，
@@ -163,8 +164,8 @@
        量出来的内容高度比生产少 36px，阶梯整体偏低、在 869–903px 的面板里仍会「看不见的滚动」。
        夹具里 `contextPressure`（projectedTokens/contextWindow）、`contextBreakdown`（三段 tokens）、
        `tokenUsage`、`sessionStats` 必须全部给真实形状。
-     - 结论（三来源）：面板高度 ≥ 851px 时全部信息可见；≤ 850px 才隐藏那条装饰性 Token 彩条；
-       `< 531px` 属于极端窗口，只剩隐形兜底（此时仍无滚动条外观）。7 个来源全部收窄后仍需约 755px。
+     - 结论（三来源）：面板高度 ≥ 820px 时全部信息可见；≤ 820px 才隐藏那条装饰性 Token 彩条；
+       `< 527px` 属于极端窗口，只剩隐形兜底（此时仍无滚动条外观）。7 个来源全部收窄后仍需约 802px。
        阈值每次都要用 `--tiers` 重新量、改完同步更新本文件这三处数字（内容高度 / 阶梯 / 结论）。
   5. 明令禁止：用 `ResizeObserver`/`getBoundingClientRect` 的内容高度去反推行数并 `setState`
      （09:29 崩溃的成因）、用 `overflow:hidden` 或省略号假装解决放不下。
@@ -368,7 +369,7 @@
 - 「插件暂不支持」不等于「供应商没有 API」；禁止暗示余额缺失就是 0。OpenRouter `/credits` 缺 usage 必须回退或失败；`/key` 标明密钥额度作用域。
 - 刷新仍按 provider 独立读取，逐来源请求序号丢弃旧响应；会话变化/卸载后失效。取消的平台请求不得锁死纯第三方刷新按钮。
 - 账户卡不再有 tab：所有来源同时可见，没有可点的东西，高度只随来源数量和窗口变化。没有备注的行数值独占右侧，不会因为别的行长而换行。
-- 4–16 来源按数量追加预算 `16 + (n-3)×52` px（`layout-check --tiers N` 实测）。不根据 DOM 高度反算布局。几何验证覆盖 3/4/5 来源（700/900/1080 高）与 7 来源（900/1080 高）；7 来源在 <755px 面板只能依赖隐形兜底。
+- 4–16 来源按数量追加预算 `(n-3)×69` px（`layout-check --tiers N` 实测）。不根据 DOM 高度反算布局。几何验证覆盖 3/4/5 来源（700/900/1080 高）与 7 来源（900/1080 高）；7 来源在 <802px 面板只能依赖隐形兜底。
 - 验收：`test/provider-host.mjs` 模拟真实 Host route（不访问真实网络/凭据）；`test/provider-client.mjs` 渲染真实账户卡和 body effects，覆盖混合成功/失败、错误顺序、0 用量、所有失败态无重试按钮、旧响应与纯第三方刷新。
 - `verify:ui` 另测来源数 × 中英文 × 340/420 宽 × 700/900/1080 高，并加测 330/300 窄屏：无重叠/溢出/滚动/底部空带，账户行名称左对齐、数值右对齐且垂直居中。夹具必须把 ARIA 布尔值写为字符串 true/false。
 - 冒烟守护：`errors are never shared between providers` / `requested source identity overrides provider aliases` / `one aligned row per source` / `no tabs to switch` / `the English unsupported status stays one short word`。
@@ -454,6 +455,7 @@
   `5HW / WEK` 剩余 + `CRED` 剩余；Host 侧独立读取其官方 billing 接口（60 秒缓存、失败只写短状态）。
   同时把 `aup-acct-pairs-tight` 的加紧密从「只有 ≤320px」改为**全宽度**（-1.2px，≤320px 为 -1.45px），
   超窄档名称字距放宽到 -0.5px，保证这一行在 340/320px 仍单行；≤310px 的超额金额允许两行（已记录）。
+- **会话卡不截断模型行**（1.0.15）：取消「最多 3 行 / 另有 N 个模型」，模型全量渲染；同时压缩框架（卡片 gap 4→3、会话体 gap 6→4、统计行距 2→1、token 条 8→6）把整屏内容从 793px 降到 763px，阶梯阈值随之下移（820/811/751/667/608），按来源预算改 `(n-3)×69`。
 - **入口图标改用仪表盘**（1.0.14）：tab / 开始页与左侧快捷簇「用量」按钮同一符号，取代钱包图标；primitives 不可用时回退同形内联 SVG。
 - **分隔符去空格**（1.0.12）：模型行改为 `Provider-model`，轮/步与上下文改成 `a/b`，取代带空格的 `Provider - model` / `106 / 11550`。
 - **所有货币符号后置**（1.0.9）：取代「只有 ¥ 后置、其它货币按 $11.04 惯例」。
@@ -461,8 +463,8 @@
   现在这条信息有意义，但只用**背景 + 字重**表达，不加任何新元素、不产生布局位移。
 - **余额卡只写剩余**：取代「OpenRouter 显示已用」「OpenAI/Anthropic 显示本月花费 + 需管理员密钥」；也取代「当前来源小圆点」。
 - **只有会话卡保留进度条**：取代「用量统计四列表含胶囊条」「账户卡胶囊条」。
-- 793px/851px 是三来源、420px 宽夹具基准，多来源追加 `16 + (n-3)×52`，英文窄栏的长状态会换行增高（因此英文状态都用短词）。
-- 本轮 1.0.14 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
+- 763px/820px 是三来源、420px 宽夹具基准，多来源追加 `(n-3)×69`，英文窄栏的长状态会换行增高（因此英文状态都用短词）。
+- 本轮 1.0.15 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
 
 - 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
 - **卡片**不使用 `container-type: size`（内容高度会塌陷成 0）；但**面板根节点必须用**
@@ -471,7 +473,7 @@
   `justify-content:space-evenly` 摊开；余额卡（3 行数字）`flex:0 0 auto` 收紧；
   取代了「三张卡都 `flex:1 1 0` 平分」（会把卡片压到内容以下 → 叠字根因）
   和「最后一张卡吸收」（信息最少的余额卡吃掉整屏空白，被用户点名）两种写法
-- 按模型统计：无冗余小标题，每行 `Provider-模型短名    Tokens`（最多 3 行，过长换行，绝不降字号）
+- 按模型统计：无冗余小标题，每行 `Provider-模型短名    Tokens`，**模型有多少行就显示多少行，绝不截断或写「另有 N 个模型」**（过长换行，绝不降字号）
 - 统计区为**对齐两列表格**（标签列 `max-content`、值列右对齐，行高 18px、列间距 16px）；
   数值过长时只允许收紧字距（`statValueClass` → letter-spacing），**绝不能改字号、也不能与相邻列重叠**；时长使用紧凑格式（如 1时44分 / 2分57秒 / 1.7秒）；用量统计每日行单行显示 Token · 金额，行高有下限，禁止重叠
 - 卡片文本无省略号；长文本换行、长金额只收紧字距（字号恒 13px）
@@ -480,9 +482,9 @@
 - **切维度零抖动**：明细列表固定 `SERIES_ROW_SLOTS=4` 槽位（不足补不可见行）、固定行距而非 space-between、
   加载骨架与 ready 卡片同构等高、后台预热全部维度
 - **绝不遮挡 + 绝不滚动 + 尽量全显示**：卡片按内容撑开、永不被压缩（遮挡从结构上不可能）；
-  先把面板压紧（padding 8 / gap 4 / 行高 18 / 逐期行 21，三来源整屏内容 793px，面板 851px 即可全显示），
-  再按**面板自身高度**用 `@container` 阶梯（850/838/771/680/615，区块连同引出它的分割线一起隐藏）依次隐藏彩条 / 按模型明细 / 统计表 /
-  上下文块 / 2×2 明细；滚动条外观全部去掉，`overflow-y:auto` 只作隐形兜底；
+  先把面板压紧（padding 8 / gap 3 / 行高 18 / 逐期行 21，三来源整屏内容 763px，面板 820px 即可全显示），
+  再按**面板自身高度**用 `@container` 阶梯（820/811/751/667/608，区块连同引出它的分割线一起隐藏）依次隐藏彩条 / 按模型明细 / 统计表 /
+  上下文块 / 2×2 明细；会话卡内部**永不截断**（模型行全量渲染）；滚动条外观全部去掉，`overflow-y:auto` 只作隐形兜底；
   **禁止**任何基于运行时测量的行数调整（09:29 崩溃成因），也禁止 `overflow:hidden` 假装修好。
   取代了此前用 `@media (max-height:)` 按**窗口**判定的写法——窗口比面板高约 90px，判定基准错了，所以阶梯一直没能阻止滚动。
 - 面板最小宽度 300px（340px 是舒适宽度），低于它会被自动纠正；万一纠正失败，模型行 `Provider-模型名` 换行显示（不降字号）

@@ -545,12 +545,23 @@ const providerFailures = [];
 let providerChecks = 0;
 const providerDir = mkdtempSync(join(tmpdir(), 'aup-provider-rows-'));
 for (const locale of ['zh', 'en']) for (const width of [340, 420]) for (const height of [700, 900, 1080]) {
-  // Seven sources need at least 755px even with every optional block shed
-  // (474px base + 16px + 4 × 52px + 57px chrome), so 700px is checked up to five.
-  for (const count of height < 755 ? [3, 4, 5] : [3, 4, 5, 7]) {
-    const result = measure(css, providerDir, height, sourcesCase(count, locale), '', width);
+  // Seven sources need at least ~802px with every optional block shed
+  // (469px base + 4 × 69px extra + 57px chrome), so 700px is checked up to five.
+  for (const count of height < 802 ? [3, 4, 5] : [3, 4, 5, 7]) {
+    const fixture = sourcesCase(count, locale);
+    const result = measure(css, providerDir, height, fixture, '', width);
     const label = `${locale} ${width}×${height} ${count} sources`;
     if (!result || result.cards.length !== 3) { providerFailures.push(label + ': missing cards'); continue; }
+    // The session card never truncates: every model row is rendered, so the rows
+    // are either all visible or all shed as one block - never a "N more models" cut.
+    const expectedModels = fixture.sessionModels.items.length;
+    const visibleModels = (result.modelRows ?? []).filter((row) => row.height > 0).length;
+    if (visibleModels !== 0 && visibleModels !== expectedModels) {
+      providerFailures.push(`${label}: model rows truncated -> ${visibleModels}/${expectedModels}`);
+    }
+    if (visibleModels > 0 && (result.modelRows ?? []).some((row) => row.height > 20)) {
+      providerFailures.push(`${label}: a model row wrapped`);
+    }
     if (result.overlaps.length || result.cardOverflow.length || result.horizontal.length || result.scrolls || result.deadBand > 2) {
       providerFailures.push(label + ': geometry invalid ' + JSON.stringify({ overlaps: result.overlaps, cardOverflow: result.cardOverflow, horizontal: result.horizontal, scroll: result.scrollInfo, deadBand: result.deadBand }));
     }
@@ -652,9 +663,9 @@ if (process.argv.includes('--providers')) {
   console.log('provider row geometry passed'); process.exit(0);
 }
 const SWEEPS = [
-  // 850/851 straddle the first shedding step (hide the token bar at <= 850);
-  // 838/771/680 sit on the later steps.
-  { width: 420, heights: [700, 771, 838, 850, 851, 1000, 1080, 1200] },
+  // 820/821 straddle the first shedding step (hide the token bar at <= 820);
+  // 811/751/667/608 sit on the later steps.
+  { width: 420, heights: [700, 751, 811, 820, 821, 1000, 1080, 1200] },
   // The documented minimum pane: six range tabs and both tables must still fit.
   { width: 340, heights: [900, 1080] }
 ];

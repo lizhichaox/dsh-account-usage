@@ -139,11 +139,11 @@ assert.ok(!source.includes('data-aup-compact'), 'no height-driven compact attrib
 // viewport breakpoints fired too late (that is why the pane still scrolled).
 assert.ok(source.includes('container-type:size;container-name:aup-panel'), 'the panel root is a size container');
 for (const rule of [
-  '@container aup-panel (max-height:850px){.aup-compose{display:none!important}}',
-  '@container aup-panel (max-height:838px){.aup-card-session .aup-models,.aup-card-session .aup-sep-models{display:none!important}}',
-  '@container aup-panel (max-height:771px){.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats{display:none!important}}',
-  '@container aup-panel (max-height:680px){.aup-context,.aup-card-session .aup-sep-context{display:none!important}}',
-  '@container aup-panel (max-height:615px){.aup-card-session .aup-session-grid{display:none!important}}'
+  '@container aup-panel (max-height:820px){.aup-compose{display:none!important}}',
+  '@container aup-panel (max-height:811px){.aup-card-session .aup-models,.aup-card-session .aup-sep-models{display:none!important}}',
+  '@container aup-panel (max-height:751px){.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats{display:none!important}}',
+  '@container aup-panel (max-height:667px){.aup-context,.aup-card-session .aup-sep-context{display:none!important}}',
+  '@container aup-panel (max-height:608px){.aup-card-session .aup-session-grid{display:none!important}}'
 ]) {
   assert.ok(source.includes(rule), 'the measured shedding ladder contains: ' + rule);
 }
@@ -152,10 +152,10 @@ assert.ok(!source.includes('@media (max-height:'), 'the old viewport ladder is g
 for (const sep of ['aup-sep-models', 'aup-sep-stats', 'aup-sep-context']) {
   assert.ok(source.includes("className: 'aup-session-sep " + sep + "'"), 'each session separator belongs to one block: ' + sep);
 }
-assert.ok(source.indexOf('@container aup-panel (max-height:850px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
+assert.ok(source.indexOf('@container aup-panel (max-height:820px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
 // Compacted so a typical pane still shows every block: the measured full content
-// height dropped from 886px to 790px.
-assert.ok(source.includes("'.aup-card{gap:4px;padding:8px}'"), 'cards are padding 8 / gap 4');
+// height is 763px (with every model row rendered - no truncation).
+assert.ok(source.includes("'.aup-card{gap:3px;padding:8px}'"), 'cards are padding 8 / gap 3');
 assert.ok(source.includes('line-height:18px}'), 'the stat table rows are 18px');
 assert.ok(source.includes('.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:21px;') && source.includes('.aup-src{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-height:21px;'), 'both row groups share the same 21px pitch');
 assert.ok(source.includes('scrollbar-width:none'), 'the card column never shows a scrollbar');
@@ -211,7 +211,7 @@ assert.ok(source.includes('.aup-cards>.aup-card-session-fixed{flex:1 1 auto;min-
 assert.ok(source.includes('.aup-card-account-provider{flex:0 0 auto;min-height:auto;'), 'the provider account card sizes to its content');
 // Space follows information density: the session card (eight metrics) takes the
 // slack and the balance card (three rows) hugs its content instead of stretching.
-assert.ok(source.includes('.aup-card-session .aup-session-body{flex:1 1 auto;min-height:auto;display:flex;flex-direction:column;gap:6px;justify-content:space-evenly}'), 'the session content spreads evenly over the space it gets');
+assert.ok(source.includes('.aup-card-session .aup-session-body{flex:1 1 auto;min-height:auto;display:flex;flex-direction:column;gap:4px;justify-content:space-evenly}'), 'the session content spreads evenly over the space it gets');
 assert.ok(source.includes("'.aup-card-account{flex:0 0 auto;min-height:auto;justify-content:flex-start}'"), 'the balance card hugs its content');
 assert.ok(source.includes("'.aup-account-body{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}'"), 'the balance rows do not stretch inside the balance card');
 // Mixed sessions: one aligned row per source in the statistics-table rhythm, no tabs.
@@ -833,6 +833,30 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(modelNames[0] === 'DeepSeek API-deepseek-chat', 'provider and model share one line without spaces around the dash: ' + modelNames[0]);
   const modelTokens = walk(tree, (node) => hasClass(node, 'aup-model-tokens')).map(flat);
   assert.deepEqual(modelNames, ['DeepSeek API-deepseek-chat', 'DeepSeek API-deepseek-reasoner'], 'model rows merge provider and model without separator spaces');
+  assert.equal(walk(tree, (node) => hasClass(node, 'aup-model-more')).length, 0, 'no truncation line exists');
+
+  // Every model stays on screen: four rows render four rows (user 2026-11-09:
+  // "session usage 里的任何信息都是不允许隐藏的").
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [
+      { provider: 'deepseek-account', model: 'deepseek-chat', tokens: 5000, requests: 2 },
+      { provider: 'deepseek-account', model: 'deepseek-reasoner', tokens: 3000, requests: 1 },
+      { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2000, requests: 1 },
+      { provider: 'openrouter', model: 'deepseek-flash', tokens: 1000, requests: 1 }
+    ], totalTokens: 11000 },
+    { phase: 'idle', items: [], error: undefined },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const fourTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
+  stateQueue.length = 0;
+  assert.equal(walk(fourTree, (node) => hasClass(node, 'aup-model-row')).length, 4, 'all four model rows render, none truncated');
+  assert.equal(walk(fourTree, (node) => hasClass(node, 'aup-model-more')).length, 0, 'the fourth model is a row, not a counter');
   assert.deepEqual(modelTokens, ['5K', '3K'], 'model rows show compact token totals');
 }
 
