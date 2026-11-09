@@ -48,18 +48,13 @@ window.__ModuleLoader__.load({
     const NS = 'accountUsage';
     /** How often the account wallet is re-read while the panel stays mounted and visible. */
     const ACCOUNT_REFRESH_MS = 5 * 60 * 1000;
-    /** How often the session-list fallback is re-read; platform reads mostly hit the month cache. */
-    const USAGE_REFRESH_MS = 2 * 60 * 1000;
 
     /** Display preferences persisted by the browser, so the panel needs no Host configuration. */
     const SETTINGS_KEY = 'dsh.account-usage.settings.v1';
     const DEFAULT_SETTINGS = {
-      dimension: 'day',
       autoRefresh: true,
-      showCost: true,
       hideComposerStats: true,
-      usageList: false,
-      cards: { session: true, stats: true, account: true }
+      cards: { session: true, account: true }
     };
 
     /** Read persisted preferences, falling back to defaults on any malformed or unknown value. */
@@ -69,17 +64,14 @@ window.__ModuleLoader__.load({
         if (raw === null || raw === undefined) return DEFAULT_SETTINGS;
         const parsed = JSON.parse(raw);
         if (parsed === null || typeof parsed !== 'object') return DEFAULT_SETTINGS;
-        const dimension = DIMENSIONS.some((entry) => entry.id === parsed.dimension) ? parsed.dimension : DEFAULT_SETTINGS.dimension;
         const cards = parsed.cards !== null && typeof parsed.cards === 'object' ? parsed.cards : {};
+        // `dimension` / `showCost` / `usageList` / `cards.stats` from older versions are
+        // simply ignored: their card no longer exists (user 2026-11-09).
         return {
-          dimension,
           autoRefresh: typeof parsed.autoRefresh === 'boolean' ? parsed.autoRefresh : DEFAULT_SETTINGS.autoRefresh,
-          showCost: typeof parsed.showCost === 'boolean' ? parsed.showCost : DEFAULT_SETTINGS.showCost,
-          usageList: typeof parsed.usageList === 'boolean' ? parsed.usageList : DEFAULT_SETTINGS.usageList,
           hideComposerStats: typeof parsed.hideComposerStats === 'boolean' ? parsed.hideComposerStats : DEFAULT_SETTINGS.hideComposerStats,
           cards: {
             session: typeof cards.session === 'boolean' ? cards.session : DEFAULT_SETTINGS.cards.session,
-            stats: typeof cards.stats === 'boolean' ? cards.stats : DEFAULT_SETTINGS.cards.stats,
             account: typeof cards.account === 'boolean' ? cards.account : DEFAULT_SETTINGS.cards.account
           }
         };
@@ -109,20 +101,15 @@ window.__ModuleLoader__.load({
       'shortcut.noSession': '请先选择会话',
       'refresh.aria': '刷新余额与用量',
       'loading': '正在读取…',
-      'stats.loading': '正在读取用量…',
       'error': '读取账号信息失败',
       'retry': '重试',
       'settings.aria': '设置',
       'settings.title': '设置',
-      'settings.defaultDimension': '默认维度',
       'settings.card.session': '会话消耗',
-      'settings.card.stats': '用量统计',
       'settings.card.account': '账户余额',
       'settings.autoRefresh': '自动刷新',
       'settings.autoRefreshHint': '用量 2 分钟 · 余额 5 分钟',
-      'settings.showCost': '显示消费金额',
       'settings.hideComposerStats': '隐藏底栏会话统计',
-      'settings.usageList': '用量明细列表',
       'settings.reset': '恢复默认',
       'settings.close': '关闭',
       'settings.allHidden': '三张卡片都已隐藏，点右上角设置可重新开启。',
@@ -147,23 +134,9 @@ window.__ModuleLoader__.load({
       'account.status.network': '暂时无法读取',
       'account.offAccountAll': '本次会话由 {provider} 提供，不消耗 DeepSeek API 余额。',
       'stats.platformBadge': 'DeepSeek API',
-      'stats.subscriptionScope': '套餐',
       'balance.bonus': '赠送额度',
       'balance.failed': '余额读取失败',
       'balance.empty': '暂无余额数据',
-      'stats.title': '用量统计',
-      'stats.dim.day': '日',
-      'stats.dim.week': '周',
-      'stats.dim.month': '月',
-      'stats.dim.quarter': '季',
-      'stats.dim.year': '年',
-      'stats.dim.all': '全',
-      'stats.summary.total': '合计 {total}',
-      'stats.summary.requests': '{count} 次请求',
-      'stats.summary.sources': '{count} 个来源',
-      'stats.empty': '暂无用量记录',
-      'stats.failed': '用量记录读取失败',
-      'stats.localBadge': '本地估算',
       'stats.reason.no_account': '未登录账号',
       'stats.reason.auth_failed': '账号登录态不可用',
       'stats.reason.timeout': '平台请求超时',
@@ -215,20 +188,15 @@ window.__ModuleLoader__.load({
       'shortcut.noSession': 'Select a session first',
       'refresh.aria': 'Refresh balance and usage',
       'loading': 'Reading…',
-      'stats.loading': 'Reading usage…',
       'error': 'Could not read account information',
       'retry': 'Retry',
       'settings.aria': 'Settings',
       'settings.title': 'Settings',
-      'settings.defaultDimension': 'Default range',
       'settings.card.session': 'Session usage',
-      'settings.card.stats': 'Usage stats',
       'settings.card.account': 'Account balance',
       'settings.autoRefresh': 'Auto refresh',
       'settings.autoRefreshHint': 'Usage 2 min · Balance 5 min',
-      'settings.showCost': 'Show spend',
       'settings.hideComposerStats': 'Hide composer stats',
-      'settings.usageList': 'Usage detail list',
       'settings.reset': 'Reset to defaults',
       'settings.close': 'Close',
       'settings.allHidden': 'All three cards are hidden. Turn them back on in the display settings.',
@@ -253,23 +221,9 @@ window.__ModuleLoader__.load({
       'account.status.network': 'Unavailable now',
       'account.offAccountAll': 'This session runs on {provider}; it does not use your DeepSeek balance.',
       'stats.platformBadge': 'DeepSeek API',
-      'stats.subscriptionScope': 'PLAN',
       'balance.bonus': 'Bonus credit',
       'balance.failed': 'Could not read the balance',
       'balance.empty': 'No balance data yet',
-      'stats.title': 'Usage statistics',
-      'stats.dim.day': 'Day',
-      'stats.dim.week': 'Week',
-      'stats.dim.month': 'Month',
-      'stats.dim.quarter': 'Qtr',
-      'stats.dim.year': 'Year',
-      'stats.dim.all': 'ALL',
-      'stats.summary.total': 'Total {total}',
-      'stats.summary.requests': '{count} requests',
-      'stats.summary.sources': '{count} sources',
-      'stats.empty': 'No usage records yet',
-      'stats.failed': 'Could not read usage records',
-      'stats.localBadge': 'local',
       'stats.reason.no_account': 'no signed-in account',
       'stats.reason.auth_failed': 'account session rejected',
       'stats.reason.timeout': 'platform request timed out',
@@ -332,8 +286,6 @@ window.__ModuleLoader__.load({
       '.aup-pop-title{font-size:var(--aup-fs-text);line-height:18px;font-weight:600;color:var(--dsw-alias-label-primary)}',
       '.aup-pop-close{width:22px;height:22px;margin-right:-4px}',
       '.aup-pop-close-glyph{font-size:var(--aup-fs-text);line-height:1;font-weight:400}',
-      '.aup-pop-block{display:flex;flex-direction:column;gap:6px;margin-top:2px}',
-      '.aup-pop-label{font-size:var(--aup-fs-text);line-height:16px;font-weight:500;color:var(--aup-label-2)}',
       '.aup-pop-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:26px}',
       '.aup-pop-row>span{font-size:var(--aup-fs-text);line-height:16px;font-weight:500;color:var(--dsw-alias-label-primary);white-space:nowrap}',
       '.aup-pop-hint{font-size:var(--aup-fs-text);line-height:18px;color:var(--aup-label-2);white-space:nowrap;overflow:visible;text-overflow:clip}',
@@ -341,8 +293,6 @@ window.__ModuleLoader__.load({
       '.aup-pop-foot{display:flex;justify-content:flex-end;padding-top:2px}',
       '.aup-pop-link{padding:0;border:none;background:transparent;color:var(--aup-label-2);font:inherit;font-size:var(--aup-fs-text);line-height:18px;cursor:pointer}',
       '.aup-pop-link:hover{color:var(--dsw-alias-label-primary)}',
-      '.aup-dims-mini{display:flex;flex-wrap:wrap;background:var(--dsw-alias-bg-skeleton);padding:2px;gap:2px;border-radius:8px}',
-      '.aup-dims-mini .aup-dim{flex:1 1 58px;height:22px;padding:0 4px;border-radius:6px;font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-toggle{position:relative;flex:none;width:34px;height:20px;padding:0;border:none;border-radius:999px;background:var(--dsw-alias-bg-skeleton);cursor:pointer;transition:background-color .15s}',
       '.aup-toggle[data-on]{background:var(--dsw-alias-brand-primary)}',
       '.aup-toggle-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 20%,transparent);transition:transform .15s}',
@@ -351,32 +301,21 @@ window.__ModuleLoader__.load({
       '.aup-empty{padding:12px;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:18px;font-weight:500;text-align:center}',      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       // Motion is decoration only: honour the preference everywhere.
-      '@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob,.aup-icon-button,.aup-dim,.aup-series-row,.aup-pop-link{transition:none}.aup-skeleton,.aup-spin{animation:none}}',
+      '@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob,.aup-icon-button,.aup-pop-link{transition:none}.aup-spin{animation:none}}',
       '@keyframes aup-spin{to{transform:rotate(360deg)}}',
       '.aup-cards{flex:1 1 auto;min-height:0;width:100%;display:flex;flex-direction:column;justify-content:flex-start;gap:6px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none;-ms-overflow-style:none}',
-      '.aup-cards>.aup-card-session-fixed{flex:1 1 auto;min-height:auto}',
+      '.aup-cards>.aup-card-session-fixed{flex:3 1 auto;min-height:auto}',
       '.aup-cards::-webkit-scrollbar{width:0;height:0;display:none}',
       '.aup-card{flex:0 0 auto;min-height:auto;display:flex;flex-direction:column;gap:10px;padding:12px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);overflow:visible}',
       '.aup-card-session{justify-content:flex-start}',
-      '.aup-card-stats{justify-content:flex-start}',
-      '.aup-stats-body{flex:0 0 auto;display:grid;grid-template-columns:minmax(0,1fr) minmax(52px,max-content) minmax(0,max-content);align-content:start;column-gap:12px;row-gap:4px}',
-      '.aup-srcs,.aup-series{display:contents}',
-      '.aup-card-stats .aup-src+.aup-src{margin-top:2px}',
-      // The provider rows and the date rows are one table, so a hairline marks where
-      // the second group starts instead of a gap that would break the column grid.
-      '.aup-card-stats .aup-series>.aup-series-row:first-child{position:relative;margin-top:3px}',
-      '.aup-card-stats .aup-series>.aup-series-row:first-child::before{content:"";position:absolute;left:0;right:0;top:-2px;border-top:.5px solid var(--dsw-alias-border-l2);pointer-events:none}',
       
-      '.aup-src{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-height:21px;min-width:0;font-size:var(--aup-fs-text);line-height:18px;font-variant-numeric:tabular-nums}',
-      '.aup-src-label{min-width:0;color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
-      '.aup-src-tokens{justify-self:end;color:var(--dsw-alias-label-primary);font-weight:500;white-space:nowrap}',
-      '.aup-src-side{justify-self:end;color:var(--aup-label-2);white-space:nowrap;text-align:right}',
-      '.aup-stats-head{flex:none;display:flex;flex-direction:column;gap:6px}',
-      '.aup-card-account{flex:0 0 auto;min-height:auto;justify-content:flex-start}',
-      '.aup-account-body{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}',
+      '.aup-card-account{flex:1 1 auto;min-height:auto;justify-content:flex-start}',
+      '.aup-account-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}',
       // Mixed sessions: one aligned row per source, using the statistics table rhythm.
       // Every source is visible at once, so there is nothing to switch and no reserved blank.
-      '.aup-acct-srcs{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);align-content:start;column-gap:6px;row-gap:4px}',
+      // The balance card takes its own share of the leftover height: the rows spread
+      // evenly inside it (never one big void) so the bottom card breathes like the top.
+      '.aup-acct-srcs{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);align-content:space-evenly;flex:1 1 auto;min-height:0;column-gap:6px;row-gap:4px}',
       '.aup-acct-src,.aup-acct-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-height:21px;min-width:0;line-height:18px;font-variant-numeric:tabular-nums}',
       '.aup-acct-src-label{min-width:0;color:var(--dsw-alias-label-primary);font-weight:500;letter-spacing:-0.1px;overflow-wrap:anywhere}',
       '.aup-acct-src-value{min-width:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;column-gap:8px;text-align:right}',
@@ -400,20 +339,9 @@ window.__ModuleLoader__.load({
       '.aup-card-head-extra{position:absolute;right:0;top:50%;transform:translateY(-50%);display:inline-flex;align-items:center;max-width:45%}',
       '.aup-divider{display:block;height:1px;flex:none;margin:0;background:var(--dsw-alias-border-l2)}',
       '.aup-card-icon{display:inline-flex;flex:none;color:var(--dsw-alias-label-secondary)}',
-      '.aup-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}',
-      '.aup-skeleton{display:block;height:10px;border-radius:6px;background:linear-gradient(90deg,color-mix(in srgb,var(--dsw-alias-label-primary) 6%,transparent) 25%,color-mix(in srgb,var(--dsw-alias-label-primary) 11%,transparent) 37%,color-mix(in srgb,var(--dsw-alias-label-primary) 6%,transparent) 63%);background-size:400% 100%;animation:aup-shimmer 1.4s ease-in-out infinite}',
       '@keyframes aup-shimmer{0%{background-position:100% 0}100%{background-position:0 0}}',
-      '.aup-skeleton-row{pointer-events:none}',
-      '.aup-skeleton-label{width:38px}',
-      '.aup-skeleton-value{width:44px;justify-self:end}',
-      '.aup-badge{flex:none;padding:0 6px;border:.5px solid var(--dsw-alias-border-l2);border-radius:999px;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:18px;font-weight:500;white-space:nowrap}',
       '.aup-card-title{margin:0;font-size:var(--aup-fs-text);font-weight:500;line-height:18px;color:var(--aup-label-2);white-space:nowrap}',
 
-      '.aup-balance{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 16px;margin:0;padding:0}',
-      '.aup-balance-item{display:flex;flex-direction:column;gap:2px;min-width:0}',
-      '.aup-balance-label{margin:0;font-size:var(--aup-fs-text);font-weight:500;color:var(--aup-label-2);white-space:normal;overflow-wrap:anywhere}',
-      '.aup-balance-value{margin:0;font-size:var(--aup-fs-text);font-weight:500;line-height:22px;font-variant-numeric:tabular-nums;white-space:nowrap}',
-      '.aup-balance-value.aup-minor{font-size:var(--aup-fs-text);line-height:22px;font-weight:500;color:var(--dsw-alias-label-primary)}',
       '.aup-hint{margin:0;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2);white-space:normal;overflow:visible}',
       '.aup-error{margin:0;font-size:var(--aup-fs-text);line-height:18px;color:var(--dsw-alias-state-error-primary);white-space:normal;overflow:visible}',
       '.aup-card-session-fixed{flex:1 1 auto;min-height:auto}',
@@ -422,6 +350,13 @@ window.__ModuleLoader__.load({
       '.aup-card-session .aup-session-cell{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;text-align:left}',
       '.aup-card-session .aup-session-cell:nth-child(even){align-items:flex-end;text-align:right}',
       '.aup-models{display:flex;flex-direction:column;gap:0;flex:none;min-height:0}',
+      // Per-provider session totals: one shared parent grid, every row inherits its
+      // columns through subgrid, so names start on one line and figures end on one
+      // (same rule as the balance rows - never one grid-template per row).
+      '.aup-providers{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);align-content:start;column-gap:6px;row-gap:2px;flex:none;min-height:0}',
+      '.aup-provider-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-width:0;font-size:var(--aup-fs-text);line-height:17px;font-variant-numeric:tabular-nums}',
+      '.aup-provider-name{min-width:0;font-size:var(--aup-fs-text);line-height:17px;white-space:normal;overflow-wrap:anywhere;color:var(--aup-label-2)}',
+      '.aup-provider-tokens{justify-self:end;min-width:0;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
       '.aup-model-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:2px 10px;min-width:0;font-size:var(--aup-fs-text);line-height:17px;font-variant-numeric:tabular-nums}',
       '.aup-model-name{flex:1 1 auto;min-width:0;font-size:var(--aup-fs-text);line-height:17px;white-space:normal;overflow-wrap:anywhere;color:var(--aup-label-2)}',
                   '.aup-model-tokens{flex:none;margin-left:auto;font-weight:500;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}',
@@ -437,14 +372,11 @@ window.__ModuleLoader__.load({
                   '.aup-context-breakdown{display:flex;flex-direction:column;gap:4px;margin-top:2px}',
       '.aup-context-used{display:flex;height:100%;gap:1px;border-radius:inherit;overflow:hidden}',
       '.aup-context-seg{flex:1 1 0;min-width:2px;height:100%}',
-      '.aup-context-legend,.aup-stats-summary{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:baseline;column-gap:12px;row-gap:2px;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2);font-variant-numeric:tabular-nums}',
-      '.aup-context-legend>span:nth-child(1),.aup-stats-summary>span:nth-child(1){justify-self:start;text-align:left}',
-      '.aup-context-legend>span:nth-child(2),.aup-stats-summary>span:nth-child(2){justify-self:center;text-align:center}',
-      '.aup-context-legend>span:nth-child(3),.aup-stats-summary>span:nth-child(3){justify-self:end;text-align:right}',
-      '.aup-card-account-provider{flex:0 0 auto;min-height:auto;justify-content:flex-start}',
-      '.aup-card-account-provider .aup-balance{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 12px;align-content:center}',
-      '.aup-card-account-provider .aup-balance-value{font-size:var(--aup-fs-text);line-height:22px}',
-      '.aup-card-account-provider .aup-balance-value.aup-minor{font-size:var(--aup-fs-text);line-height:22px}',
+      '.aup-context-legend{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:baseline;column-gap:12px;row-gap:2px;font-size:var(--aup-fs-text);line-height:18px;font-weight:500;color:var(--aup-label-2);font-variant-numeric:tabular-nums}',
+      '.aup-context-legend>span:nth-child(1){justify-self:start;text-align:left}',
+      '.aup-context-legend>span:nth-child(2){justify-self:center;text-align:center}',
+      '.aup-context-legend>span:nth-child(3){justify-self:end;text-align:right}',
+      '.aup-card-account-provider{flex:1 1 auto;min-height:auto;justify-content:flex-start}',
       '.aup-value-long{letter-spacing:-.02em}',
       '.aup-value-longer{letter-spacing:-.04em}',
       '.aup-card-session .aup-session-label{display:flex;align-items:center;gap:5px;margin:0;font-size:var(--aup-fs-text);line-height:16px;font-weight:500;color:var(--aup-label-2);white-space:nowrap}',
@@ -461,37 +393,14 @@ window.__ModuleLoader__.load({
       '.aup-context-figures{flex:none;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-primary);text-align:right}',
       '.aup-bar{height:4px;border-radius:999px;background:var(--dsw-alias-bg-skeleton);overflow:hidden}',
       '.aup-bar-fill{display:block;height:100%;border-radius:inherit;background:var(--dsw-alias-brand-primary)}',
-      '.aup-dims{display:flex;gap:2px;flex-wrap:nowrap;padding:2px;border-radius:9px;background:var(--dsw-alias-bg-skeleton)}',
-      '.aup-dim{flex:1;min-width:0;height:22px;padding:0 4px;border:.5px solid transparent;border-radius:7px;background:transparent;color:var(--aup-label-2);font-family:inherit;font-size:var(--aup-fs-text);font-weight:500;line-height:18px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;transition:background-color .12s,color .12s}',
-      '.aup-dim:hover{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.aup-dim[data-active]{background:var(--dsw-alias-bg-layer-1);border-color:var(--dsw-alias-border-l3);box-shadow:0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 9%,transparent);color:var(--dsw-alias-label-primary);font-weight:500}',
-      '.aup-dim:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
-      '.aup-stats-summary{grid-column:1/-1;margin-top:2px}',
-      '.aup-stats-summary>span{min-width:0;white-space:nowrap}',
-      '.aup-stats-total{font-size:var(--aup-fs-text);line-height:18px;font-weight:600;color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;text-align:right}',
       
-      '.aup-series-slot{min-height:21px;pointer-events:none}',,
       '.aup-card-session .aup-session-body>.aup-context{margin-top:0}',
-      '.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:21px;border-radius:8px;transition:background-color .12s}',
-      '.aup-card-stats .aup-series-row:hover{background:var(--dsw-alias-interactive-bg-hover)}',
-      '.aup-card-stats .aup-series-row[data-current]{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 10%, transparent)}',
-      '.aup-card-stats .aup-series-row[data-zero]{opacity:.62}',
-      '.aup-card-stats .aup-series-row[data-zero]:hover{opacity:.8}',
-      '.aup-card-stats .aup-series-row[data-current]:hover{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 16%, transparent)}',
-      '.aup-series-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;font-size:var(--aup-fs-text);line-height:18px}',
-      '.aup-series-label{color:var(--aup-label-2);white-space:nowrap;font-variant-numeric:tabular-nums}',
-      '.aup-series-tokens{justify-self:end;white-space:nowrap}',
-      '.aup-series-cost{white-space:nowrap}',
-      '.aup-series-tokens{font-size:var(--aup-fs-text);line-height:16px;font-variant-numeric:tabular-nums}',
-      '.aup-series-cost{justify-self:end;font-size:var(--aup-fs-text);line-height:16px;color:var(--aup-label-2);font-variant-numeric:tabular-nums}',
-      '.aup-series-row[data-current] .aup-series-label,.aup-series-row[data-current] .aup-series-tokens,.aup-series-row[data-current] .aup-series-cost{color:var(--dsw-alias-label-primary);font-weight:500}',
       '.aup-tab-icon{flex:none;width:14px;height:14px;vertical-align:-2px;color:var(--dsw-alias-label-secondary)}',
       // ---- one shared type scale: every Chinese text is 13px, only numbers vary by role ----
       '.aup-card{gap:3px;padding:8px}',
       '.aup-card-title{font-size:var(--aup-fs-text);line-height:16px;font-weight:500}',
       '.aup-card-icon{width:15px;height:15px}',
       '.aup-card-icon svg{width:100%;height:100%}',
-      '.aup-dim{height:22px;font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-session-total-value{font-size:var(--aup-fs-text);line-height:26px}',
       '.aup-session-total-label{font-size:var(--aup-fs-text);line-height:16px}',
       '.aup-session-label{font-size:var(--aup-fs-text);line-height:16px}',
@@ -501,21 +410,11 @@ window.__ModuleLoader__.load({
       '.aup-bar{height:6px}',
       '.aup-context{gap:4px}',
       '.aup-context-head{font-size:var(--aup-fs-text);line-height:16px}',
-      '.aup-card-stats .aup-series-row{font-size:var(--aup-fs-text);line-height:16px}',
-      '.aup-card-stats .aup-series-label,.aup-card-stats .aup-series-tokens{font-size:var(--aup-fs-text);line-height:16px}',
-      '.aup-card-stats .aup-series-cost{font-size:var(--aup-fs-text);line-height:16px}',
-      '.aup-card-account .aup-balance-item{flex-direction:row;align-items:baseline;justify-content:space-between;gap:8px;min-width:0}',
-      '.aup-card-account .aup-balance{flex:0 0 auto;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:4px 16px;align-content:start;padding:2px 0}',
-      '.aup-card-account .aup-balance-value{font-size:var(--aup-fs-text);line-height:22px;letter-spacing:0}',
-      '.aup-card-account .aup-balance-value.aup-minor{font-size:var(--aup-fs-text);line-height:22px;font-weight:500;color:var(--dsw-alias-label-primary)}',
-      '.aup-card-account .aup-balance-value.aup-value-long{font-size:var(--aup-fs-text)}',
-      '.aup-card-account .aup-balance-value.aup-value-longer{font-size:var(--aup-fs-text)}',
-      '.aup-card-account .aup-balance-label{font-size:var(--aup-fs-text);line-height:16px;font-weight:500}',
       '.aup-hint{font-size:var(--aup-fs-text);line-height:16px}',
       // ---- narrow panes: one more compaction step so balance rows stay on one line ----
       // The documented comfort width is 340px (where even three `100%` windows fit); below it,
       // typical values must still read as a single line, without scaling text.
-      '@container aup-panel (max-width:330px){.aup-acct-srcs{column-gap:4px}.aup-acct-pair{gap:1px}.aup-acct-pairs{gap:1px 0;letter-spacing:-0.7px;font-variant-numeric:proportional-nums}.aup-context-legend,.aup-stats-summary{column-gap:6px}.aup-context-legend>span,.aup-stats-summary>span{white-space:nowrap}.aup-model-row{gap:2px 6px}.aup-model-name{letter-spacing:-0.2px}}',
+      '@container aup-panel (max-width:330px){.aup-acct-srcs{column-gap:4px}.aup-acct-pair{gap:1px}.aup-acct-pairs{gap:1px 0;letter-spacing:-0.7px;font-variant-numeric:proportional-nums}.aup-context-legend{column-gap:6px}.aup-context-legend>span{white-space:nowrap}.aup-model-row{gap:2px 6px}.aup-model-name{letter-spacing:-0.2px}}',
       // ---- ultra-narrow panes (<=310px): the last spacing step so even three `100%`
       // windows stay on one line; still 13px text, only tighter rhythm. ----
       '@container aup-panel (max-width:320px){.aup-card{padding-left:5px;padding-right:5px}.aup-acct-srcs{column-gap:2px}.aup-acct-src-label{letter-spacing:-0.5px}.aup-acct-pair{gap:2px}.aup-acct-pairs{gap:0 1px;letter-spacing:-1px}.aup-acct-pairs.aup-acct-pairs-tight{gap:0 1px;letter-spacing:-1.6px}.aup-model-row{gap:2px 5px}.aup-model-name{letter-spacing:-0.4px}}',
@@ -528,19 +427,24 @@ window.__ModuleLoader__.load({
       // The session card never truncates: every model row is rendered (2026-11-09);
       // these steps only shed whole blocks when the pane is physically too short.
       // They must stay LAST and carry !important: a query adds no specificity.
-      '@container aup-panel (max-height:820px){.aup-compose{display:none!important}}',
-      '@container aup-panel (max-height:811px){.aup-card-session .aup-models,.aup-card-session .aup-sep-models{display:none!important}}',
-      '@container aup-panel (max-height:751px){.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats{display:none!important}}',
-      '@container aup-panel (max-height:667px){.aup-context,.aup-card-session .aup-sep-context{display:none!important}}',
-      '@container aup-panel (max-height:608px){.aup-card-session .aup-session-grid{display:none!important}}',
+      // Thresholds = `layout-check --tiers` content height + 58px of panel chrome,
+      // re-measured for the two-card panel (1.0.16): 526 content -> 584, then one step
+      // per shed block (575 / 532 / 448 / 384 / 325).
+      '@container aup-panel (max-height:584px){.aup-compose{display:none!important}}',
+      '@container aup-panel (max-height:575px){.aup-card-session .aup-models,.aup-card-session .aup-sep-models{display:none!important}}',
+      '@container aup-panel (max-height:532px){.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats{display:none!important}}',
+      '@container aup-panel (max-height:448px){.aup-card-session .aup-providers,.aup-card-session .aup-sep-providers{display:none!important}}',
+      '@container aup-panel (max-height:384px){.aup-context,.aup-card-session .aup-sep-context{display:none!important}}',
+      '@container aup-panel (max-height:325px){.aup-card-session .aup-session-grid{display:none!important}}',
       // Measured with `layout-check --tiers N`: each source beyond three adds one
-      // statistics row, one balance row and one full model row (69px). Budget by
-      // source count only - never by measured content - so no observer/state
+      // balance row (25px) plus one per-provider row and its gap (19px) = 44px; its
+      // single-model detail row is not drawn at all (1.0.16).
+      // Budget by source count only - never by measured content - so no observer/state
       // feedback can occur.
       ...Array.from({ length: 13 }, (_, index) => {
         const count = index + 4;
-        const extra = (count - 3) * 69;
-        return [[820, ['.aup-compose']], [811, ['.aup-card-session .aup-models', '.aup-card-session .aup-sep-models']], [751, ['.aup-card-session .aup-stat-list', '.aup-card-session .aup-sep-stats']], [667, ['.aup-context', '.aup-card-session .aup-sep-context']], [608, ['.aup-card-session .aup-session-grid']]]
+        const extra = (count - 3) * 44;
+        return [[584, ['.aup-compose']], [575, ['.aup-card-session .aup-models', '.aup-card-session .aup-sep-models']], [532, ['.aup-card-session .aup-stat-list', '.aup-card-session .aup-sep-stats']], [448, ['.aup-card-session .aup-providers', '.aup-card-session .aup-sep-providers']], [384, ['.aup-context', '.aup-card-session .aup-sep-context']], [325, ['.aup-card-session .aup-session-grid']]]
           .map(([height, selectors]) => '@container aup-panel (max-height:' + (height + extra) + 'px){' + selectors.map((selector) => '.aup-cards[data-source-count="' + count + '"] ' + selector).join(',') + '{display:none!important}}').join('');
       }),
     ].join('\n');
@@ -728,26 +632,8 @@ window.__ModuleLoader__.load({
       );
     }
 
-    /** Display settings popover: default range, visible cards, spend, auto refresh. */
+    /** Display settings popover: visible cards and auto refresh (user 2026-11-09: four switches). */
     function SettingsPanel({ settings, onChange, onReset, onClose, t }) {
-      const dimensionControl = h(
-        'div',
-        { className: 'aup-dims aup-dims-mini' },
-        DIMENSIONS.map((entry) =>
-          h(
-            'button',
-            {
-              key: entry.id,
-              type: 'button',
-              className: 'aup-dim',
-              'data-active': entry.id === settings.dimension ? true : undefined,
-              'aria-pressed': entry.id === settings.dimension,
-              onClick: () => onChange({ dimension: entry.id })
-            },
-            t(entry.key)
-          )
-        )
-      );
       const switchRow = (key, labelKey, checked, patch) =>
         h(
           'div',
@@ -768,24 +654,10 @@ window.__ModuleLoader__.load({
             h('span', { className: 'aup-pop-close-glyph', 'aria-hidden': true }, '×')
           )
         ),
-        h('div', { className: 'aup-pop-block' }, h('span', { className: 'aup-pop-label' }, t('settings.defaultDimension')), dimensionControl),
-        h('div', { className: 'aup-pop-sep' }),
         switchRow('session', 'settings.card.session', settings.cards.session, (value) => ({ cards: { session: value } })),
-        switchRow('stats', 'settings.card.stats', settings.cards.stats, (value) => ({ cards: { stats: value } })),
         switchRow('account', 'settings.card.account', settings.cards.account, (value) => ({ cards: { account: value } })),
-        switchRow('showCost', 'settings.showCost', settings.showCost, (value) => ({ showCost: value })),
         switchRow('hideComposerStats', 'settings.hideComposerStats', settings.hideComposerStats, (value) => ({ hideComposerStats: value })),
-        switchRow('usageList', 'settings.usageList', settings.usageList, (value) => ({ usageList: value })),
-        h(
-          'div',
-          { className: 'aup-pop-row' },
-          h('span', null, t('settings.autoRefresh')),
-          h(Toggle, {
-            checked: settings.autoRefresh === true,
-            label: t('settings.autoRefresh'),
-            onChange: (value) => onChange({ autoRefresh: value })
-          })
-        ),
+        switchRow('autoRefresh', 'settings.autoRefresh', settings.autoRefresh, (value) => ({ autoRefresh: value })),
         h('div', { className: 'aup-pop-hint' }, t('settings.autoRefreshHint')),
         h('div', { className: 'aup-pop-sep' }),
         h(
@@ -829,21 +701,6 @@ window.__ModuleLoader__.load({
     /** Shortcut id shared by the registered command and the guide card's key hint. */
     const SHORTCUT_ID = 'accountUsage.open';
 
-    /** Background warm-up order: widest window first, so later switches hit the cache. */
-    const WARM_ORDER = ['year', 'quarter', 'month', 'week', 'day', 'all'];
-
-    /** Maximum periods rendered in the detail list per dimension (older ones are dropped). */
-    const DIMENSION_ROW_CAP = { day: 4, week: 4, month: 4, quarter: 3, year: 3, all: 4 };
-
-    /** ALL tab: the window it opens with (three years, same as the year tab). */
-    const ALL_WINDOW_MONTHS = 36;
-    /** ALL tab: never look further back than six years, so one query stays sane. */
-    const ALL_MAX_MONTHS = 72;
-    /** Where the discovered first month of the account lives. */
-    const ALL_START_STORAGE_KEY = 'dsh.account-usage.all-start.v1';
-
-    /** Slots the detail list always occupies: identical height in every dimension. */
-    const SERIES_ROW_SLOTS = 4;
 
     /** Minimum usable panel width: below this the no-wrap rows would collide. */
     // The compact layout holds down to ~300px (host's own narrowest); 340 stays the
@@ -1010,12 +867,6 @@ window.__ModuleLoader__.load({
       return moneyText(0, currency, locale);
     }
 
-    /** Spend label: platform amounts as recorded, or list-price estimates with an `≈` mark. */
-    function formatCost(value, currency, locale, estimate) {
-      const amount = Number.isFinite(value) && value > 0 ? formatMoney(String(value), currency, locale) : moneyText(0, currency, locale);
-      return estimate === true ? '≈' + amount : amount;
-    }
-
     /** Compact token count: exact below 1K, then K / M / B / T, promoting at 1000 of a unit. */
     const TOKEN_TIERS = [
       { div: 1000000000000, unit: 'T' },
@@ -1038,282 +889,6 @@ window.__ModuleLoader__.load({
         return String(scaled(count / (tier.div * 1000))) + TOKEN_TIERS[index - 1].unit;
       }
       return String(count);
-    }
-
-    // ------------------------------------------------------------ usage dates --
-
-    /** The five date dimensions and how many of their most recent buckets the panel lists. */
-    const DIMENSIONS = [
-      { id: 'day', key: 'stats.dim.day', buckets: 7 },
-      { id: 'week', key: 'stats.dim.week', buckets: 6 },
-      { id: 'month', key: 'stats.dim.month', buckets: 6 },
-      { id: 'quarter', key: 'stats.dim.quarter', buckets: 4 },
-      { id: 'year', key: 'stats.dim.year', buckets: 3 },
-      // `all` has no fixed bucket count: it spans every year with data (see bucketStarts).
-      { id: 'all', key: 'stats.dim.all', buckets: 0 }
-    ];
-
-    /** Round one instant down to the start of its bucket, in local time. */
-    function startOfBucket(time, dimension) {
-      const date = new Date(time);
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      switch (dimension) {
-        case 'day':
-          return new Date(year, month, date.getDate());
-        case 'week': {
-          const daysSinceMonday = (date.getDay() + 6) % 7;
-          return new Date(year, month, date.getDate() - daysSinceMonday);
-        }
-        case 'month':
-          return new Date(year, month, 1);
-        case 'quarter':
-          return new Date(year, Math.floor(month / 3) * 3, 1);
-        default:
-          return new Date(year, 0, 1);
-      }
-    }
-
-    /** Move one bucket start by `units` buckets (negative moves backward). */
-    function shiftBucket(start, dimension, units) {
-      const date = new Date(start);
-      switch (dimension) {
-        case 'day':
-          date.setDate(date.getDate() + units);
-          break;
-        case 'week':
-          date.setDate(date.getDate() + units * 7);
-          break;
-        case 'month':
-          date.setMonth(date.getMonth() + units);
-          break;
-        case 'quarter':
-          date.setMonth(date.getMonth() + units * 3);
-          break;
-        default:
-          date.setFullYear(date.getFullYear() + units);
-          break;
-      }
-      return date;
-    }
-
-    /** Short label for one bucket start. */
-    function bucketLabel(start, dimension) {
-      const pad = (value) => (value < 10 ? '0' + value : String(value));
-      const year = start.getFullYear();
-      const month = start.getMonth();
-      switch (dimension) {
-        case 'day':
-        case 'week':
-          // The year is part of every label: short "11-05" dates left a ragged gap
-          // next to the older rows and made the column look uneven.
-          return year + '-' + pad(month + 1) + '-' + pad(start.getDate());
-        case 'month':
-          return year + '-' + pad(month + 1);
-        case 'quarter':
-          return year + ' Q' + (Math.floor(month / 3) + 1);
-        default:
-          return String(year);
-      }
-    }
-
-    /** Total model tokens one usage block reports. */
-    function sumUsage(usage) {
-      if (usage === null || usage === undefined || typeof usage !== 'object') return 0;
-      return (
-        (usage.uncachedInputTokens || 0) +
-        (usage.outputTokens || 0) +
-        (usage.cacheReadTokens || 0) +
-        (usage.cacheWriteTokens || 0)
-      );
-    }
-
-    /**
-     * Estimated DeepSeek list prices per one million tokens, by wallet
-     * currency. These are estimate inputs, not billing records: edit them when
-     * the price list in use changes. `cacheRead` is the cache-hit input price;
-     * `cacheWrite` is priced like a cache-miss input.
-     */
-    const PRICE_TABLE = {
-      CNY: { cacheRead: 0.2, input: 2, output: 3, cacheWrite: 2 },
-      USD: { cacheRead: 0.028, input: 0.28, output: 0.42, cacheWrite: 0.28 }
-    };
-    /** Token counts in PRICE_TABLE are per one million tokens. */
-    const PRICE_UNIT = 1000000;
-
-    /** Estimated spend of one usage block under the price table. */
-    function costOfUsage(usage, currency) {
-      if (usage === null || usage === undefined || typeof usage !== 'object') return 0;
-      const price = PRICE_TABLE[currency] || PRICE_TABLE.CNY;
-      return (
-        ((usage.uncachedInputTokens || 0) * price.input +
-          (usage.cacheReadTokens || 0) * price.cacheRead +
-          (usage.cacheWriteTokens || 0) * price.cacheWrite +
-          (usage.outputTokens || 0) * price.output) /
-        PRICE_UNIT
-      );
-    }
-
-    /** One local calendar date key, `YYYY-MM-DD`. */
-    function localDateKey(time) {
-      const date = new Date(time);
-      const pad = (value) => (value < 10 ? '0' + value : String(value));
-      return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
-    }
-
-    /** Parse a `YYYY-MM-DD` day key as a local calendar date. */
-    function parseDayKey(key) {
-      const parts = String(key).split('-');
-      const year = Number(parts[0]);
-      const month = Number(parts[1]);
-      const day = Number(parts[2]);
-      if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return undefined;
-      const date = new Date(year, month - 1, day);
-      return Number.isFinite(date.getTime()) ? date : undefined;
-    }
-
-    /** Cached first month the ALL tab covers (module lifetime). */
-    let allStartMonth;
-
-    /** First month the ALL tab covers: the discovered account start, else a 3-year window. */
-    function allWindowStart(now) {
-      const reference = now === undefined ? new Date() : now;
-      if (allStartMonth === undefined) {
-        allStartMonth = null;
-        try {
-          const storage = globalThis.localStorage;
-          const raw = storage === undefined || storage === null ? null : storage.getItem(ALL_START_STORAGE_KEY);
-          if (typeof raw === 'string' && /^\d{4}-\d{2}$/u.test(raw)) {
-            const parts = raw.split('-');
-            allStartMonth = new Date(Number(parts[0]), Number(parts[1]) - 1, 1);
-          }
-        } catch (error) {
-          /* storage unavailable: fall back to the default window */
-        }
-      }
-      if (allStartMonth !== null && allStartMonth !== undefined) return allStartMonth;
-      return new Date(reference.getFullYear(), reference.getMonth() - (ALL_WINDOW_MONTHS - 1), 1);
-    }
-
-    /** Remember the first month that actually holds data, so later reads start there. */
-    function rememberAllStart(month) {
-      if (allStartMonth !== null && allStartMonth !== undefined) {
-        if (allStartMonth.getTime() <= month.getTime()) return;
-      }
-      allStartMonth = month;
-      try {
-        const storage = globalThis.localStorage;
-        if (storage === undefined || storage === null) return;
-        const pad = (value) => (value < 10 ? '0' + value : String(value));
-        storage.setItem(ALL_START_STORAGE_KEY, String(month.getFullYear()) + '-' + pad(month.getMonth() + 1));
-      } catch (error) {
-        /* best effort */
-      }
-    }
-
-    /** Every month from `start` through `reference`, inclusive, oldest first. */
-    function monthsBetween(start, reference) {
-      const months = [];
-      let cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-      const last = new Date(reference.getFullYear(), reference.getMonth(), 1);
-      while (cursor.getTime() <= last.getTime()) {
-        months.push({ year: cursor.getFullYear(), month: cursor.getMonth() + 1 });
-        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-      }
-      return months;
-    }
-
-    /** The most recent bucket starts of one dimension, oldest first. */
-    function bucketStarts(dimensionId, now) {
-      const dimension = DIMENSIONS.find((entry) => entry.id === dimensionId) || DIMENSIONS[0];
-      const reference = now === undefined ? new Date() : now;
-      if (dimension.id === 'all') {
-        const first = allWindowStart(reference);
-        const years = [];
-        for (let year = first.getFullYear(); year <= reference.getFullYear(); year += 1) years.push(new Date(year, 0, 1));
-        return { dimension, starts: years };
-      }
-      const currentStart = startOfBucket(reference.getTime(), dimension.id);
-      const starts = [];
-      let cursor = currentStart;
-      for (let index = 0; index < dimension.buckets; index += 1) {
-        starts.unshift(cursor);
-        cursor = shiftBucket(cursor, dimension.id, -1);
-      }
-      return { dimension, starts };
-    }
-
-    /**
-     * The platform months that cover one dimension's window: from the month of
-     * the oldest bucket through the current month, inclusive.
-     */
-    function monthsForDimension(dimensionId, now) {
-      const reference = now === undefined ? new Date() : now;
-      if (dimensionId === 'all') return monthsBetween(allWindowStart(reference), reference);
-      const { starts } = bucketStarts(dimensionId, now);
-      const first = starts[0];
-      const months = [];
-      let cursor = new Date(first.getFullYear(), first.getMonth(), 1);
-      const last = new Date(reference.getFullYear(), reference.getMonth(), 1);
-      while (cursor.getTime() <= last.getTime()) {
-        months.push({ year: cursor.getFullYear(), month: cursor.getMonth() + 1 });
-        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
-      }
-      return months;
-    }
-
-    /** Run `worker` over `items` with bounded concurrency, keeping input order. */
-    async function mapLimit(items, limit, worker) {
-      const results = new Array(items.length);
-      let next = 0;
-      const runners = [];
-      for (let index = 0; index < Math.min(limit, items.length); index += 1) {
-        runners.push(
-          (async () => {
-            while (next < items.length) {
-              const current = next;
-              next += 1;
-              results[current] = await worker(items[current], current);
-            }
-          })()
-        );
-      }
-      await Promise.all(runners);
-      return results;
-    }
-
-    /**
-     * Fold per-day usage records into the most recent buckets of one dimension.
-     * Day records are `{ date: 'YYYY-MM-DD', tokens, cost, count }`; platform
-     * data counts requests while the local fallback counts sessions.
-     */
-    function buildSeries(days, dimensionId, now) {
-      const { dimension, starts } = bucketStarts(dimensionId, now);
-      const cells = starts.map((start, index) => ({
-        key: String(start.getTime()),
-        label: bucketLabel(start, dimension.id),
-        total: 0,
-        cost: 0,
-        count: 0,
-        current: index === starts.length - 1
-      }));
-      const indexByStart = new Map(starts.map((start, index) => [start.getTime(), index]));
-      for (const day of days) {
-        if (day === null || typeof day !== 'object') continue;
-        const date = parseDayKey(day.date);
-        if (date === undefined) continue;
-        const start = startOfBucket(date.getTime(), dimension.id);
-        const index = indexByStart.get(start.getTime());
-        if (index === undefined) continue;
-        cells[index].total += Number(day.tokens) || 0;
-        cells[index].cost += Number(day.cost) || 0;
-        cells[index].count += Number(day.count) || 0;
-      }
-      const total = cells.reduce((sum, cell) => sum + cell.total, 0);
-      const cost = cells.reduce((sum, cell) => sum + cell.cost, 0);
-      const count = cells.reduce((sum, cell) => sum + cell.count, 0);
-      const max = cells.reduce((value, cell) => Math.max(value, cell.total), 0);
-      return { dimension: dimension.id, cells, total, cost, count, max };
     }
 
     // ----------------------------------------------------------- panel body --
@@ -1377,193 +952,8 @@ window.__ModuleLoader__.load({
       };
     }
 
-    /** Host route that proxies one platform usage month (see the Host half). */
-    const PLATFORM_USAGE_ROUTE = '/account-usage/platform/usage';
     const SESSION_MODELS_ROUTE = '/account-usage/session/models';
     const PROVIDER_BALANCE_ROUTE = '/account-usage/provider/balance';
-    /** Cache lifetime for the month still being written (platform updates it live). */
-    const MONTH_CACHE_TTL_MS = 2 * 60 * 1000;
-    /** Cache lifetime for closed months; their daily totals no longer change. */
-    const HISTORY_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-    /** localStorage key holding the last few weeks of month payloads. */
-    const MONTH_STORAGE_KEY = 'dsh.account-usage.months.v1';
-    /** Fetched platform months, keyed `YYYY-M`; module lifetime across panel remounts. */
-    const platformMonthCache = new Map();
-    let platformMonthsRestored = false;
-
-    /** Whether one period is the month currently being written. */
-    function isCurrentMonth(period) {
-      const now = new Date();
-      return period.year === now.getFullYear() && period.month === now.getMonth() + 1;
-    }
-
-    /** One cache entry's lifetime: the live month expires quickly, closed months do not. */
-    function monthTtl(period) {
-      return isCurrentMonth(period) ? MONTH_CACHE_TTL_MS : HISTORY_CACHE_TTL_MS;
-    }
-
-    /** Restore persisted months once per page load so switching to 年 is fast after reload. */
-    function restorePersistedMonths() {
-      if (platformMonthsRestored) return;
-      platformMonthsRestored = true;
-      try {
-        const storage = globalThis.localStorage;
-        if (storage === undefined || storage === null) return;
-        const raw = storage.getItem(MONTH_STORAGE_KEY);
-        if (typeof raw !== 'string' || raw === '') return;
-        const parsed = JSON.parse(raw);
-        if (parsed === null || typeof parsed !== 'object') return;
-        const now = Date.now();
-        for (const key of Object.keys(parsed)) {
-          const entry = parsed[key];
-          if (entry === null || typeof entry !== 'object' || typeof entry.at !== 'number') continue;
-          if (entry.data === null || typeof entry.data !== 'object') continue;
-          if (now - entry.at > HISTORY_CACHE_TTL_MS) continue;
-          if (!platformMonthCache.has(key)) platformMonthCache.set(key, { at: entry.at, data: entry.data });
-        }
-      } catch (error) {
-        /* storage unavailable or malformed: start empty */
-      }
-    }
-
-    /** Persist every non-expired cached month, dropping entries past the history TTL. */
-    function persistMonths() {
-      try {
-        const storage = globalThis.localStorage;
-        if (storage === undefined || storage === null) return;
-        const now = Date.now();
-        const out = {};
-        for (const [key, entry] of platformMonthCache) {
-          if (now - entry.at > HISTORY_CACHE_TTL_MS) {
-            platformMonthCache.delete(key);
-            continue;
-          }
-          out[key] = { at: entry.at, data: entry.data };
-        }
-        storage.setItem(MONTH_STORAGE_KEY, JSON.stringify(out));
-      } catch (error) {
-        /* best effort: quota or privacy mode */
-      }
-    }
-
-    /**
-     * Read one platform usage month through the Host route. Closed months are
-     * cached for a week (also in localStorage), the live month for two minutes;
-     * `force` re-reads the live month through both cache layers.
-     */
-    async function readPlatformMonth(period, force) {
-      restorePersistedMonths();
-      const key = String(period.year) + '-' + String(period.month);
-      const cached = platformMonthCache.get(key);
-      if (force !== true && cached !== undefined && Date.now() - cached.at < monthTtl(period)) {
-        return { ok: true, data: cached.data };
-      }
-      const query = '?year=' + String(period.year) + '&month=' + String(period.month) + (force === true ? '&force=1' : '');
-      try {
-        const response = await fetch(PLATFORM_USAGE_ROUTE + query, {
-          headers: { accept: 'application/json' },
-          credentials: 'same-origin'
-        });
-        const body = await response.json().catch(() => null);
-        if (body !== null && typeof body === 'object' && body.ok === true && body.data !== null && typeof body.data === 'object') {
-          platformMonthCache.set(key, { at: Date.now(), data: body.data });
-          return { ok: true, data: body.data };
-        }
-        return { ok: false, code: body !== null && typeof body === 'object' && typeof body.code === 'string' ? body.code : 'invalid_response' };
-      } catch (error) {
-        return { ok: false, code: 'network' };
-      }
-    }
-
-    /** Whether one platform month payload carries any usage at all. */
-    function monthHasData(data) {
-      if (data === null || typeof data !== 'object' || !Array.isArray(data.days)) return false;
-      for (const day of data.days) {
-        if (day === null || typeof day !== 'object') continue;
-        if ((Number(day.tokens) || 0) > 0 || (Number(day.cost) || 0) > 0) return true;
-      }
-      return false;
-    }
-
-    /** Fold month payloads into the flat day records the series builder consumes. */
-    function daysFromMonths(results) {
-      const days = [];
-      let currency = 'CNY';
-      for (const result of results) {
-        const data = result.data;
-        if (typeof data.currency === 'string' && data.currency !== '') currency = data.currency;
-        for (const day of Array.isArray(data.days) ? data.days : []) {
-          if (day === null || typeof day !== 'object' || typeof day.date !== 'string') continue;
-          days.push({
-            date: day.date,
-            tokens: Number(day.tokens) || 0,
-            cost: Number(day.cost) || 0,
-            count: Number(day.requests) || 0
-          });
-        }
-      }
-      return { days, currency };
-    }
-
-    /**
-     * The ALL tab: read a three-year window first, then widen it while the oldest
-     * month still holds data, remembering the first month that does. Closed months
-     * come from the shared month cache, so widening costs no extra requests.
-     */
-    async function readAllPlatformUsage(force) {
-      restorePersistedMonths();
-      const reference = new Date();
-      let start = allWindowStart(reference);
-      let folded = { days: [], currency: 'CNY' };
-      for (let round = 0; round < 3; round += 1) {
-        const months = monthsBetween(start, reference);
-        const results = await mapLimit(months, 6, (period) => readPlatformMonth(period, force === true && isCurrentMonth(period)));
-        const failed = results.find((result) => result.ok !== true);
-        if (failed !== undefined) return { ok: false, code: failed.code };
-        folded = daysFromMonths(results);
-        const earliest = months.find((period, index) => results[index].ok === true && monthHasData(results[index].data));
-        if (earliest !== undefined) rememberAllStart(new Date(earliest.year, earliest.month - 1, 1));
-        const oldestHasData = results[0] !== undefined && results[0].ok === true && monthHasData(results[0].data);
-        const canExtend = months.length < ALL_MAX_MONTHS;
-        if (oldestHasData !== true || canExtend !== true) break;
-        const widened = new Date(start.getFullYear(), start.getMonth() - ALL_WINDOW_MONTHS, 1);
-        if (widened.getTime() >= start.getTime()) break;
-        start = widened;
-      }
-      persistMonths();
-      return { ok: true, source: 'platform', days: folded.days, currency: folded.currency };
-    }
-
-    /** Platform usage over one dimension's window, folded into day records. */
-    async function readPlatformUsage(dimension, force) {
-      restorePersistedMonths();
-      if (dimension === 'all') return readAllPlatformUsage(force);
-      const months = monthsForDimension(dimension, new Date());
-      const results = await mapLimit(months, 6, (period) => readPlatformMonth(period, force === true && isCurrentMonth(period)));
-      const failed = results.find((result) => result.ok !== true);
-      if (failed !== undefined) return { ok: false, code: failed.code };
-      const { days, currency } = daysFromMonths(results);
-      persistMonths();
-      return { ok: true, source: 'platform', days, currency };
-    }
-
-    /** Last ready result per dimension, so switching back never shows a loading frame. */
-    const dimensionResults = new Map();
-    /** One-time background warm-up flag for the other dimensions. */
-    let dimensionsWarmed = false;
-
-    /** Cheap structural comparison of two day-record arrays. */
-    function sameDays(left, right) {
-      if (left === right) return true;
-      if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
-      for (let index = 0; index < left.length; index += 1) {
-        const a = left[index];
-        const b = right[index];
-        if (a.date !== b.date || a.tokens !== b.tokens || a.cost !== b.cost || a.count !== b.count) return false;
-      }
-      return true;
-    }
-
     /** Keep request identity and failure state attached to the exact source tab. */
     function providerBalanceState(provider, result) {
       return result && result.ok === true
@@ -1619,50 +1009,6 @@ window.__ModuleLoader__.load({
         } catch (error) {
           return { ok: false, code: 'fetch_failed' };
         }
-      };
-    }
-
-    /** Local fallback: session token totals attributed to each session's last activity. */
-    async function readLocalUsage(ctx, currency) {
-      try {
-        const result = await ctx.remote.session.list({});
-        if (!result || result.ok !== true) return { ok: false };
-        const items = result.value && Array.isArray(result.value.items) ? result.value.items : [];
-        const days = [];
-        for (const item of items) {
-          if (item === null || item === undefined || typeof item.sessionId !== 'string') continue;
-          if (typeof item.updatedAt !== 'number') continue;
-          const values = item.projections && item.projections.values;
-          const usage = values === undefined ? undefined : values.tokenUsage;
-          if (usage === undefined || usage === null) continue;
-          const tokens = sumUsage(usage);
-          if (tokens <= 0) continue;
-          days.push({
-            date: localDateKey(item.updatedAt),
-            tokens,
-            cost: costOfUsage(usage, currency),
-            count: 1
-          });
-        }
-        return { ok: true, source: 'local', days, currency };
-      } catch (error) {
-        return { ok: false };
-      }
-    }
-
-    /**
-     * Usage for one dimension: real platform data first, local estimates only
-     * when the platform route cannot serve the window (signed out, platform
-     * session rejected, offline). The caller receives the reason so the panel
-     * can label a fallback.
-     */
-    function createUsageReader(ctx) {
-      return async function readUsage(dimension, force, currencyHint) {
-        const platform = await readPlatformUsage(dimension, force);
-        if (platform.ok === true) return platform;
-        const local = await readLocalUsage(ctx, currencyHint || 'CNY');
-        if (local.ok === true) return { ...local, reason: platform.code || 'fetch_failed' };
-        return { ok: false, code: platform.code || 'local_unavailable' };
       };
     }
 
@@ -1858,242 +1204,6 @@ window.__ModuleLoader__.load({
       );
     }
 
-    /** Date-dimension statistics over real platform usage (local estimates as fallback). */
-    function UsageSection({ state, dimension, onDimension, t, fallbackCurrency, locale, showCost, listMode, categories, sessionOnly }) {
-      const moveDimension = (event) => {
-        const index = DIMENSIONS.findIndex((entry) => entry.id === dimension);
-        let next = null;
-        if (event.key === 'ArrowRight') next = (index + 1) % DIMENSIONS.length;
-        else if (event.key === 'ArrowLeft') next = (index - 1 + DIMENSIONS.length) % DIMENSIONS.length;
-        else if (event.key === 'Home') next = 0;
-        else if (event.key === 'End') next = DIMENSIONS.length - 1;
-        if (next === null) return;
-        event.preventDefault();
-        onDimension(DIMENSIONS[next].id);
-        const buttons = event.currentTarget.querySelectorAll('[role="tab"]');
-        if (buttons[next] !== undefined) buttons[next].focus();
-      };
-      const sectionRef = React.useRef(null);
-
-      const dimensions = h(
-        'div',
-        {
-          className: 'aup-dims',
-          role: 'tablist',
-          'aria-label': t('stats.title'),
-          onKeyDown: moveDimension
-        },
-        DIMENSIONS.map((entry) =>
-          h(
-            'button',
-            {
-              key: entry.id,
-              type: 'button',
-              role: 'tab',
-              className: 'aup-dim',
-              'data-active': entry.id === dimension ? true : undefined,
-              'aria-selected': entry.id === dimension,
-              tabIndex: entry.id === dimension ? 0 : -1,
-              onClick: () => onDimension(entry.id)
-            },
-            t(entry.key)
-          )
-        )
-      );
-
-      const headCore = [
-        h(CardHead, {
-          icon: ChartGlyph,
-          title: t('stats.title'),
-          extra: state.source === 'local' ? h('span', { className: 'aup-badge' }, t('stats.localBadge')) : null
-        }),
-        h('span', { className: 'aup-divider', 'aria-hidden': true })
-      ];
-      const head = h('div', { className: 'aup-stats-head' }, sessionOnly === true ? headCore : [...headCore, dimensions]);
-
-      if (state.phase === 'loading') {
-        // The loading frame has to occupy exactly the height the ready card will:
-        // the same source rows, the same four period slots and the same summary row.
-        // Anything shorter makes clicking a range shove the whole panel around.
-        const loadingProviderRows = (Array.isArray(categories) ? categories : []).filter(
-          (row) => row !== null && row !== undefined && Number.isFinite(row.tokens) && row.tokens > 0
-        );
-        const loadingSourceCount = sessionOnly === true ? loadingProviderRows.length : loadingProviderRows.length + 1;
-        const skeletonCell = (key) => h('span', { key: 'skeleton-cell-' + key, className: 'aup-skeleton aup-skeleton-value' });
-        const skeletonSourceRows = Array.from({ length: loadingSourceCount }, (unused, index) =>
-          h(
-            'div',
-            { key: 'skeleton-src-' + String(index), className: 'aup-src aup-skeleton-row' },
-            h('span', { className: 'aup-skeleton aup-skeleton-label' }),
-            skeletonCell('tokens-' + String(index)),
-            skeletonCell('side-' + String(index))
-          )
-        );
-        const skeletonPeriodRows = Array.from({ length: SERIES_ROW_SLOTS }, (unused, index) =>
-          h(
-            'div',
-            { key: 'skeleton-row-' + String(index), className: 'aup-series-row aup-skeleton-row' },
-            h('span', { className: 'aup-skeleton aup-skeleton-label' }),
-            skeletonCell('value-' + String(index)),
-            skeletonCell('cost-' + String(index))
-          )
-        );
-        // inline-block keeps the line box (and therefore the row) exactly as tall as a
-        // text cell, so the loading summary row matches the ready one to the pixel.
-        const skeletonSummaryCell = (key) =>
-          h('span', { key }, h('span', { className: 'aup-skeleton aup-skeleton-label', style: { display: 'inline-block' } }));
-        const skeletonSummary = h(
-          'div',
-          { className: 'aup-stats-summary', 'aria-hidden': true },
-          skeletonSummaryCell('summary-left'),
-          skeletonSummaryCell('summary-mid'),
-          skeletonSummaryCell('summary-right')
-        );
-        return h(
-          'section',
-          { className: 'aup-card aup-card-stats', 'aria-busy': true },
-          head,
-          h('span', { className: 'aup-sr-only' }, t('stats.loading')),
-          h(
-            'div',
-            { className: 'aup-stats-body', 'aria-hidden': true },
-            h('div', { className: 'aup-srcs' }, skeletonSourceRows),
-            listMode === true && sessionOnly !== true ? h('div', { className: 'aup-series' }, skeletonPeriodRows) : null,
-            skeletonSummary
-          )
-        );
-      }
-      if (state.phase === 'error' || state.ok === false) {
-        const reasonKey = state.code === undefined ? '' : 'stats.reason.' + String(state.code);
-        const reason = reasonKey === '' ? '' : t(reasonKey);
-        const reasonText = reason === reasonKey ? '' : reason;
-        return h(
-          'section',
-          { className: 'aup-card aup-card-stats' },
-          head,
-          h(ErrorText, null, t('stats.failed')),
-          reasonText === '' ? null : h(Hint, null, reasonText)
-        );
-      }
-
-      const source = state.source === 'platform' ? 'platform' : 'local';
-      const estimate = source !== 'platform';
-      const currency = typeof state.currency === 'string' && state.currency !== '' ? state.currency : fallbackCurrency || 'CNY';
-      const series = buildSeries(state.days || [], dimension);
-      // Keep the card compact with a fixed cap: drop the OLDEST periods, keep the newest.
-      // No measurement and no observer, so this can never feed back into layout.
-      const rowCap = DIMENSION_ROW_CAP[dimension] === undefined ? SERIES_ROW_SLOTS : DIMENSION_ROW_CAP[dimension];
-      const visibleCells = series.cells.slice(Math.max(0, series.cells.length - rowCap));
-      // The ALL tab is defined by its grand total: older years that no longer fit on
-      // screen still count, otherwise the number would silently shrink.
-      const summaryCells = dimension === 'all' ? series.cells : visibleCells;
-      const shownTotal = summaryCells.reduce((sum, cell) => sum + cell.total, 0);
-      const shownCost = summaryCells.reduce((sum, cell) => sum + cell.cost, 0);
-      const shownCount = summaryCells.reduce((sum, cell) => sum + (Number.isFinite(cell.count) ? cell.count : 0), 0);
-      const periodRows = visibleCells.map((cell) => {
-        const detail =
-          showCost !== false && cell.cost > 0
-            ? cell.label + ' · ' + formatTokens(cell.total) + ' tokens · ' + formatCost(cell.cost, currency, locale, estimate)
-            : cell.label + ' · ' + formatTokens(cell.total) + ' tokens';
-        return h(
-          'div',
-          {
-            key: cell.key,
-            className: 'aup-series-row',
-            title: detail,
-            'data-current': cell.current ? true : undefined,
-            'data-zero': cell.total === 0 ? true : undefined
-          },
-          h('span', { className: 'aup-series-label' }, cell.label),
-          h('span', { className: 'aup-series-tokens' }, formatTokens(cell.total)),
-          showCost !== false && cell.cost > 0
-            ? h('span', { className: 'aup-series-cost' }, formatCost(cell.cost, currency, locale, estimate))
-            : h('span', { className: 'aup-series-cost', 'aria-hidden': true })
-        );
-      });
-
-      // One row per source, identical in every session shape.
-      const providerRows = (Array.isArray(categories) ? categories : []).filter(
-        (row) => row !== null && row !== undefined && Number.isFinite(row.tokens) && row.tokens > 0
-      );
-      const sources = [];
-      if (sessionOnly !== true) {
-        sources.push({
-          key: 'account',
-          label: t('stats.platformBadge'),
-          tokens: shownTotal,
-          side: showCost === false ? '' : formatCost(shownCost, currency, locale, estimate),
-          note: t('tokens.requestsCount', { count: String(shownCount) })
-        });
-      }
-      for (const row of providerRows) {
-        sources.push({
-          key: row.provider,
-          label: row.label,
-          tokens: row.tokens,
-          side: t('stats.subscriptionScope'),
-          note: t('tokens.requestsCount', { count: String(Number.isFinite(row.requests) ? row.requests : 0) })
-        });
-      }
-      const sourceTotal = sources.reduce((sum, row) => sum + row.tokens, 0);
-      const sourceList = h(
-        'div',
-        { className: 'aup-srcs' },
-        sources.map((row) =>
-          h(
-            'div',
-            { key: row.key, className: 'aup-src', title: row.label + ' · ' + formatTokens(row.tokens) + ' · ' + row.note },
-            h('span', { className: 'aup-src-label' }, row.label),
-            h('span', { className: 'aup-src-tokens' }, formatTokens(row.tokens)),
-            h('span', { className: 'aup-src-side' }, row.side)
-          )
-        )
-      );
-
-      return h(
-        'section',
-        { className: 'aup-card aup-card-stats', ref: sectionRef },
-        head,
-        series.total === 0 && providerRows.length === 0 && listMode !== true
-          ? h(Hint, null, t('stats.empty'))
-          : h(
-              'div',
-              { className: 'aup-stats-body' },
-              sourceList,
-              listMode === true && sessionOnly !== true
-                ? h(
-                    'div',
-                    { className: 'aup-series' },
-                    periodRows,
-                    // Invisible slots keep the list - and therefore every card below it -
-                    // exactly the same height in all five dimensions: quarter/year leave
-                    // the spare slots empty instead of collapsing the card.
-                    Array.from({ length: Math.max(0, SERIES_ROW_SLOTS - periodRows.length) }, (unused, index) =>
-                      h('div', { key: 'row-slot-' + String(index), className: 'aup-series-row aup-series-slot', 'aria-hidden': true })
-                    )
-                  )
-                : null,
-              h(
-                'div',
-                { className: 'aup-stats-summary' },
-                // Left / centre / right, exactly like the context legend: the two card
-                // footers must read as the same component.
-                h('span', null, t('stats.summary.total', { total: formatTokens(sessionOnly === true ? sourceTotal : shownTotal) })),
-                h(
-                  'span',
-                  null,
-                  sessionOnly === true
-                    ? t('stats.summary.sources', { count: String(sources.length) })
-                    : t('stats.summary.requests', { count: String(shownCount) })
-                ),
-                showCost !== false && sessionOnly !== true
-                  ? h('span', { className: 'aup-stats-total' }, formatCost(shownCost, currency, locale, estimate))
-                  : h('span', { className: 'aup-stats-total', 'aria-hidden': true })
-              )
-            )
-      );
-    }
-
     /** This session's durable token totals plus context occupancy. */
     function TokenSection({ useProjection, t, sessionModels }) {
       const usage = useProjection('tokenUsage');
@@ -2129,6 +1239,39 @@ window.__ModuleLoader__.load({
       const detailRows = rows.filter((row) => row.total !== true);
       const modelRows = sessionModels !== null && sessionModels !== undefined && Array.isArray(sessionModels.items) ? sessionModels.items : [];
       const requestCount = modelRows.reduce((sum, item) => sum + (Number.isFinite(item.requests) ? item.requests : 0), 0);
+      // Consumption per provider type, folded into the session card (user 2026-11-09:
+      // the usage-statistics card is gone, its per-provider session totals live here).
+      // One row per provider, in first-appearance order, summed from the model rows.
+      const providerRows = [];
+      for (const item of modelRows) {
+        if (item === null || item === undefined || typeof item.provider !== 'string' || item.provider === '') continue;
+        let entry = null;
+        for (const row of providerRows) {
+          if (row.provider === item.provider) {
+            entry = row;
+            break;
+          }
+        }
+        if (entry === null) {
+          entry = { provider: item.provider, tokens: 0, requests: 0 };
+          providerRows.push(entry);
+        }
+        entry.tokens += Number.isFinite(item.tokens) ? item.tokens : 0;
+        entry.requests += Number.isFinite(item.requests) ? item.requests : 0;
+      }
+      // Per-model detail repeats the provider already shown above, so it is only
+      // worth a row when a provider actually ran more than one model: a single-model
+      // provider's model row would print the very same figure twice (user 2026-11-09:
+      // "重复了 provider+type 保留一次统计即可"). Nothing is hidden by this rule - the
+      // provider row carries exactly the tokens of its one model.
+      const modelsPerProvider = {};
+      for (const item of modelRows) {
+        if (item === null || item === undefined || typeof item.provider !== 'string' || item.provider === '') continue;
+        modelsPerProvider[item.provider] = (modelsPerProvider[item.provider] || 0) + 1;
+      }
+      const detailModelRows = modelRows.filter(
+        (item) => item !== null && item !== undefined && typeof item.provider === 'string' && modelsPerProvider[item.provider] > 1
+      );
       const promptTokens = usage ? (usage.uncachedInputTokens || 0) + (usage.cacheReadTokens || 0) + (usage.cacheWriteTokens || 0) : 0;
       const cacheHit = promptTokens > 0 ? Math.round(((usage.cacheReadTokens || 0) / promptTokens) * 1000) / 10 : undefined;
       const average = requestCount > 0 ? Math.round(total / requestCount) : undefined;
@@ -2192,21 +1335,42 @@ window.__ModuleLoader__.load({
             );
 
       const modelBlock =
-        modelRows.length === 0
+        detailModelRows.length === 0
           ? null
           : h(
               'div',
               { className: 'aup-models' },
-              // Every model stays visible: the session card never hides or truncates
-              // its information (user 2026-11-09). Height is bought by compressing the
-              // frame instead - see the `.aup-card` / session-body spacing above.
-              modelRows.map((item) => {
+              // Multi-model providers keep one row per model - never truncated, only
+              // compressed (user 2026-11-09). Single-model providers are already
+              // covered by their row in the per-provider block above.
+              detailModelRows.map((item) => {
                 const text = modelRowLabel(item, t);
                 return h(
                   'div',
                   { key: (item.provider || '') + '/' + item.model, className: 'aup-model-row', title: (item.provider === undefined ? '' : item.provider + ' / ') + item.model },
                   h('span', { className: 'aup-model-name' + modelRowLabelClass(text) }, text),
                   h('span', { className: 'aup-model-tokens' }, formatTokens(item.tokens))
+                );
+              })
+            );
+
+      const providerBlock =
+        providerRows.length === 0
+          ? null
+          : h(
+              'div',
+              { className: 'aup-providers' },
+              providerRows.map((row) => {
+                const label = providerLabel(row.provider, t);
+                return h(
+                  'div',
+                  {
+                    key: row.provider,
+                    className: 'aup-provider-row',
+                    title: label + ' · ' + formatTokens(row.tokens) + ' · ' + t('tokens.requestsCount', { count: String(row.requests) })
+                  },
+                  h('span', { className: 'aup-provider-name' }, label),
+                  h('span', { className: 'aup-provider-tokens' }, formatTokens(row.tokens))
                 );
               })
             );
@@ -2265,6 +1429,8 @@ window.__ModuleLoader__.load({
                 )
               )
             ),
+        providerBlock === null ? null : h('span', { className: 'aup-session-sep aup-sep-providers', 'aria-hidden': true }),
+        providerBlock,
         modelBlock === null ? null : h('span', { className: 'aup-session-sep aup-sep-models', 'aria-hidden': true }),
         modelBlock,
         h('span', { className: 'aup-session-sep aup-sep-context', 'aria-hidden': true }),
@@ -2320,15 +1486,12 @@ window.__ModuleLoader__.load({
     }
 
     /** Right-sidebar tab body. */
-    function AccountUsageBody({ t: initialT, useProjection, readAccount, readUsage, readSessionModels, readProviderBalances, readLocale, subscribeLocale, bindTranslation, sessionId }) {
+    function AccountUsageBody({ t: initialT, useProjection, readAccount, readSessionModels, readProviderBalances, readLocale, subscribeLocale, bindTranslation, sessionId }) {
       const [account, setAccount] = React.useState({ phase: 'loading', result: undefined, refreshing: false });
-      const [usage, setUsage] = React.useState({ phase: 'loading', days: [], ok: undefined, refreshing: false, dimension: DIMENSIONS[0].id });
       const [sessionModels, setSessionModels] = React.useState({ phase: 'idle', items: [], totalTokens: 0, lastProvider: '' });
       const [providerBalances, setProviderBalances] = React.useState({ phase: 'idle', byProvider: {} });
       const [settings, setSettings] = React.useState(readSettings);
-      const [dimension, setDimension] = React.useState(settings.dimension);
       const [accountRequest, setAccountRequest] = React.useState({ count: 0, force: false });
-      const [usageRequest, setUsageRequest] = React.useState({ count: 0, force: false });
       const [settingsOpen, setSettingsOpen] = React.useState(false);
       const gearRef = React.useRef(null);
       const [localeId, setLocaleId] = React.useState(readLocale);
@@ -2342,11 +1505,11 @@ window.__ModuleLoader__.load({
         update();
         return subscribeLocale(update);
       }, [readLocale, subscribeLocale]);
-      const platformBusy = account.refreshing === true || usage.refreshing === true;
       const sessionProviders = [...new Set((sessionModels.items || []).map((item) => item.provider).filter((provider) => typeof provider === 'string' && provider !== ''))];
       const offAccountProviders = sessionProviders.filter((provider) => !isAccountProvider(provider));
       const offAccountAll = sessionProviders.length > 0 && offAccountProviders.length === sessionProviders.length;
-      const busy = offAccountAll !== true && platformBusy;
+      // Only the balance reads can be in flight now; the platform usage card is gone.
+      const busy = offAccountAll !== true && account.refreshing === true;
       const accountSources = [
         ...sessionProviders
           .filter((provider) => isAccountProvider(provider))
@@ -2358,23 +1521,6 @@ window.__ModuleLoader__.load({
       const lastProvider = typeof sessionModels.lastProvider === 'string' ? sessionModels.lastProvider : '';
       const currentSource =
         lastProvider === '' ? undefined : isAccountProvider(lastProvider) ? 'account' : lastProvider;
-      const providerSessionUsage = offAccountProviders.map((provider) => {
-        const items = (sessionModels.items || []).filter((item) => item !== null && item !== undefined && item.provider === provider);
-        return {
-          provider,
-          label: providerLabel(provider, t),
-          tokens: items.reduce((sum, item) => sum + (Number.isFinite(item.tokens) ? item.tokens : 0), 0),
-          requests: items.reduce((sum, item) => sum + (Number.isFinite(item.requests) ? item.requests : 0), 0)
-        };
-      });
-      const cachedUsage = dimensionResults.get(dimension);
-      /** Render the selected dimension's own data immediately; never bucket another dimension's days. */
-      const displayedUsage =
-        usage.dimension === dimension
-          ? usage
-          : cachedUsage === undefined
-            ? { phase: 'loading', days: [], dimension, refreshing: true }
-            : { phase: 'ready', ok: true, source: cachedUsage.source, days: cachedUsage.days, currency: cachedUsage.currency, reason: cachedUsage.reason, dimension, refreshing: true };
       const currencyRef = React.useRef('CNY');
 
       React.useEffect(() => {
@@ -2405,114 +1551,6 @@ window.__ModuleLoader__.load({
 
       React.useEffect(() => {
         let cancelled = false;
-        if (offAccountAll === true) return undefined;
-        const force = usageRequest.force;
-        const cached = dimensionResults.get(dimension);
-        // Show the dimension's previous result immediately (cached months make the
-        // follow-up read cheap), so no loading frame replaces the chart.
-        setUsage((previous) => {
-          if (cached !== undefined) {
-            return {
-              phase: 'ready',
-              ok: true,
-              source: cached.source,
-              days: cached.days,
-              currency: cached.currency,
-              reason: cached.reason,
-              dimension,
-              refreshing: true
-            };
-          }
-          if (previous.dimension === dimension && previous.ok === true) {
-            return { ...previous, refreshing: true };
-          }
-          return { phase: 'loading', ok: undefined, days: [], dimension, refreshing: true };
-        });
-        readUsage(dimension, force, currencyRef.current)
-          .then((result) => {
-            if (cancelled) return;
-            if (result.ok === true) {
-              const days = result.days || [];
-              dimensionResults.set(dimension, {
-                source: result.source,
-                days,
-                currency: result.currency,
-                reason: result.reason
-              });
-              if (!dimensionsWarmed && result.source === 'platform') {
-                dimensionsWarmed = true;
-                const currentDimension = dimension;
-                // Warm every other dimension so a later switch renders cached data
-                // instead of a loading frame. Widest window first: the year pass fills
-                // the month cache that all narrower windows reuse, so the rest is cheap.
-                setTimeout(() => {
-                  (async () => {
-                    for (const warmId of WARM_ORDER) {
-                      if (warmId === currentDimension || dimensionResults.has(warmId)) continue;
-                      try {
-                        const warm = await readUsage(warmId, false, currencyRef.current);
-                        if (warm.ok === true && warm.source === 'platform' && !dimensionResults.has(warmId)) {
-                          dimensionResults.set(warmId, {
-                            source: warm.source,
-                            days: warm.days || [],
-                            currency: warm.currency,
-                            reason: warm.reason
-                          });
-                        }
-                      } catch (error) {
-                        /* warm-up is best effort */
-                      }
-                    }
-                  })();
-                }, 1500);
-              }
-              setUsage((previous) => {
-                if (previous.dimension !== dimension) return previous;
-                if (previous.phase === 'ready' && sameDays(previous.days, days)) {
-                  return { ...previous, source: result.source, currency: result.currency, reason: result.reason, refreshing: false };
-                }
-                return {
-                  phase: 'ready',
-                  ok: true,
-                  source: result.source,
-                  days,
-                  currency: result.currency,
-                  reason: result.reason,
-                  dimension,
-                  refreshing: false
-                };
-              });
-            } else {
-              setUsage((previous) => {
-                if (previous.dimension !== dimension) return previous;
-                if (previous.phase === 'ready') return { ...previous, refreshing: false };
-                return { phase: 'error', ok: false, days: [], code: result.code, dimension, refreshing: false };
-              });
-            }
-          })
-          .catch((error) => {
-            if (cancelled) return;
-            setUsage((previous) => {
-              if (previous.dimension !== dimension) return previous;
-              if (previous.phase === 'ready') return { ...previous, refreshing: false };
-              return {
-                phase: 'error',
-                ok: false,
-                days: [],
-                code: 'fetch_failed',
-                message: String((error && error.message) || error || ''),
-                dimension,
-                refreshing: false
-              };
-            });
-          });
-        return () => {
-          cancelled = true;
-        };
-      }, [usageRequest.count, usageRequest.force, dimension, readUsage, offAccountAll]);
-
-      React.useEffect(() => {
-        let cancelled = false;
         if (typeof sessionId !== 'string' || sessionId === '') {
           setSessionModels({ phase: 'empty', items: [], totalTokens: 0 });
           return undefined;
@@ -2532,7 +1570,7 @@ window.__ModuleLoader__.load({
         return () => {
           cancelled = true;
         };
-      }, [sessionId, usageRequest.count, usageRequest.force, readSessionModels]);
+      }, [sessionId, accountRequest.count, accountRequest.force, readSessionModels]);
 
       const providerReads = React.useRef(new Map());
       const loadProviderBalance = (provider, force) => {
@@ -2556,12 +1594,12 @@ window.__ModuleLoader__.load({
         setProviderBalances((previous) => ({ phase: 'ready', byProvider: Object.fromEntries(
           offAccountProviders.map((provider) => [provider, previous.byProvider && previous.byProvider[provider]])
         ) }));
-        for (const provider of offAccountProviders) loadProviderBalance(provider, usageRequest.force === true);
+        for (const provider of offAccountProviders) loadProviderBalance(provider, accountRequest.force === true);
         return () => {
           // Invalidate in-flight reads on refresh, session change, or unmount.
           for (const [provider, ticket] of providerReads.current) providerReads.current.set(provider, ticket + 1);
         };
-      }, [sessionId, offAccountProviders.join('|'), usageRequest.count, usageRequest.force, readProviderBalances]);
+      }, [sessionId, offAccountProviders.join('|'), accountRequest.count, accountRequest.force, readProviderBalances]);
 
       // Account balances move slowly; refresh them rarely and never while the page is hidden.
       React.useEffect(() => {
@@ -2581,41 +1619,20 @@ window.__ModuleLoader__.load({
         };
       }, [settings.autoRefresh]);
 
-      // Usage mostly resolves from the month cache; this keeps the live month fresh.
-      React.useEffect(() => {
-        if (settings.autoRefresh !== true) return undefined;
-        const tick = () => {
-          if (typeof document !== 'undefined' && document.hidden === true) return;
-          setUsageRequest((previous) => ({ count: previous.count + 1, force: false }));
-        };
-        const timer = setInterval(tick, USAGE_REFRESH_MS);
-        const onVisible = () => {
-          if (typeof document === 'undefined' || document.hidden !== true) tick();
-        };
-        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisible);
-        return () => {
-          clearInterval(timer);
-          if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisible);
-        };
-      }, [settings.autoRefresh]);
-
       const refresh = () => {
         setAccountRequest((previous) => ({ count: previous.count + 1, force: true }));
-        setUsageRequest((previous) => ({ count: previous.count + 1, force: true }));
       };
 
-      /** Merge one display-settings patch; a range change also applies to the open panel. */
+      /** Merge one display-settings patch into the persisted preferences. */
       const applySettings = (patch) => {
         setSettings((previous) => ({
           ...previous,
           ...patch,
           cards: { ...previous.cards, ...(patch.cards === undefined ? {} : patch.cards) }
         }));
-        if (patch.dimension !== undefined) setDimension(patch.dimension);
       };
       const resetSettings = () => {
         setSettings(DEFAULT_SETTINGS);
-        setDimension(DEFAULT_SETTINGS.dimension);
       };
 
       React.useEffect(() => {
@@ -2822,20 +1839,6 @@ window.__ModuleLoader__.load({
           'div',
           { className: 'aup-cards', 'data-source-count': Math.max(1, sessionProviders.length) },
           settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels }) : null,
-          settings.cards.stats === true
-          ? h(UsageSection, {
-              state: displayedUsage,
-              dimension,
-              onDimension: (next) => setDimension(next),
-              t,
-              fallbackCurrency: currency,
-              locale: displayLocale,
-              showCost: settings.showCost,
-              listMode: settings.usageList === true,
-              categories: providerSessionUsage,
-              sessionOnly: offAccountAll === true
-            })
-          : null,
           settings.cards.account === true
           ? h(AccountSection, {
               state: account,
@@ -2846,7 +1849,7 @@ window.__ModuleLoader__.load({
               locale: displayLocale
             })
           : null,
-          settings.cards.session !== true && settings.cards.stats !== true && settings.cards.account !== true
+          settings.cards.session !== true && settings.cards.account !== true
           ? h('div', { className: 'aup-empty' }, t('settings.allHidden'))
           : null
         )
@@ -3088,7 +2091,6 @@ window.__ModuleLoader__.load({
       const subscribeLocale = (listener) => ctx.locale.subscribe(listener);
       const bindTranslation = () => ctx.locale.bind(NS);
       const readAccount = createAccountReader(ctx);
-      const readUsage = createUsageReader(ctx);
       const readSessionModels = createSessionModelReader();
       const readProviderBalances = createProviderBalanceReader();
 
@@ -3132,7 +2134,7 @@ window.__ModuleLoader__.load({
                 name: 'sidebar.right.pane.tab',
                 key: ID,
                 locale: NS,
-                inject: () => ({ readAccount, readUsage, readSessionModels, readProviderBalances, readLocale, subscribeLocale, bindTranslation })
+                inject: () => ({ readAccount, readSessionModels, readProviderBalances, readLocale, subscribeLocale, bindTranslation })
               },
               AccountUsageBody
             )

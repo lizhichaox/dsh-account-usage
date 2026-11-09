@@ -175,11 +175,10 @@ const settle = async () => { for (let i = 0; i < 15; i++) await Promise.resolve(
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
 const calls = [], reads = [];
 const thirdParty = { ok: true, models: models.items.filter(row => row.provider !== 'deepseek-account'), lastProvider: 'openai' };
-const accountWait = deferred(), usageWait = deferred();
+const accountWait = deferred();
 const harness = bodyHarness({
   readSessionModels: async () => thirdParty,
   readAccount: () => accountWait.promise,
-  readUsage: () => usageWait.promise,
   readProviderBalances: (id, force) => { calls.push([id, force]); const d = deferred(); reads.push({ id, ...d }); return d.promise; }
 });
 try {
@@ -195,7 +194,7 @@ try {
   assert.equal(states.openai.code, 'unsupported_provider');
   assert.equal(states.openrouter.code, 'no_credential');
   const refresh = nodes(tree, n => n.type === 'button' && n.props?.onClick?.name === 'refresh')[0];
-  assert(refresh && refresh.props.disabled !== true, 'canceled platform reads never disable third-party refresh');
+  assert(refresh && refresh.props.disabled !== true, 'an in-flight balance read never disables the header refresh');
   const before = calls.length;
   refresh.props.onClick(); harness.render(); await settle();
   assert.deepEqual(calls.slice(before).map(([id, force]) => [id, force]).sort(),

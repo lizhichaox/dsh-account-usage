@@ -1,5 +1,84 @@
 # Changelog
 
+## 1.0.16 — 2026-11-09
+
+### 面板只剩两张卡：删掉「用量统计」，按 provider 的会话内消耗并入会话卡
+
+- 用户原话：「第二个卡片的 usage statistics 没什么用，不想要了，把按 provider 类型对应的会话内消耗
+  都归到 session usage，删掉，只剩下 session usage 和 Account balance」。
+- 面板从三张卡收敛为**两张**：**会话消耗 → 账户余额**（与当前会话走哪个 Provider 无关，卡名不变，
+  仍是四个中文字、居中、不挂 provider 徽标）。
+- 会话卡在**统计表之后、按模型明细之前**新增「按 provider 的会话内消耗」块
+  （`.aup-providers` / `.aup-provider-row` / `.aup-provider-name` / `.aup-provider-tokens`）：
+  每个 provider 一行「名称 Tokens」，只写该 provider **本会话** Token 合计，**不含金额**；
+  引出它的分割线 `.aup-sep-providers` 与该块**同生共死**（阶梯隐藏时一起隐藏，不留连续两条线）。
+  按 provider 行与账户余额来源行共用同一套父级网格 + subgrid + `align-items:center`。
+- 随卡片一并删除：日 / 周 / 月 / 季 / 年 / 全维度 tab、`SERIES_ROW_SLOTS=4` 固定槽位、
+  维度缓存 `dimensionResults` 与全维度预热 `WARM_ORDER`、骨架槽位、
+  `描述 | 用量 | 金额` 三列表格、`PLAN` 套餐标记、平台来源行 `.aup-srcs`、逐期明细列表、
+  两卡共用的三列页脚网格、设置里的维度/金额/明细开关。
+- 后果：**平台周期用量与消费金额不再在面板任何位置展示**。Host 侧平台用量路由
+  （`GET /account-usage/platform/usage` 等）**保留未删**，`test/provider-host.mjs` 仍在覆盖，
+  只是面板内没有消费方；client 不再调用 `readUsage`，用量 2 分钟自动刷新随之移除，余额 5 分钟刷新不变。
+- 设置从 7 项收敛为 **4 项开关 + 恢复默认**：会话消耗卡、账户余额卡、自动刷新、隐藏底栏会话统计。
+  删除「默认维度」「显示消费金额」「用量明细列表」；旧 localStorage 键
+  `dimension` / `showCost` / `usageList` / `cards.stats` **静默忽略**（不报错、不迁移、不提示）。
+- 高度与阶梯（`node test/layout-check.mjs --tiers` 真实 markup 实测，420px 宽三来源夹具）：
+  删卡后整屏内容 **526px**（会话卡 408 + 余额卡 112 + 6），面板 chrome 另占 **58px**，
+  所以**面板 ≥ 584px 即可全部显示**（旧的 820px）。
+  阶梯整体下移并新增「去按 provider 行」一级：**584 去 Token 彩条 → 575 去按模型明细 →
+  532 去统计行 → 448 去按 provider 行 → 384 去上下文块 → 325 去 Token 2×2 明细**
+  （对应内容 526 / 517 / 474 / 390 / 326 / 267 / 185，各 + 58 chrome），
+  区块与引出它的分割线一起隐藏；来源预算改为 **`(n-3)×44`**（4/5/7 来源 570/614/702），
+  7 来源兜底从 802px 降到 **343px**。规则仍带 `!important` 放在样式表最末。
+- 两卡高度按信息密度分摊（#47，用户：「底部太挤了 上面太空了 两个卡片的高度没安排好」）：
+  剩余高度不再全部灌进会话卡，按 **3:1** 分摊（会话卡约四分之三、余额卡约四分之一），
+  会话卡 `flex:3 1 auto`、余额卡 `flex:1 1 auto`，
+  余额卡内部 `.aup-acct-srcs{align-content:space-evenly}` 用行距摊开；
+  实测 1080px → 780/236、1200px → 870/266，余额卡始终 ≤ 列高 34%。
+- 按模型明细不再与按 provider 行重复（#48，用户：「重复了 provider+type 保留一次统计即可」，
+  截图里 provider 行与 `Provider-模型` 行数值一一相同）：**只有本会话跑了 ≥2 个模型的 provider
+  才逐模型画行**；单模型 provider **不画模型行**，它的数值由上方「按 provider 的会话内消耗」行承担，
+  **零信息丢失**；多模型 provider 的模型行之和仍等于其 provider 行。这是「不画」而不是截断，
+  也仍不写「另有 N 个模型」。阶梯里的「去按模型明细」一级（`.aup-models` + `.aup-sep-models`）不变。
+- 文档：AGENTS.md 速查表新增 **#46**（删统计卡）、**#47**（两卡高度按密度分摊）、
+  **#48**（provider 与模型不重复统计），并在 §13 记录这三条决策取代 / 修订了哪些旧规则
+  （#46 → #3 / #10 / #20 / #24 / #26 / #28 / #29 以及「三张卡固定叫…」「全 (ALL) tab」
+  「用量统计统一为按来源一行 + 合计」；#47 → #5 里「余额卡按内容收紧」那半条；
+  #48 修订 #45：不隐藏信息 = **该画的行全量渲染**，而不是每个 provider 都画模型行）。
+- 验证：`npm run verify`（语法 + 冒烟 + 敏感信息扫描 + 索引自检）；`npm run verify:ui`
+  （真实 client.js 渲染的真实 markup 在本机 Chrome 无头里量几何）。
+  新增冒烟断言：`the panel renders exactly two cards` / `the deleted statistics card never renders` /
+  `four-character card titles` / `the deleted statistics copy is gone` / `one row per provider used this session` /
+  `each provider row names its provider` / `each provider row totals that provider session tokens` /
+  `the per-provider rows carry no amount` / `the provider block sits after the statistics table` /
+  `the provider block sits before the per-model detail` / `the provider block has exactly one separator` /
+  `the provider separator goes with its block` / `the client no longer calls the platform usage reader` /
+  `the deleted statistics surface is gone`；设置区：`settings keep exactly four switches` /
+  `the four switches are the two cards, the composer-stats toggle and auto refresh` /
+  `no range picker remains in the settings` / `reset action present` / `settings title is short` /
+  `settings can be closed from the header` / `footer hint is one short line: …`。
+  #47 的断言：`the dense session card absorbs the largest share of the leftover height` /
+  `the balance card shares the leftover height instead of hugging its content` /
+  `the provider balance card takes the same share as the plain one` /
+  `no balance card rule pins the card to its content` / `the balance card never outgrows the session card` /
+  `the session content spreads evenly over the space it gets` / `the balance rows fill the space their card is given` /
+  `the balance rows spread out inside the balance card` / `the panel fills the pane height` /
+  `no card earns space just for being last`，外加 layout-check 的 `space allocation`
+  （余额卡随面板增长 ≥20px、会话卡增长更多、余额卡 ≤ 列高 34%）。
+  #48 的断言：`an all-single-model session renders no per-model detail` /
+  `one provider row per provider, never one per model: …` /
+  `a folded single-model provider row still carries that model tokens, so nothing is lost: …` /
+  `no "另有 N 个模型" counter replaces a folded provider` / `a multi-model provider keeps one row per model: …` /
+  `the multi-model provider row is the sum of its model rows: …` /
+  `a mixed session details exactly the multi-model model rows: …` /
+  `every detail row belongs to the multi-model provider: …` /
+  `a single-model provider is not repeated in the per-model detail` /
+  `the per-model separator goes with the dropped detail`。
+  `verify:ui` 覆盖 420px 宽 × `325/384/448/532/575/584/585/700/900/1080/1200`px 与 340px 宽 ×
+  `584/900/1080`px；`detailModelCount()` 先算出应画行数 M（多模型 provider 的模型数），再断言
+  `${label}: model rows truncated -> N/M`；另加负向断言 `the old viewport ladder is gone`。
+
 ## 1.0.13 — 2026-11-09
 
 ### 第三方 Provider

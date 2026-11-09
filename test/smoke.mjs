@@ -101,7 +101,7 @@ const iconSvg = fs.readFileSync(path.join(root, 'icon.svg'), 'utf8');
   assert.ok(source.includes('--aup-label-2:color-mix(in srgb,var(--dsw-alias-label-primary) 30%,var(--dsw-alias-label-secondary))'), 'secondary text is darkened from theme tokens');
   assert.ok(source.includes('font-size:var(--aup-fs-text);font-weight:500;line-height:20px}'), 'the panel root sets a 500 baseline weight');
   assert.equal((source.match(/font-weight:400/g) || []).length, 1, 'only the close glyph stays at 400');
-  for (const selector of ['.aup-stat-label{', '.aup-series-label{', '.aup-card-title{', '.aup-model-name{']) {
+  for (const selector of ['.aup-stat-label{', '.aup-provider-name{', '.aup-card-title{', '.aup-model-name{']) {
     const rule = source.slice(source.indexOf(selector), source.indexOf(selector) + 400);
     assert.ok(rule.includes('var(--aup-label-2)'), selector + ' text uses the darkened secondary colour');
   }
@@ -116,22 +116,10 @@ assert.ok(source.includes("root.setAttribute('data-account-usage-hide-stats'"), 
 
 // Layout is deterministic CSS only: no runtime measurement may decide heights.
 // Cards size to their content, so none of them can ever be squeezed below it and
-// no text can be painted over another text; the last card absorbs the leftover
-// height so the panel never shows a dead band; the detail list always occupies
-// the same number of slots so a dimension switch cannot move the cards below it.
+// no text can be painted over another text; the session card absorbs the leftover
+// height so the panel never shows a dead band.
 assert.ok(source.includes('.aup-card{flex:0 0 auto;min-height:auto;'), 'cards size to their content and are never squeezed');
-assert.ok(source.includes('.aup-cards>.aup-card-session-fixed{flex:1 1 auto;min-height:auto}'), 'the dense session card absorbs the leftover height');
-// One strict four-column table for the whole card: description | pill bar |
-// tokens | amount. Both the provider rows and the period rows are rows of it,
-// so every bar starts on one line and every figure ends on one.
-assert.ok(source.includes('.aup-srcs,.aup-series{display:contents}'), 'both row groups feed one shared table');
-assert.ok(source.includes('grid-template-columns:minmax(0,1fr) minmax(52px,max-content) minmax(0,max-content)'), 'the card declares the three columns once');
-assert.ok(!source.includes('.aup-srcs{flex:none;display:grid'), 'no private grid for the provider rows');
-assert.ok(!source.includes('.aup-card-stats .aup-series{flex:0 0 auto;display:grid'), 'no private grid for the period rows');
-assert.ok(source.includes('.aup-card-stats .aup-series>.aup-series-row:first-child::before'), 'a hairline marks the second group without breaking the columns');
-assert.ok(source.includes('const SERIES_ROW_SLOTS = 4'), 'the list keeps a constant slot count');
-assert.ok(source.includes('Math.max(0, SERIES_ROW_SLOTS - periodRows.length)'), 'spare slots pad the list in quarter/year');
-assert.ok(source.includes('.aup-series-slot{min-height:21px;pointer-events:none}'), 'the padding rows stay invisible');
+assert.ok(source.includes('.aup-cards>.aup-card-session-fixed{flex:3 1 auto;min-height:auto}'), 'the dense session card absorbs the largest share of the leftover height');
 assert.ok(!source.includes('rowBudget') && !source.includes('ROW_PITCH_PX'), 'no measured row budget remains');
 assert.ok(!source.includes('data-aup-compact'), 'no height-driven compact attribute remains');
 // The panel must never scroll. The ladder measures the PANEL, not the window:
@@ -139,81 +127,107 @@ assert.ok(!source.includes('data-aup-compact'), 'no height-driven compact attrib
 // viewport breakpoints fired too late (that is why the pane still scrolled).
 assert.ok(source.includes('container-type:size;container-name:aup-panel'), 'the panel root is a size container');
 for (const rule of [
-  '@container aup-panel (max-height:820px){.aup-compose{display:none!important}}',
-  '@container aup-panel (max-height:811px){.aup-card-session .aup-models,.aup-card-session .aup-sep-models{display:none!important}}',
-  '@container aup-panel (max-height:751px){.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats{display:none!important}}',
-  '@container aup-panel (max-height:667px){.aup-context,.aup-card-session .aup-sep-context{display:none!important}}',
-  '@container aup-panel (max-height:608px){.aup-card-session .aup-session-grid{display:none!important}}'
+  '@container aup-panel (max-height:584px){.aup-compose{display:none!important}}',
+  '@container aup-panel (max-height:575px){.aup-card-session .aup-models,.aup-card-session .aup-sep-models{display:none!important}}',
+  '@container aup-panel (max-height:532px){.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats{display:none!important}}',
+  '@container aup-panel (max-height:448px){.aup-card-session .aup-providers,.aup-card-session .aup-sep-providers{display:none!important}}',
+  '@container aup-panel (max-height:384px){.aup-context,.aup-card-session .aup-sep-context{display:none!important}}',
+  '@container aup-panel (max-height:325px){.aup-card-session .aup-session-grid{display:none!important}}'
 ]) {
   assert.ok(source.includes(rule), 'the measured shedding ladder contains: ' + rule);
 }
+// The ladder is re-measured for the two-card panel: no threshold or per-source
+// budget from an earlier measurement may survive.
+for (const stale of ['max-height:820px', 'max-height:811px', 'max-height:751px', 'max-height:667px', 'max-height:608px', 'max-height:601px', 'max-height:592px', '(count - 3) * 69', '(count - 3) * 61']) {
+  assert.ok(!source.includes(stale), 'the stale shedding ladder is gone: ' + stale);
+}
+assert.ok(source.includes('const extra = (count - 3) * 44'), 'each source beyond three adds a measured 44px budget');
 assert.ok(!source.includes('@media (max-height:'), 'the old viewport ladder is gone');
 // A shed block takes the separator that introduces it: never two hairlines in a row.
-for (const sep of ['aup-sep-models', 'aup-sep-stats', 'aup-sep-context']) {
+for (const sep of ['aup-sep-providers', 'aup-sep-models', 'aup-sep-stats', 'aup-sep-context']) {
   assert.ok(source.includes("className: 'aup-session-sep " + sep + "'"), 'each session separator belongs to one block: ' + sep);
 }
-assert.ok(source.indexOf('@container aup-panel (max-height:820px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
-// Compacted so a typical pane still shows every block: the measured full content
-// height is 763px (with every model row rendered - no truncation).
+// No shedding step may name a separator without the block it introduces.
+for (const rule of source.match(/@container aup-panel \(max-height:\d+px\)\{[^}]*\}/g) || []) {
+  for (const [sep, block] of [['aup-sep-providers', 'aup-providers'], ['aup-sep-models', 'aup-models'], ['aup-sep-stats', 'aup-stat-list'], ['aup-sep-context', 'aup-context']]) {
+    if (rule.includes(sep)) assert.ok(rule.includes(block), 'hiding ' + sep + ' hides ' + block + ' too: ' + rule);
+  }
+}
+assert.ok(source.indexOf('@container aup-panel (max-height:584px)') > source.indexOf('.aup-compose{display:flex'), 'the ladder is declared after the base rules it overrides');
+// Compacted so a typical pane still shows every block: cards padding 8 / gap 3 and
+// one 21px row pitch shared by the balance rows.
 assert.ok(source.includes("'.aup-card{gap:3px;padding:8px}'"), 'cards are padding 8 / gap 3');
 assert.ok(source.includes('line-height:18px}'), 'the stat table rows are 18px');
-assert.ok(source.includes('.aup-card-stats .aup-series-row{flex:0 0 auto;min-height:21px;') && source.includes('.aup-src{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-height:21px;'), 'both row groups share the same 21px pitch');
+assert.ok(source.includes("'.aup-acct-src,.aup-acct-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-height:21px;"), 'balance rows share one 21px pitch');
 assert.ok(source.includes('scrollbar-width:none'), 'the card column never shows a scrollbar');
 assert.ok(source.includes('.aup-cards::-webkit-scrollbar{width:0;height:0;display:none}'), 'no webkit scrollbar either');
 assert.ok(!source.includes('@container aup-card'), 'no dead container queries remain');
-assert.ok(!/\.aup-stats-summary\{[^}]*position:/.test(source), 'the summary is in normal flow, never positioned over the rows');
 assert.ok(!/\.aup-card\{[^}]*overflow:hidden/.test(source), 'cards never clip their content');
-// The period list may never overflow its box: the row count is derived from the
-// pane height (cards split it evenly), so rows can never paint over the summary.
-// The measurement reads only pane/flex geometry, so it cannot feed back.
-assert.ok(!source.includes('justify-content:space-between;gap:2px}'), 'period rows are not re-spread when their count changes');
-assert.ok(source.includes('.aup-srcs,.aup-series{display:contents}'), 'the label column is shared, so the bar cannot shift sideways');
+assert.ok(!source.includes('justify-content:space-between;gap:2px}'), 'list rows are not re-spread when their count changes');
 // Rows of one table must share a single grid: with a grid per row the label
-// column is sized per row, so bars start at different x positions and the right
+// column is sized per row, so figures start at different x positions and the right
 // edge does not line up either (user report: 左侧没对齐).
-assert.ok(source.includes('grid-template-columns:minmax(0,1fr) minmax(52px,max-content) minmax(0,max-content)'), 'the source rows share the card grid');
+assert.ok(source.includes("'.aup-acct-srcs{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);"), 'the balance rows share one card grid');
 // Inside a shared grid the row itself must still centre its cells: without
-// align-items the bar track sticks to the top and the row reads as misaligned.
+// align-items the figures stick to the top and the row reads as misaligned.
 assert.ok(source.includes('grid-template-columns:subgrid;grid-column:1/-1;align-items:center'), 'subgrid rows centre their cells vertically');
-assert.ok(source.includes('.aup-series-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center'), 'period rows centre their cells vertically');
 assert.ok(source.includes('display:grid;grid-template-columns:subgrid'), 'rows take their columns from the shared grid');
-assert.ok(source.includes('.aup-srcs,.aup-series{display:contents}'), 'the period rows share the card grid');
-// The loading frame keeps the ready card's height: same source rows, four period
-// slots, same summary row. Clicking a range must not move the panel.
-assert.ok(source.includes('const skeletonPeriodRows = Array.from({ length: SERIES_ROW_SLOTS }'), 'the loading frame reserves all four period slots');
-assert.ok(source.includes("const loadingSourceCount = sessionOnly === true ? loadingProviderRows.length : loadingProviderRows.length + 1"), 'the loading frame reserves one row per source');
-assert.ok(source.includes("const skeletonSummary = h("), 'the loading frame keeps the summary row');
-assert.ok(!source.includes('const skeletonCount = DIMENSION_ROW_CAP[dimension]'), 'the loading frame no longer varies with the target range');
-// An empty range keeps the four slots too, so switching to it cannot collapse the card.
-assert.ok(!source.includes('listMode === true && sessionOnly !== true && series.total > 0'), 'the period list is not hidden for an empty range');
-assert.ok(source.includes('series.total === 0 && providerRows.length === 0 && listMode !== true'), 'the empty hint only replaces the body when the list is off');
-// Every period label carries its year: short "11-05" dates left a ragged gap and
-// the table read as uneven.
-assert.ok(source.includes("return year + '-' + pad(month + 1) + '-' + pad(start.getDate())"), 'day and week labels carry the year');
-assert.ok(!source.includes('for (let index = 0; index < 7; index += 1)'), 'no fixed 7-row loading placeholder');
-assert.ok(source.includes("const WARM_ORDER = ['year', 'quarter', 'month', 'week', 'day', 'all']"), 'every dimension is warmed, ALL last');
-assert.ok(source.includes('for (const warmId of WARM_ORDER)'), 'the warm-up loop covers the whole order');
+// The usage-statistics card is gone (user 2026-11-09): its platform reader, its
+// dimension tabs, its three-column table and its period list have no consumer left.
+assert.ok(!source.includes('readUsage'), 'the client no longer calls the platform usage reader');
+for (const gone of [
+  'aup-card-stats', 'aup-srcs', 'aup-src-tab', 'aup-dims', 'aup-series', 'aup-skeleton',
+  'aup-stats-summary', 'SERIES_ROW_SLOTS', 'WARM_ORDER', 'DIMENSION_ROW_CAP', 'ALL_WINDOW_MONTHS',
+  'readAllPlatformUsage', 'aup-model-more', 'aup-account-pane', 'role="tablist"'
+]) {
+  assert.ok(!source.includes(gone), 'the deleted statistics surface is gone: ' + gone);
+}
+for (const gone of ['showCost(', 'usageList(', 'settings.card.stats', 'stats.dim.', "'stats.subscriptionScope'"]) {
+  assert.ok(!source.includes(gone), 'the deleted settings and copy keys are gone: ' + gone);
+}
+// The per-provider session block lives in the session card, between the
+// statistics table and the per-model detail (user 2026-11-09).
+assert.ok(source.includes("{ className: 'aup-providers' }"), 'the session card declares the per-provider block');
+// The provider rows reuse the balance-row grid: one parent grid, subgrid rows and
+// vertically centred cells (rule 23), so names start and figures end on one edge.
+assert.ok(source.includes("'.aup-providers{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);"), 'the provider rows share one parent grid');
+assert.ok(source.includes("'.aup-provider-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;"), 'provider rows take their columns from the shared grid and centre their cells');
+assert.ok(source.includes("'.aup-provider-tokens{justify-self:end;"), 'the provider figure is pinned to the right edge');
+assert.ok(source.includes("className: 'aup-provider-row'"), 'every provider is one row');
+assert.ok(source.includes("{ className: 'aup-provider-name' }"), 'the provider row names its provider');
+assert.ok(source.includes("{ className: 'aup-provider-tokens' }"), 'the provider row totals its session tokens');
+assert.ok(source.includes('formatTokens(row.tokens)'), 'the provider row shows a token total, never an amount');
+assert.ok(!/row\.cost|item\.cost/.test(source), 'no cost reaches the per-provider rows');
 
-// ALL tab: a sixth dimension after year that spans every month with data.
-assert.ok(source.includes("{ id: 'all', key: 'stats.dim.all', buckets: 0 }"), 'ALL is a dimension without a fixed bucket count');
-assert.ok(source.includes("'stats.dim.all': '\u5168'"), 'the ALL tab is the Chinese 全');
-assert.ok(source.includes("'stats.dim.all': 'ALL'"), 'the ALL tab is ALL in English');
-assert.ok(source.includes('all: 4 }'), 'ALL shows four year rows');
-assert.ok(source.includes('const ALL_WINDOW_MONTHS = 36') && source.includes('const ALL_MAX_MONTHS = 72'), 'ALL widens from three to six years');
-assert.ok(source.includes('async function readAllPlatformUsage('), 'ALL has its own widening reader');
-assert.ok(source.includes('function rememberAllStart(') && source.includes('ALL_START_STORAGE_KEY'), 'the discovered first month is remembered');
-assert.ok(source.includes("const summaryCells = dimension === 'all' ? series.cells : visibleCells"), 'the ALL total covers every year it found');
-
-// The panel fills the right sidebar: cards grow with the pane instead of leaving a
-// blank band, the column never reserves a scrollbar gutter, and invisible padding
-// rows are gone now that growth (not filler) keeps the height constant.
-assert.ok(source.includes('.aup-cards>.aup-card-session-fixed{flex:1 1 auto;min-height:auto}'), 'the panel fills the pane height');
-assert.ok(source.includes('.aup-card-account-provider{flex:0 0 auto;min-height:auto;'), 'the provider account card sizes to its content');
-// Space follows information density: the session card (eight metrics) takes the
-// slack and the balance card (three rows) hugs its content instead of stretching.
+// The panel fills the right sidebar: both cards grow with the pane instead of
+// leaving a blank band, and the column never reserves a scrollbar gutter.
+assert.ok(source.includes('.aup-cards>.aup-card-session-fixed{flex:3 1 auto;min-height:auto}'), 'the panel fills the pane height');
+// Leftover height is split by information density (user 2026-11-09: 底部太挤了
+// 上面太空了 两个卡片的高度没安排好): the session card takes three shares, each
+// balance card layout takes one, and no balance rule may pin itself to its content.
+assert.ok(source.includes("'.aup-card-account{flex:1 1 auto;min-height:auto;justify-content:flex-start}'"), 'the balance card shares the leftover height instead of hugging its content');
+assert.ok(source.includes('.aup-card-account-provider{flex:1 1 auto;min-height:auto;'), 'the provider balance card takes the same share as the plain one');
+assert.ok(!/\.aup-card-account(-provider)?\{[^}]*flex:0 0 auto/.test(source), 'no balance card rule pins the card to its content');
+assert.ok(!source.includes('.aup-cards>.aup-card:last-child{flex:1 1 auto}'), 'no card earns space just for being last');
+{
+  const share = (selector) => {
+    const at = source.indexOf(selector);
+    const rule = at < 0 ? '' : source.slice(at, source.indexOf('}', at));
+    const grow = /flex:(\d+)/.exec(rule);
+    return grow === null ? 0 : Number(grow[1]);
+  };
+  const sessionShare = share('.aup-cards>.aup-card-session-fixed{');
+  const accountShare = share("'.aup-card-account{");
+  assert.equal(sessionShare, 3, 'the dense session card takes three quarters of the leftover height: ' + sessionShare);
+  assert.equal(accountShare, 1, 'the balance card takes one quarter, never the largest share: ' + accountShare);
+  assert.ok(sessionShare > accountShare, 'the balance card never outgrows the session card');
+}
+// Space follows information density inside the cards too: the session body spreads
+// evenly and the balance rows spread inside their own card rather than clustering
+// at the top of a tall card.
 assert.ok(source.includes('.aup-card-session .aup-session-body{flex:1 1 auto;min-height:auto;display:flex;flex-direction:column;gap:4px;justify-content:space-evenly}'), 'the session content spreads evenly over the space it gets');
-assert.ok(source.includes("'.aup-card-account{flex:0 0 auto;min-height:auto;justify-content:flex-start}'"), 'the balance card hugs its content');
-assert.ok(source.includes("'.aup-account-body{flex:0 0 auto;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}'"), 'the balance rows do not stretch inside the balance card');
+assert.ok(source.includes("'.aup-account-body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:6px}'"), 'the balance rows fill the space their card is given');
+assert.ok(source.includes('align-content:space-evenly;flex:1 1 auto'), 'the balance rows spread out inside the balance card');
 // Mixed sessions: one aligned row per source in the statistics-table rhythm, no tabs.
 assert.ok(source.includes("'.aup-acct-srcs{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);"), 'every source row reads name left, figures right');
 assert.ok(!source.includes('aup-acct-track') && !source.includes('aup-acct-fill'), 'balance rows write the amount; no capsule bars');
@@ -221,11 +235,10 @@ assert.ok(source.includes("'.aup-acct-src,.aup-acct-row{display:grid;grid-templa
 assert.ok(!source.includes('aup-src-tab') && !source.includes('aup-account-pane'), 'no source tabs or stacked panes remain');
 assert.ok(!source.includes('.aup-cards>.aup-card:last-child{flex:1 1 auto}'), 'no card earns space just for being last');
 assert.ok(!source.includes('scrollbar-gutter'), 'the card column spans the full pane width');
-assert.ok(source.includes('aup-series-slot'), 'invisible slot rows keep the list height constant');
 assert.ok(source.includes('.aup-card-session .aup-session-body>.aup-context{margin-top:0}'), 'the context block rides the even spread, not a bottom anchor');
 assert.ok(source.includes('.aup-stat-list::before{content:""'), 'a hairline separates the two stat columns');
 // Housekeeping: no dead selectors or stale dictionary entries survive a cleanup pass.
-for (const gone of ['.aup-series-value{', '.aup-model-track{', '.aup-model-fill{', "'.aup-glyph{", "'stats.sessionScope'"]) {
+for (const gone of ['.aup-series-value{', '.aup-model-track{', '.aup-model-fill{', "'.aup-glyph{", "'stats.sessionScope'", '.aup-dim{', '.aup-skeleton{', '.aup-series-slot{']) {
   assert.ok(!source.includes(gone), 'dead code is gone: ' + gone);
 }
 assert.ok(source.includes('const currencySymbols = new Map()'), 'currency symbols are cached per currency+locale');
@@ -233,22 +246,20 @@ assert.ok(source.includes('const currencySymbols = new Map()'), 'currency symbol
 // - reduced-motion disables every transition and animation in the panel
 // - every remaining control keeps a visible keyboard ring
 // - progress tracks are decorative (the number beside them is the alternative)
-assert.ok(source.includes('@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob,.aup-icon-button,.aup-dim,.aup-series-row,.aup-pop-link{transition:none}.aup-skeleton,.aup-spin{animation:none}}'), 'reduced motion covers every transition and animation');
+assert.ok(source.includes('@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob,.aup-icon-button,.aup-pop-link{transition:none}.aup-spin{animation:none}}'), 'reduced motion covers every transition and animation');
 assert.ok(source.includes('.aup-icon-button:focus-visible'), 'the refresh button keeps a keyboard ring');
 assert.ok(!source.includes('aup-retry') && !source.includes('onRetry'), 'failed reads never render Retry buttons');
 assert.equal((source.match(/'aria-hidden': true/g) || []).length >= 6, true, 'decorative bars are hidden from screen readers');
 // Capsule bars carried no information beyond the number beside them (user 2026-11-08):
 // only the session card keeps its composition/context bars.
-for (const gone of ['aup-src-track', 'aup-src-fill', 'aup-series-track', 'aup-series-fill', 'aup-skeleton-track', 'aup-acct-track']) {
+for (const gone of ['aup-src-track', 'aup-src-fill', 'aup-series-track', 'aup-series-fill', 'aup-skeleton-track', 'aup-acct-track', 'aup-provider-track', 'aup-provider-fill']) {
   assert.ok(!source.includes(gone), 'no capsule bar outside the session card: ' + gone);
 }
 assert.ok(!source.includes('buildDetailStats'), 'the dead provider-detail stat builder is gone');
-assert.ok(source.includes('.aup-stats-summary{grid-column:1/-1;margin-top:2px}'), 'the total row spans the whole table');
-// Both card footers share one left / centre / right grid, so the panel reads as a
-// single component instead of two differently spaced rows.
-assert.ok(source.includes('.aup-context-legend,.aup-stats-summary{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)'), 'the two footers share one left/centre/right grid');
-assert.ok(source.includes('.aup-context-legend>span:nth-child(3),.aup-stats-summary>span:nth-child(3){justify-self:end'), 'the third cell is pinned to the right edge');
-assert.ok(source.includes("'stats.summary.total': 'Total {total}'") && source.includes("'stats.summary.requests': '{count} requests'"), 'the summary speaks in three parts');
+// The context legend is the only remaining left / centre / right footer (the
+// statistics card's total row went with its card).
+assert.ok(source.includes('.aup-context-legend{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)'), 'the context legend keeps its left/centre/right grid');
+assert.ok(source.includes('.aup-context-legend>span:nth-child(3){justify-self:end'), 'the third cell is pinned to the right edge');
 
 // Theme contract: only tokens the installed UI theme defines in both light and dark.
 // Values resolved from the shipped theme bundle (light | dark):
@@ -398,26 +409,6 @@ const accountRemote = {
   session: { async list() { return { ok: true, value: { items: [] } }; } }
 };
 
-// ------------------------------------------------------------------- fetch --
-let fetchCalls = 0;
-const daysInMonth = (year, month) => new Date(year, month, 0).getDate();
-globalThis.fetch = async (url) => {
-  fetchCalls += 1;
-  const parsed = new URL(String(url), 'http://127.0.0.1');
-  const year = Number(parsed.searchParams.get('year'));
-  const month = Number(parsed.searchParams.get('month'));
-  const days = [];
-  for (let day = 1; day <= daysInMonth(year, month); day += 1) {
-    days.push({
-      date: year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0'),
-      tokens: 1000,
-      cost: 0.5,
-      requests: 2
-    });
-  }
-  return { status: 200, json: async () => ({ ok: true, data: { year, month, currency: 'CNY', days, month: {}, fetchedAt: Date.now() } }) };
-};
-
 // -------------------------------------------------------------- registrations --
 const first = bootClient();
 {
@@ -523,28 +514,11 @@ const bodyProps = bodyRegistration.definition.inject('session-1');
   assert.equal(getProfileCalls, 0, 'account reader does not fetch the profile');
   assert.equal(result.balance.status, 'ready');
   assert.equal(result.locale, 'zh');
-}
-{
-  const now = new Date();
-  const expectedMonths = 25 + now.getMonth();
-  fetchCalls = 0;
-  const platform = await bodyProps.readUsage('year', false, 'CNY');
-  assert.equal(platform.ok, true, 'platform usage read');
-  assert.equal(platform.source, 'platform');
-  assert.equal(fetchCalls, expectedMonths, 'one route call per month in the window');
-  const stored = JSON.parse(storage.get('dsh.account-usage.months.v1'));
-  assert.equal(Object.keys(stored).length, expectedMonths, 'months persisted');
-  const cached = await bodyProps.readUsage('year', false, 'CNY');
-  assert.equal(cached.ok, true);
-  assert.equal(fetchCalls, expectedMonths, 'second read is served from cache');
-  await bodyProps.readUsage('year', true, 'CNY');
-  assert.equal(fetchCalls, expectedMonths + 1, 'force refresh only re-reads the live month');
-  const reloaded = bootClient();
-  const reloadBody = reloaded.registrations.find((r) => r.definition.name === 'sidebar.right.pane.tab').definition.inject('session-1');
-  fetchCalls = 0;
-  const warm = await reloadBody.readUsage('year', false, 'CNY');
-  assert.equal(warm.ok, true);
-  assert.equal(fetchCalls, 0, 'reload serves the year from persisted months');
+  // The platform usage reader is gone with the statistics card (user 2026-11-09):
+  // the tab body is not even handed one.
+  assert.equal(bodyProps.readUsage, undefined, 'the tab body no longer receives a platform usage reader');
+  assert.equal(typeof bodyProps.readSessionModels, 'function', 'the tab body still receives the session model reader');
+  assert.equal(typeof bodyProps.readProviderBalances, 'function', 'the tab body still receives the provider balance reader');
 }
 
 // ------------------------------------------------------------------ render --
@@ -562,8 +536,6 @@ function walk(node, predicate, out = []) {
     walk(expand(node), predicate, out);
     return out;
   }
-  // User-visible assertions must not count the inactive intrinsic-sizing panes.
-  if (node.props?.className === 'aup-account-pane' && node.props['aria-hidden'] === true) return out;
   if (predicate(node)) out.push(node);
   walk(node.children, predicate, out);
   return out;
@@ -574,7 +546,7 @@ function text(node) {
   if (typeof node === 'string' || typeof node === 'number') return String(node);
   if (Array.isArray(node)) return node.map(text).join(' ');
   if (typeof node.type === 'function') return text(expand(node));
-  if (node.type === 'style' || (node.props?.className === 'aup-account-pane' && node.props['aria-hidden'] === true)) return '';
+  if (node.type === 'style') return '';
   return text(node.children);
 }
 const flat = (node) => text(node).replace(/\s+/g, ' ').trim();
@@ -598,24 +570,23 @@ const accountState = {
   }
 };
 const DEFAULT_SETTINGS = {
-  dimension: 'day',
   autoRefresh: true,
-  showCost: true,
   hideComposerStats: true,
-  usageList: true,
-  cards: { session: true, stats: true, account: true }
+  cards: { session: true, account: true }
 };
-function render(usageState, projection, dimensionValue, settingsValue, settingsOpen, sessionModelsValue, providerBalancesValue) {
+// The tab body reads eight hook slots in this order (a bare useRef consumes none):
+// account, session models, provider balances, display settings, account request,
+// settings-open, locale, greeting seed.
+function render(sessionModelsValue, providerBalancesValue, settingsValue, settingsOpen, projection, localeId) {
   stateQueue.push(
     accountState,
-    usageState,
     sessionModelsValue || { phase: 'idle', items: [], totalTokens: 0 },
-    providerBalancesValue || { phase: 'idle', items: [], error: undefined },
+    providerBalancesValue || { phase: 'idle', byProvider: {} },
     settingsValue || DEFAULT_SETTINGS,
-    dimensionValue || 'day',
     { count: 0, force: false },
-    { count: 0, force: false },
-    settingsOpen === true
+    settingsOpen === true,
+    localeId || 'zh',
+    0
   );
   const tree = bodyRegistration.component({
     t: first.t,
@@ -626,52 +597,85 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   return tree;
 }
 {
-  const loadingTree = render({ phase: 'loading', days: [], refreshing: false, dimension: 'day' });
-  const skeletonOf = (className) => {
-    const group = walk(loadingTree, (n) => hasClass(n, className))[0];
-    return group === undefined ? 0 : walk(group, (n) => hasClass(n, 'aup-skeleton-row')).length;
-  };
-  assert.equal(skeletonOf('aup-series'), 4, 'the loading frame reserves four period slots');
-  assert.equal(skeletonOf('aup-srcs'), 1, 'the loading frame reserves one row for the account source');
-  const loadingQuarter = render({ phase: 'loading', days: [], refreshing: false, dimension: 'quarter' }, undefined, 'quarter');
-  const quarterSeries = walk(loadingQuarter, (n) => hasClass(n, 'aup-series'))[0];
-  assert.equal(walk(quarterSeries, (n) => hasClass(n, 'aup-skeleton-row')).length, 4, 'quarter reserves four period slots too, like every other range');
-  const readyTree = render({
-    phase: 'ready',
-    ok: true,
-    source: 'platform',
-    days: [{ date: new Date().toISOString().slice(0, 10), tokens: 5_900_000_000, cost: 542.52, count: 10 }],
-    currency: 'CNY',
-    dimension: 'day',
-    refreshing: false
-  }, () => ({ uncachedInputTokens: 5_900_000_000, outputTokens: 19_000_000, cacheReadTokens: 0, cacheWriteTokens: 0 }));
+  // Two cards only (user 2026-11-09): 会话消耗 then 账户余额, four Chinese
+  // characters each, and the deleted 用量统计 card never comes back.
+  const readyTree = render(
+    {
+      phase: 'ready',
+      items: [
+        { provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 },
+        { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2_500_000, requests: 250 }
+      ],
+      totalTokens: 3_500_000
+    },
+    undefined,
+    DEFAULT_SETTINGS,
+    false,
+    () => ({ uncachedInputTokens: 5_900_000_000, outputTokens: 19_000_000, cacheReadTokens: 0, cacheWriteTokens: 0 })
+  );
+  const cards = walk(readyTree, (n) => n.type === 'section' && hasClass(n, 'aup-card'));
+  assert.equal(cards.length, 2, 'the panel renders exactly two cards');
+  assert.equal(walk(readyTree, (n) => n.type === 'section' && hasClass(n, 'aup-card-stats')).length, 0, 'the deleted statistics card never renders');
   const titles = walk(readyTree, (n) => hasClass(n, 'aup-card-title')).map((n) => flat(n));
-  assert.deepEqual(titles, ['会话消耗', '用量统计', '账户余额'], 'four-character card titles');
-  const summary = walk(readyTree, (n) => hasClass(n, 'aup-stats-summary'))[0];
-  assert.ok(flat(summary).includes('5.9B'), 'B unit in the summary');
-  assert.ok(flat(summary).includes('542.52¥'), 'real platform amount shown, symbol trailing');
+  assert.deepEqual(titles, ['会话消耗', '账户余额'], 'four-character card titles');
+  for (const gone of ['用量统计', 'Usage statistics', 'PLAN', '套餐', '订阅']) {
+    assert.ok(!flat(readyTree).includes(gone), 'the deleted statistics copy is gone: ' + gone);
+  }
   const total = walk(readyTree, (n) => hasClass(n, 'aup-session-total-value'))[0];
+  assert.equal(flat(total), '5.92B', 'session total uses B unit with two decimals');
+  // The platform figure is the real balance read, still with a trailing symbol and
+  // no currency code anywhere (user 2026-11-08); the panel shows no spend at all.
+  const readyAccount = walk(readyTree, (n) => n.type === 'section' && hasClass(n, 'aup-card-account'))[0];
+  const readyAccountText = flat(readyAccount);
+  assert.ok(readyAccountText.includes('542.52¥'), 'real platform amount shown, symbol trailing: ' + readyAccountText);
+  assert.ok(/[\d.,]+¥/.test(readyAccountText), 'the balance row ends with the ¥ symbol: ' + readyAccountText);
+  assert.ok(!/CN¥|CNY/.test(readyAccountText), 'no currency code survives in the amount: ' + readyAccountText);
+  assert.equal(walk(readyTree, (n) => hasClass(n, 'aup-series-cost')).length, 0, 'the panel no longer renders any spend row');
+
+  // Consumption per provider (user 2026-11-09): one row per provider used this
+  // session, in first-appearance order, summing that provider's model rows, and
+  // never carrying an amount.
+  const providerBlock = walk(readyTree, (n) => hasClass(n, 'aup-providers'))[0];
+  assert.ok(providerBlock !== undefined, 'the session card renders the per-provider block');
+  const providerRows = walk(providerBlock, (n) => hasClass(n, 'aup-provider-row'));
+  assert.equal(providerRows.length, 2, 'one row per provider used this session');
+  assert.deepEqual(
+    providerRows.map((row) => flat(walk(row, (n) => hasClass(n, 'aup-provider-name'))[0])),
+    ['DeepSeek API', 'OpenCode Go'],
+    'each provider row names its provider'
+  );
+  assert.deepEqual(
+    providerRows.map((row) => flat(walk(row, (n) => hasClass(n, 'aup-provider-tokens'))[0])),
+    ['1M', '2.5M'],
+    'each provider row totals that provider session tokens'
+  );
+  assert.ok(!/[¥$€]/.test(flat(providerBlock)), 'the per-provider rows carry no amount: ' + flat(providerBlock));
+  const sessionBody = walk(readyTree, (n) => hasClass(n, 'aup-session-body'))[0];
+  const bodyOrder = walk(sessionBody, () => true).map((n) => String((n.props && n.props.className) || ''));
+  assert.ok(bodyOrder.indexOf('aup-stat-list') < bodyOrder.indexOf('aup-providers'), 'the provider block sits after the statistics table');
+  // A provider that ran a single model is already fully described by its provider
+  // row, so the per-model detail drops it instead of printing the same figure twice
+  // (user 2026-11-09: 「重复了 provider+type 保留一次统计即可」).
+  assert.equal(walk(sessionBody, (n) => hasClass(n, 'aup-models')).length, 0, 'a single-model provider is not repeated in the per-model detail');
+  assert.equal(walk(sessionBody, (n) => hasClass(n, 'aup-sep-models')).length, 0, 'the per-model separator goes with the dropped detail');
+  // The block and its separator live and die together: never a hairline on its own.
+  assert.equal(walk(sessionBody, (n) => hasClass(n, 'aup-sep-providers')).length, 1, 'the provider block has exactly one separator');
+  const emptyBody = walk(render(), (n) => hasClass(n, 'aup-session-body'))[0];
+  assert.equal(walk(emptyBody, (n) => hasClass(n, 'aup-providers')).length, 0, 'no provider rows without session models');
+  assert.equal(walk(emptyBody, (n) => hasClass(n, 'aup-sep-providers')).length, 0, 'the provider separator goes with its block');
+
   // The eight session metrics are grouped in pairs and laid out row-major:
   // volume (turns/steps, requests), efficiency (cache, avg), responsiveness
   // (speed, ttft), time split (model, tools).
   const statsTree = render(
-    {
-      phase: 'ready',
-      ok: true,
-      source: 'platform',
-      days: [{ date: new Date().toISOString().slice(0, 10), tokens: 5_900_000_000, cost: 542.52, count: 10 }],
-      currency: 'CNY',
-      dimension: 'day',
-      refreshing: false
-    },
+    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-flash', tokens: 5_000_000, requests: 1665 }], totalTokens: 5_000_000 },
+    undefined,
+    DEFAULT_SETTINGS,
+    false,
     (key) =>
       key === 'sessionStats'
         ? { turns: 151, steps: 1677, decodeTokens: 128_000, decodeMs: 1000, llmMs: 26_640_000, toolMs: 5_280_000, ttftMs: 8_600, ttftSteps: 1000 }
-        : { uncachedInputTokens: 5_000_000, outputTokens: 19_000_000, cacheReadTokens: 5_000_000, cacheWriteTokens: 0 },
-    undefined,
-    undefined,
-    undefined,
-    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-flash', tokens: 5_000_000, requests: 1665 }], totalTokens: 5_000_000 }
+        : { uncachedInputTokens: 5_000_000, outputTokens: 19_000_000, cacheReadTokens: 5_000_000, cacheWriteTokens: 0 }
   );
   const statLabels = walk(statsTree, (n) => hasClass(n, 'aup-stat-label')).map(flat);
   assert.deepEqual(
@@ -683,69 +687,25 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.deepEqual(statLabels.slice(4, 6), ['输出速度', '首 Token'], 'speed and ttft share the responsiveness row');
   assert.deepEqual(statLabels.slice(6, 8), ['模型用时', '工具用时'], 'the two durations close the table');
 
-  // ALL tab: the sixth range after year. Rows are years, and the total counts every
-  // year the reader found even when older ones no longer fit on screen.
-  storage.set('dsh.account-usage.all-start.v1', '2020-01');
-  const allTree = render(
-    {
-      phase: 'ready',
-      ok: true,
-      source: 'platform',
-      days: [
-        { date: '2020-05-04', tokens: 1_000_000, cost: 10, count: 3 },
-        { date: '2021-03-01', tokens: 2_000_000, cost: 20, count: 4 },
-        { date: '2023-01-01', tokens: 500_000, cost: 5, count: 1 },
-        { date: new Date().toISOString().slice(0, 10), tokens: 3_000_000, cost: 30, count: 6 }
-      ],
-      currency: 'CNY',
-      dimension: 'all',
-      refreshing: false
-    },
-    () => undefined,
-    'all'
-  );
-  const dimLabels = walk(allTree, (node) => hasClass(node, 'aup-dim')).map(flat);
-  assert.deepEqual(dimLabels, ['日', '周', '月', '季', '年', '全'], 'ALL closes the range row: ' + JSON.stringify(dimLabels));
-  const allRows = walk(allTree, (node) => hasClass(node, 'aup-series-label')).map(flat);
-  assert.equal(allRows.length, 4, 'ALL keeps four year rows: ' + JSON.stringify(allRows));
-  assert.ok(allRows.includes(String(new Date().getFullYear())), 'the current year is listed');
-  assert.ok(!allRows.includes('2020'), 'older years drop out of the visible rows: ' + JSON.stringify(allRows));
-  const allSummary = flat(walk(allTree, (node) => hasClass(node, 'aup-stats-summary'))[0]);
-  assert.ok(allSummary.includes('6.5M'), 'the ALL total still counts every year: ' + allSummary);
-  assert.ok(allSummary.includes('65.00¥'), 'the ALL spend counts every year: ' + allSummary);
-
-  // Third-party rows are billed by their subscription, not by a platform amount:
-  // the amount column says SUBSCRIPTION (订阅 in Chinese) instead of a scope hint.
-  const mixedStats = render(
-    {
-      phase: 'ready',
-      ok: true,
-      source: 'platform',
-      days: [{ date: new Date().toISOString().slice(0, 10), tokens: 1_000_000, cost: 10, count: 5 }],
-      currency: 'CNY',
-      dimension: 'day',
-      refreshing: false
-    },
-    (key) => (key === 'sessionStats' ? { turns: 5, steps: 9 } : undefined),
-    'day',
+  // Compact token totals keep at most two decimal places (78.77M, not 78.770161M)
+  // in the session total and in the per-provider row.
+  const preciseTree = render(
+    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 78_770_161, requests: 446 }], totalTokens: 78_770_161 },
+    undefined,
     DEFAULT_SETTINGS,
     false,
-    {
-      phase: 'ready',
-      totalTokens: 3_000_000,
-      lastProvider: 'opencode-go',
-      items: [
-        { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2_000_000, requests: 7 },
-        { provider: 'openrouter', model: 'deepseek-flash-latest', tokens: 1_000_000, requests: 3 }
-      ]
-    }
+    () => ({ uncachedInputTokens: 78_770_161, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 })
   );
-  const sideTexts = walk(mixedStats, (node) => hasClass(node, 'aup-src-side')).map(flat);
-  assert.deepEqual(sideTexts, ['套餐', '套餐'], 'every provider row carries the plan marker: ' + JSON.stringify(sideTexts));
-  assert.ok(!sideTexts.includes('本会话'), 'the session-scope wording is gone from the table');
-  assert.ok(source.includes("'stats.subscriptionScope': 'PLAN'"), 'the English marker stays short: PLAN');
-  assert.ok(source.includes("side: t('stats.subscriptionScope')"), 'provider rows use the subscription marker');
-  assert.equal(flat(total), '5.92B', 'session total uses B unit with two decimals');
+  const preciseTotal = walk(preciseTree, (n) => hasClass(n, 'aup-session-total-value'))[0];
+  assert.equal(flat(preciseTotal), '78.77M', 'stats token total keeps at most two decimals: ' + flat(preciseTotal));
+  assert.equal(flat(walk(preciseTree, (n) => hasClass(n, 'aup-provider-tokens'))[0]), '78.77M', 'per-provider token total keeps at most two decimals');
+  // Currency is a bare symbol placed AFTER the amount (23.28¥), never a code prefix.
+  assert.ok(source.includes("currencyDisplay: 'narrowSymbol'"), 'amounts use the narrow currency symbol');
+  // Every currency keeps its symbol after the figure (user 2026-11-08).
+  assert.ok(source.includes('return body + currencySymbol(currency, locale)'), 'every currency keeps its symbol after the amount');
+  assert.ok(!source.includes('return formatter.format(amount)'), 'no currency keeps the prefix form');
+
+  // Header: settings on the left, refresh on the right, one greeting line.
   const header = walk(readyTree, (n) => hasClass(n, 'aup-head'))[0];
   const headerGroups = header.children.filter((child) => child && hasClass(child, 'aup-head-actions'));
   assert.equal(headerGroups.length, 2, 'settings on the left, refresh on the right');
@@ -760,49 +720,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(typeof flat(greeting) === 'string' && flat(greeting).length > 0, 'the greeting line is filled');
   assert.ok(source.includes('border-bottom:.5px solid var(--dsw-alias-border-l3)'), 'the header rule matches the conversation rule');
   assert.ok(source.includes('--aup-head-h') && source.includes('conversation.header'), 'the band height is measured from the conversation header');
-  assert.ok(source.includes('DIMENSION_ROW_CAP'), 'period rows are capped per dimension');
   assert.ok(!/new ResizeObserver\([^)]*\n?[^)]*setHiddenRows/s.test(source), 'row trimming never feeds back from a resize observer');
-  // Unit-compacted token counts stop at two decimal places (78.77M, not 78.770161M).
-  const preciseTree = render(
-    {
-      phase: 'ready',
-      ok: true,
-      source: 'platform',
-      days: [{ date: new Date().toISOString().slice(0, 10), tokens: 78_770_161, cost: 3.808647, count: 446 }],
-      currency: 'CNY',
-      dimension: 'day',
-      refreshing: false
-    },
-    () => ({ uncachedInputTokens: 78_770_161, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 })
-  );
-  const preciseSummary = walk(preciseTree, (n) => hasClass(n, 'aup-stats-summary'))[0];
-  assert.ok(flat(preciseSummary).includes('78.77M'), 'stats token total keeps at most two decimals: ' + flat(preciseSummary));
-  const preciseRow = walk(preciseTree, (n) => hasClass(n, 'aup-series-tokens')).map(flat).find((value) => value.includes('M'));
-  const dayLabels = walk(preciseTree, (node) => hasClass(node, 'aup-series-label')).map(flat);
-  assert.ok(dayLabels.length > 0 && dayLabels.every((label) => /^\d{4}-\d{2}-\d{2}$/u.test(label)), 'day rows show YYYY-MM-DD: ' + JSON.stringify(dayLabels));
-  assert.equal(preciseRow, '78.77M', 'per-period token value keeps at most two decimals');
-  const preciseCost = walk(preciseTree, (n) => hasClass(n, 'aup-series-cost')).map(flat).find((value) => value !== '');
-  assert.equal(preciseCost, '3.80¥', 'spend keeps the two-decimal platform style, symbol trailing');
-  // Currency is a bare symbol placed AFTER the amount (23.28¥), never a code prefix.
-  assert.ok(source.includes("currencyDisplay: 'narrowSymbol'"), 'amounts use the narrow currency symbol');
-  const plainCost = walk(preciseTree, (node) => hasClass(node, 'aup-series-cost')).map(flat).find((value) => value !== '');
-  assert.ok(plainCost !== undefined && plainCost.endsWith('¥'), 'the spend row ends with the ¥ symbol: ' + String(plainCost));
-  assert.ok(!/CN¥|CNY/u.test(plainCost), 'no currency code survives in the amount: ' + String(plainCost));
-  // Every currency keeps its symbol after the figure (user 2026-11-08).
-  assert.ok(source.includes('return body + currencySymbol(currency, locale)'), 'every currency keeps its symbol after the amount');
-  assert.ok(!source.includes('return formatter.format(amount)'), 'no currency keeps the prefix form');
-
-  const fallbackTree = render({
-    phase: 'ready',
-    ok: true,
-    source: 'local',
-    days: [{ date: new Date().toISOString().slice(0, 10), tokens: 2000, cost: 0.0046, count: 2 }],
-    currency: 'CNY',
-    reason: 'auth_failed',
-    dimension: 'day',
-    refreshing: false
-  }, () => undefined);
-  assert.equal(walk(fallbackTree, (n) => hasClass(n, 'aup-badge')).length, 1, 'local estimate badge');
 }
 
 // ------------------------------------------------------------ model stats --
@@ -815,138 +733,164 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const rows = foldSessionModels(events);
   assert.deepEqual(rows.map((row) => [row.model, row.tokens]), [['deepseek-chat', 126], ['deepseek-reasoner', 100]], 'per-model fold replaces the same attempt and attributes the route');
 
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
-    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 5000, requests: 2 }, { provider: 'deepseek-account', model: 'deepseek-reasoner', tokens: 3000, requests: 1 }], totalTokens: 8000 },
-    { phase: 'idle', items: [], error: undefined },
-    DEFAULT_SETTINGS,
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
-  );
-  const tree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
-  stateQueue.length = 0;
+  const tree = render({
+    phase: 'ready',
+    items: [
+      { provider: 'deepseek-account', model: 'deepseek-chat', tokens: 5000, requests: 2 },
+      { provider: 'deepseek-account', model: 'deepseek-reasoner', tokens: 3000, requests: 1 }
+    ],
+    totalTokens: 8000
+  });
   assert.equal(walk(tree, (node) => hasClass(node, 'aup-models-caption')).length, 0, 'no redundant 按模型 caption');
   const modelNames = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat);
   assert.ok(modelNames[0] === 'DeepSeek API-deepseek-chat', 'provider and model share one line without spaces around the dash: ' + modelNames[0]);
   const modelTokens = walk(tree, (node) => hasClass(node, 'aup-model-tokens')).map(flat);
   assert.deepEqual(modelNames, ['DeepSeek API-deepseek-chat', 'DeepSeek API-deepseek-reasoner'], 'model rows merge provider and model without separator spaces');
   assert.equal(walk(tree, (node) => hasClass(node, 'aup-model-more')).length, 0, 'no truncation line exists');
+  assert.deepEqual(modelTokens, ['5K', '3K'], 'model rows show compact token totals');
+  assert.deepEqual(walk(tree, (node) => hasClass(node, 'aup-provider-row')).map(flat), ['DeepSeek API 8K'], 'one provider row totals both of its model rows');
+  // Both blocks are present for a multi-model provider, and the provider block comes
+  // first: statistics table -> per-provider rows -> per-model detail.
+  const detailBody = walk(tree, (node) => hasClass(node, 'aup-session-body'))[0];
+  const detailOrder = walk(detailBody, () => true).map((node) => String((node.props && node.props.className) || ''));
+  assert.ok(detailOrder.indexOf('aup-providers') > detailOrder.indexOf('aup-stat-list'), 'the provider block sits after the statistics table');
+  assert.ok(detailOrder.indexOf('aup-providers') < detailOrder.indexOf('aup-models'), 'the provider block sits before the per-model detail');
 
-  // Every model stays on screen: four rows render four rows (user 2026-11-09:
-  // "session usage 里的任何信息都是不允许隐藏的").
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
-    { phase: 'ready', items: [
+  // Multi-model providers keep every one of their model rows (user 2026-11-09:
+  // "session usage 里的任何信息都是不允许隐藏的"); single-model providers are folded
+  // into their provider row instead of being repeated.
+  const fourTree = render({
+    phase: 'ready',
+    items: [
       { provider: 'deepseek-account', model: 'deepseek-chat', tokens: 5000, requests: 2 },
       { provider: 'deepseek-account', model: 'deepseek-reasoner', tokens: 3000, requests: 1 },
       { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2000, requests: 1 },
       { provider: 'openrouter', model: 'deepseek-flash', tokens: 1000, requests: 1 }
-    ], totalTokens: 11000 },
-    { phase: 'idle', items: [], error: undefined },
-    DEFAULT_SETTINGS,
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
+    ],
+    totalTokens: 11000
+  });
+  const detailNames = walk(fourTree, (node) => hasClass(node, 'aup-model-name')).map(flat);
+  assert.deepEqual(detailNames, ['DeepSeek API-deepseek-chat', 'DeepSeek API-deepseek-reasoner'], 'every model of a multi-model provider renders, none truncated');
+  assert.equal(walk(fourTree, (node) => hasClass(node, 'aup-model-row')).length, 2, 'the per-model detail lists exactly the multi-model rows');
+  assert.ok(!detailNames.some((name) => name.includes('deepseek-v4.1-flash') || name.includes('deepseek-flash')), 'a single-model provider is not repeated as a model row');
+  assert.equal(walk(fourTree, (node) => hasClass(node, 'aup-model-more')).length, 0, 'the fourth model is folded, never a counter');
+  // A provider's figure is the sum of its own model rows, not the session total.
+  const summedProviders = walk(fourTree, (node) => hasClass(node, 'aup-provider-row')).map(flat);
+  assert.equal(summedProviders.length, 3, 'three providers fold into three provider rows, never four');
+  assert.deepEqual(summedProviders, ['DeepSeek API 8K', 'OpenCode Go 2K', 'OpenRouter 1K'], 'every provider row sums only its own model rows: ' + JSON.stringify(summedProviders));
+}
+
+// ------------------------------- per-provider vs per-model dedup (1.0.16) -----
+// The user 2026-11-09: 「重复了 provider+type 保留一次统计即可」 — a provider that
+// ran a single model would print the very same figure twice (once as its provider
+// row, once as its model row), so the model row is dropped and the provider row
+// carries that model's tokens. Nothing is hidden: a multi-model provider still
+// gets one row per model, and no counter replaces the detail.
+{
+  const singleTree = render({
+    phase: 'ready',
+    items: [
+      { provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 },
+      { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2_500_000, requests: 250 },
+      { provider: 'openrouter', model: 'deepseek-flash', tokens: 4_000, requests: 1 }
+    ],
+    totalTokens: 3_504_000
+  });
+  assert.equal(walk(singleTree, (node) => hasClass(node, 'aup-models')).length, 0, 'an all-single-model session renders no per-model detail');
+  const singleRows = walk(singleTree, (node) => hasClass(node, 'aup-provider-row')).map(flat);
+  assert.equal(singleRows.length, 3, 'one provider row per provider, never one per model: ' + JSON.stringify(singleRows));
+  assert.deepEqual(
+    singleRows,
+    ['DeepSeek API 1M', 'OpenCode Go 2.5M', 'OpenRouter 4K'],
+    'a folded single-model provider row still carries that model tokens, so nothing is lost: ' + JSON.stringify(singleRows)
   );
-  const fourTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
-  stateQueue.length = 0;
-  assert.equal(walk(fourTree, (node) => hasClass(node, 'aup-model-row')).length, 4, 'all four model rows render, none truncated');
-  assert.equal(walk(fourTree, (node) => hasClass(node, 'aup-model-more')).length, 0, 'the fourth model is a row, not a counter');
-  assert.deepEqual(modelTokens, ['5K', '3K'], 'model rows show compact token totals');
+  assert.ok(!flat(singleTree).includes('另有'), 'no "另有 N 个模型" counter replaces a folded provider');
+}
+{
+  // A provider that ran two models keeps both rows, and they still sum to its
+  // provider row (rules 45/46: the detail is never capped or truncated).
+  const multiTree = render({
+    phase: 'ready',
+    items: [
+      { provider: 'openrouter', model: 'deepseek-flash', tokens: 1_200, requests: 3 },
+      { provider: 'openrouter', model: 'claude-sonnet', tokens: 800, requests: 2 }
+    ],
+    totalTokens: 2_000
+  });
+  const multiNames = walk(multiTree, (node) => hasClass(node, 'aup-model-name')).map(flat);
+  assert.deepEqual(multiNames, ['OpenRouter-deepseek-flash', 'OpenRouter-claude-sonnet'], 'a multi-model provider keeps one row per model: ' + JSON.stringify(multiNames));
+  assert.deepEqual(
+    walk(multiTree, (node) => hasClass(node, 'aup-provider-row')).map(flat),
+    ['OpenRouter 2K'],
+    'the multi-model provider row is the sum of its model rows: ' + JSON.stringify(walk(multiTree, (node) => hasClass(node, 'aup-model-tokens')).map(flat))
+  );
+  assert.equal(walk(multiTree, (node) => hasClass(node, 'aup-model-more')).length, 0, 'a multi-model provider is never capped by a counter');
+}
+{
+  // Mixed session: only the multi-model provider keeps its detail rows.
+  const mixedTree = render({
+    phase: 'ready',
+    items: [
+      { provider: 'openrouter', model: 'deepseek-flash', tokens: 1_200, requests: 3 },
+      { provider: 'openrouter', model: 'claude-sonnet', tokens: 800, requests: 2 },
+      { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 4_000, requests: 1 }
+    ],
+    totalTokens: 6_000
+  });
+  const mixedNames = walk(mixedTree, (node) => hasClass(node, 'aup-model-name')).map(flat);
+  assert.equal(mixedNames.length, 2, 'a mixed session details exactly the multi-model model rows: ' + JSON.stringify(mixedNames));
+  assert.ok(mixedNames.every((name) => name.startsWith('OpenRouter-')), 'every detail row belongs to the multi-model provider: ' + JSON.stringify(mixedNames));
+  const mixedRows = walk(mixedTree, (node) => hasClass(node, 'aup-provider-row')).map(flat);
+  assert.deepEqual(mixedRows, ['OpenRouter 2K', 'OpenCode Go 4K'], 'a folded provider keeps its per-provider session row: ' + JSON.stringify(mixedRows));
 }
 
 // ------------------------------------------------------- third-party provider --
 {
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
-    { phase: 'ready', items: [{ provider: 'openrouter', model: 'deepseek-flash', tokens: 5000, requests: 2 }], totalTokens: 5000 },
-    { phase: 'idle', items: [], error: undefined },
-    DEFAULT_SETTINGS,
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
-  );
-  const tree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
-  stateQueue.length = 0;
+  const tree = render({ phase: 'ready', items: [{ provider: 'openrouter', model: 'deepseek-flash', tokens: 5000, requests: 2 }], totalTokens: 5000 });
   const accountCard = walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const accountText = flat(accountCard);
   assert.ok(!accountText.includes('542.52'), 'DeepSeek balance is hidden for an off-account session');
   assert.ok(accountText.includes('OpenRouter'), 'balance card names the provider');
-  const offAccountStats = walk(tree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0];
-  assert.ok(offAccountStats !== undefined, 'the 用量统计 card always exists');
-  assert.equal(walk(offAccountStats, (node) => hasClass(node, 'aup-dim')).length, 0, 'period switch only appears when platform data exists');
-  assert.ok(walk(offAccountStats, (node) => hasClass(node, 'aup-src')).length > 0, 'same source-row layout as a mixed session');
-  assert.ok(flat(offAccountStats).includes('OpenRouter'), 'off-account stats list the session sources');
-  const modelName = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat)[0];
-  assert.equal(modelName, 'OpenRouter-deepseek-flash', 'model row merges provider and model name without separator spaces');
+  // A single-model provider has no separate model row: its provider row already
+  // carries the very same figure (user 2026-11-09).
+  assert.equal(walk(tree, (node) => hasClass(node, 'aup-models')).length, 0, 'a single-model provider is not repeated as a model row');
   assert.equal(walk(tree, (node) => hasClass(node, 'aup-models-provider')).length, 0, 'provider caption rows are gone');
+  // A single off-account source still gets one per-provider session row.
+  assert.deepEqual(walk(tree, (node) => hasClass(node, 'aup-provider-row')).map(flat), ['OpenRouter 5K'], 'an off-account session keeps its per-provider session row');
 
   // Provider balance mode renders the provider amounts instead of the DeepSeek wallet.
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+  const providerTree = render(
     { phase: 'ready', items: [{ provider: 'openrouter', model: 'deepseek-flash', tokens: 5000, requests: 2 }], totalTokens: 5000 },
-    { phase: 'ready', items: [{ provider: 'openrouter', kind: 'openrouter', currency: 'USD', remaining: 42.5, used: 7.5 }], error: undefined },
-    DEFAULT_SETTINGS,
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
+    { phase: 'ready', items: [{ provider: 'openrouter', kind: 'openrouter', currency: 'USD', remaining: 42.5, used: 7.5 }] }
   );
-  const providerTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
-  stateQueue.length = 0;
   const providerCard = walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const providerText = flat(providerCard);
   assert.ok(providerText.includes('42.50'), 'provider remaining balance');
   assert.ok(!providerText.includes('7.50'), 'no spend (Used) in the balance card');
   assert.ok(!providerText.includes('542.52'), 'DeepSeek wallet never renders in provider mode');
-  assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 1, 'the 用量统计 card always exists');
+  assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats')).length, 0, 'the deleted statistics card never renders in provider mode');
   assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-session')).length, 1, 'session card still renders');
+  assert.equal(walk(providerTree, (node) => node.type === 'section' && hasClass(node, 'aup-card')).length, 2, 'provider mode still shows exactly two cards');
 
   // Providers without a balance API (for example OpenCode Go) fall back to the
   // session totals instead of showing a dead retry button.
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+  const unsupportedTree = render(
     { phase: 'ready', items: [{ provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 7_500_000, requests: 1234 }], totalTokens: 7_500_000 },
-    { phase: 'ready', byProvider: { 'opencode-go': { phase: 'error', code: 'unsupported_provider' } } },
-    DEFAULT_SETTINGS,
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
+    { phase: 'ready', byProvider: { 'opencode-go': { phase: 'error', code: 'unsupported_provider' } } }
   );
-  const unsupportedTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
-  stateQueue.length = 0;
   const unsupportedCard = walk(unsupportedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const unsupportedText = flat(unsupportedCard);
   assert.ok(unsupportedText.includes('OpenCode Go'), 'unknown providers get a readable label: ' + unsupportedText);
   assert.ok(unsupportedText.includes('插件暂不支持'), 'unsupported provider row states plugin support, not a vendor claim');
-  assert.ok(!unsupportedText.includes('7.5M'), 'session tokens live in the statistics card, not repeated in the balance row');
-  assert.ok(flat(walk(unsupportedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0]).includes('7.5M'), 'the statistics card carries this source session usage');
+  assert.ok(!unsupportedText.includes('7.5M'), 'session tokens live in the session card, not repeated in the balance row');
+  assert.ok(flat(walk(unsupportedTree, (node) => hasClass(node, 'aup-provider-row'))[0]).includes('7.5M'), 'the session card per-provider row carries this source session usage');
   assert.equal(walk(unsupportedCard, (node) => hasClass(node, 'aup-retry')).length, 0, 'no dead retry for a provider without a balance API');
 
   // opencode reports plan usage percentages instead of a money balance.
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+  const planTree = render(
     { phase: 'ready', items: [{ provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 5_000_000, requests: 500 }], totalTokens: 5_000_000 },
-    { phase: 'ready', items: [{ provider: 'opencode-go', kind: 'opencode-plan', windows: [{ id: 'rolling', usedPercent: 1 }, { id: 'weekly', usedPercent: 12 }, { id: 'monthly', usedPercent: 35 }] }], error: undefined },
-    DEFAULT_SETTINGS,
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
+    { phase: 'ready', items: [{ provider: 'opencode-go', kind: 'opencode-plan', windows: [{ id: 'rolling', usedPercent: 1 }, { id: 'weekly', usedPercent: 12 }, { id: 'monthly', usedPercent: 35 }] }] }
   );
-  const planTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
-  stateQueue.length = 0;
   const planCard = walk(planTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const planText = flat(planCard);
   // Plan format (user 2026-11-08): `5HW 63%  WEK 70%  MON 85%`, every figure is the share left.
@@ -955,9 +899,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
 
   // Command Code publishes the same 5-hour / weekly plan windows as a share and the
   // credits left beside them; the row reuses the plan format and appends one pair.
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+  const commandCodeTree = render(
     { phase: 'ready', items: [{ provider: 'commandcode', model: 'deepseek/deepseek-v4.1-flash-fast', tokens: 4_500_000, requests: 400 }], totalTokens: 4_500_000 },
     { phase: 'ready', items: [{
       provider: 'commandcode',
@@ -965,100 +907,64 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
       currency: 'USD',
       windows: [{ id: 'fiveHour', usedPercent: 100, status: 'exceeded' }, { id: 'weekly', usedPercent: 50.04 }],
       credits: { monthly: 6.9983883725, purchased: 0, free: 0 }
-    }], error: undefined },
-    DEFAULT_SETTINGS,
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
+    }] }
   );
-  const commandCodeTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
-  stateQueue.length = 0;
   const commandCodeCard = walk(commandCodeTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const commandCodeText = flat(commandCodeCard);
   // Share left in fixed order, then the credits left - never "used" or a spend figure.
   assert.ok(commandCodeText.includes('Command Code'), 'the Command Code source keeps its own display name: ' + commandCodeText);
   assert.ok(commandCodeText.includes('5HW 0% WEK 50%'), 'Command Code windows read the share left: ' + commandCodeText);
   assert.ok(commandCodeText.includes('CRED 6.99$') || commandCodeText.includes('额度 6.99$'), 'Command Code credits read the amount left with the symbol last: ' + commandCodeText);
-  const commandCodeStats = flat(walk(commandCodeTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0]);
-  assert.ok(commandCodeStats.includes('Command Code') && commandCodeStats.includes('4.5M'), 'the statistics card names the Command Code source: ' + commandCodeStats);
+  const commandCodeRows = walk(commandCodeTree, (node) => hasClass(node, 'aup-provider-row')).map(flat);
+  assert.ok(commandCodeRows[0].includes('Command Code') && commandCodeRows[0].includes('4.5M'), 'the session card per-provider row names the Command Code source: ' + JSON.stringify(commandCodeRows));
 
-  // Mixed sessions split the platform statistics by source instead of one flat total.
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [{ date: '2026-11-07', tokens: 1_000_000, cost: 1.5, count: 10 }], currency: 'CNY', dimension: 'day', refreshing: false },
-    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 }, { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2_500_000, requests: 250 }], totalTokens: 3_500_000 },
-    { phase: 'ready', byProvider: { 'opencode-go': { phase: 'error', code: 'unsupported_provider' } } },
-    DEFAULT_SETTINGS,
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
+  // Mixed sessions split the session totals by provider instead of one flat total.
+  const mixedTree = render(
+    {
+      phase: 'ready',
+      items: [
+        { provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 },
+        { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2_500_000, requests: 250 }
+      ],
+      totalTokens: 3_500_000
+    },
+    { phase: 'ready', byProvider: { 'opencode-go': { phase: 'error', code: 'unsupported_provider' } } }
   );
-  const mixedTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
-  stateQueue.length = 0;
-  const sourceRows = walk(mixedTree, (node) => hasClass(node, 'aup-src')).map(flat);
-  assert.equal(sourceRows.length, 2, 'one row per source in a mixed session: ' + JSON.stringify(sourceRows));
-  assert.ok(sourceRows[0].includes('DeepSeek API'), 'platform row first');
-  assert.ok(sourceRows[1].includes('OpenCode Go'), 'third-party row second');
-  assert.ok(sourceRows[1].includes('2.5M'), 'third-party row shows its session tokens');
+  const sourceRows = walk(mixedTree, (node) => hasClass(node, 'aup-provider-row')).map(flat);
+  assert.equal(sourceRows.length, 2, 'one provider row per session source: ' + JSON.stringify(sourceRows));
+  assert.ok(sourceRows[0].includes('DeepSeek API') && sourceRows[0].includes('1M'), 'platform provider row first');
+  assert.ok(sourceRows[1].includes('OpenCode Go') && sourceRows[1].includes('2.5M'), 'third-party provider row second with its session tokens');
   // Long stat values shrink a step so they never overlap the neighbouring column.
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [{ date: '2026-11-07', tokens: 1_000_000, cost: 1.5, count: 10 }], currency: 'CNY', dimension: 'day', refreshing: false },
-    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 1149 }], totalTokens: 1_000_000 },
-    { phase: 'idle', items: [], error: undefined },
-    DEFAULT_SETTINGS,
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
-  );
   const wideProjection = (key) => (key === 'sessionStats' ? { turns: 106, steps: 11550, decodeTokens: 900000, decodeMs: 5000, llmMs: 9180000, toolMs: 2476000, ttftMs: 2300, ttftSteps: 1 } : undefined);
-  const wideTree = bodyRegistration.component({ t: first.t, useProjection: wideProjection, ...bodyProps });
-  stateQueue.length = 0;
+  const wideTree = render(
+    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 1149 }], totalTokens: 1_000_000 },
+    undefined,
+    DEFAULT_SETTINGS,
+    false,
+    wideProjection
+  );
   const wideValues = walk(wideTree, (node) => hasClass(node, 'aup-stat-value')).map((node) => ({ text: flat(node), shrunk: hasClass(node, 'aup-stat-value-s') || hasClass(node, 'aup-stat-value-xs') }));
   const turnsCell = wideValues.find((cell) => cell.text.includes('/'));
   assert.ok(turnsCell !== undefined, 'turns / steps cell renders');
   assert.equal(turnsCell.shrunk, true, 'long stat value shrinks instead of overlapping: ' + turnsCell.text);
 
-  // The default usage view is a compact trend: no per-period text rows, only bars.
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [{ date: '2026-11-07', tokens: 1_000_000, cost: 1.5, count: 10 }], currency: 'CNY', dimension: 'day', refreshing: false },
-    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 }], totalTokens: 1_000_000 },
-    { phase: 'idle', items: [], error: undefined },
-    { ...DEFAULT_SETTINGS, usageList: false },
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
-  );
-  const trendTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
-  stateQueue.length = 0;
-  assert.ok(walk(trendTree, (node) => hasClass(node, 'aup-src')).length === 1, 'one source row per session source');
-  assert.equal(walk(trendTree, (node) => /track|fill/.test(String(node.props && node.props.className))).length, 0, 'statistics rows carry numbers only, no share bar');
-  assert.equal(walk(trendTree, (node) => hasClass(node, 'aup-series-row') && !hasClass(node, 'aup-skeleton-row')).length, 0, 'no per-period rows unless the list is enabled');
-
   const mixedAccount = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   assert.equal(walk(mixedAccount, (node) => hasClass(node, 'aup-account-note')).length, 0, 'no bottom note line on the account card');
-  const mixedStats = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0];
-  assert.equal(walk(mixedStats, (node) => hasClass(node, 'aup-badge') && flat(node).includes('DeepSeek API')).length, 0, 'no misleading platform badge once the card holds several sources');
+  const mixedSession = walk(mixedTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-session'))[0];
+  assert.equal(walk(mixedSession, (node) => hasClass(node, 'aup-badge') && flat(node).includes('DeepSeek API')).length, 0, 'no misleading platform badge once the card holds several sources');
 
   // Mixed sessions also read the third-party balance and show it next to the DeepSeek wallet.
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [{ date: '2026-11-07', tokens: 1_000_000, cost: 1.5, count: 10 }], currency: 'CNY', dimension: 'day', refreshing: false },
-    { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 }, { provider: 'openrouter', model: 'deepseek-flash', tokens: 2_500_000, requests: 250 }], totalTokens: 3_500_000 },
-    { phase: 'ready', items: [{ provider: 'openrouter', kind: 'openrouter', currency: 'USD', remaining: 11.04, used: 8.96 }], error: undefined },
-    DEFAULT_SETTINGS,
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
+  const mixedWalletTree = render(
+    {
+      phase: 'ready',
+      items: [
+        { provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 },
+        { provider: 'openrouter', model: 'deepseek-flash', tokens: 2_500_000, requests: 250 }
+      ],
+      totalTokens: 3_500_000
+    },
+    { phase: 'ready', items: [{ provider: 'openrouter', kind: 'openrouter', currency: 'USD', remaining: 11.04, used: 8.96 }] }
   );
-  const mixedWalletTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
-  stateQueue.length = 0;
   const mixedWallet = walk(mixedWalletTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const mixedWalletText = flat(mixedWallet);
   assert.ok(mixedWalletText.includes('542.52'), 'DeepSeek wallet still renders in a mixed session');
@@ -1074,22 +980,18 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.equal(walk(mixedWallet, (node) => node.props && node.props.role === 'tab').length, 0, 'no tabs to switch');
   assert.equal(walk(mixedWallet, (node) => hasClass(node, 'aup-badge')).length, 0, 'no partial badge in the source table');
   // The account card opens on the provider the session is currently using.
-  stateQueue.push(
-    accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
-    { phase: 'ready', lastProvider: 'opencode-go', items: [
-      { provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 },
-      { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2_000_000, requests: 20 }
-    ], totalTokens: 3_000_000 },
-    { phase: 'ready', items: [{ provider: 'opencode-go', kind: 'opencode-plan', windows: [{ id: 'rolling', usedPercent: 1 }, { id: 'weekly', usedPercent: 2 }, { id: 'monthly', usedPercent: 3 }] }], error: undefined },
-    DEFAULT_SETTINGS,
-    'day',
-    { count: 0, force: false },
-    { count: 0, force: false },
-    false
+  const autoTree = render(
+    {
+      phase: 'ready',
+      lastProvider: 'opencode-go',
+      items: [
+        { provider: 'deepseek-account', model: 'deepseek-chat', tokens: 1_000_000, requests: 10 },
+        { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 2_000_000, requests: 20 }
+      ],
+      totalTokens: 3_000_000
+    },
+    { phase: 'ready', items: [{ provider: 'opencode-go', kind: 'opencode-plan', windows: [{ id: 'rolling', usedPercent: 1 }, { id: 'weekly', usedPercent: 2 }, { id: 'monthly', usedPercent: 3 }] }] }
   );
-  const autoTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
-  stateQueue.length = 0;
   const autoCard = walk(autoTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   // The account in use gets a quiet highlight (user 2026-11-08): exactly one row,
   // matched by the newest assistant message's provider, drawn as a background tint
@@ -1118,7 +1020,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(!source.includes('const code = providerBalances.error'), 'errors are never shared between providers');
   assert.ok(source.includes('data: { ...result, provider }'), 'requested source identity overrides provider aliases');
   assert.ok(source.includes("'account.status.unsupported': 'Unsupported'"), 'the English unsupported status stays one short word');
-  assert.ok(source.includes('const busy = offAccountAll !== true && platformBusy'), 'canceled platform requests cannot lock provider refresh');
+  assert.ok(!source.includes('platformBusy'), 'the deleted platform read can never lock the refresh button');
   assert.ok(!mixedWalletText.includes('部分'), 'no 部分 prefix anywhere');
 }
 
@@ -1133,14 +1035,13 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   };
   stateQueue.push(
     accountState,
-    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
     { phase: 'ready', items: [{ provider: 'deepseek-account', model: 'deepseek-chat', tokens: 5000, requests: 2 }], totalTokens: 5000 },
-    { phase: 'idle', items: [], error: undefined },
+    { phase: 'idle', byProvider: {} },
     DEFAULT_SETTINGS,
-    'day',
     { count: 0, force: false },
-    { count: 0, force: false },
-    false
+    false,
+    'en',
+    0
   );
   const tree = bodyRegistration.component({
     ...bodyProps,
@@ -1151,8 +1052,9 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   });
   stateQueue.length = 0;
   const titles = walk(tree, (n) => hasClass(n, 'aup-card-title')).map((n) => flat(n));
-  assert.deepEqual(titles, ['Session usage', 'Usage statistics', 'Account balance'], 'non-Chinese locales render English titles');
-  assert.ok(walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat).some((text) => text.startsWith('DeepSeek API-')), 'provider names localize to English');
+  assert.deepEqual(titles, ['Session usage', 'Account balance'], 'non-Chinese locales render English titles');
+  assert.ok(!flat(tree).includes('Usage statistics'), 'the English deleted-card title never comes back');
+  assert.ok(walk(tree, (node) => hasClass(node, 'aup-provider-name')).map(flat).includes('DeepSeek API'), 'provider names localize to English');
 }
 
 // --------------------------------------------------------------- settings --
@@ -1172,70 +1074,63 @@ function walkRoles(node, role, out = []) {
 }
 {
   // Closed by default: no dialog, gear exposes aria-expanded=false.
-  const closed = render({ phase: 'loading', days: [], refreshing: false, dimension: 'day' });
+  const closed = render();
   assert.equal(walkRoles(closed, 'dialog').length, 0, 'settings stay closed by default');
   const gear = walk(closed, (node) => node.type === 'button' && node.props['aria-haspopup'] === 'dialog')[0];
   assert.ok(gear, 'header exposes a settings trigger');
-  assert.equal(gear.props['aria-expanded'], false);
+  assert.equal(gear.props['aria-expanded'], false, 'settings button');
 
-  // Open: default range, visible cards, spend, auto refresh and a reset action.
-  const open = render(
-    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
-    () => undefined,
-    'day',
-    DEFAULT_SETTINGS,
-    true
-  );
+  // Open: two card switches, auto refresh, hide composer stats and a reset action
+  // (user 2026-11-09: the panel keeps four switches only).
+  const open = render(undefined, undefined, DEFAULT_SETTINGS, true);
   const dialog = walkRoles(open, 'dialog')[0];
   assert.ok(dialog, 'settings dialog opens');
-  assert.equal(walkRoles(dialog, 'switch').length, 7, 'three card switches + spend + auto refresh + hide composer stats + usage detail list');
-  const miniTabs = walk(dialog, (node) => node.props && String(node.props.className || '').includes('aup-dims-mini'))[0];
-  assert.equal(walk(miniTabs, (node) => node.type === 'button').length, 6, 'six range options including ALL');
+  const switches = walkRoles(dialog, 'switch');
+  assert.equal(switches.length, 4, 'settings keep exactly four switches');
+  assert.deepEqual(
+    switches.map((node) => node.props['aria-label']),
+    ['会话消耗', '账户余额', '隐藏底栏会话统计', '自动刷新'],
+    'the four switches are the two cards, the composer-stats toggle and auto refresh'
+  );
+  assert.equal(walk(dialog, (node) => node.props && String(node.props.className || '').includes('aup-dims-mini')).length, 0, 'no range picker remains in the settings');
   assert.ok(walk(dialog, (node) => node.props && node.props.className === 'aup-pop-link').length === 1, 'reset action present');
   assert.equal(flat(walk(dialog, (node) => node.props && node.props.className === 'aup-pop-title')[0]), '设置', 'settings title is short');
   assert.ok(walk(dialog, (node) => node.type === 'button' && node.props['aria-label'] === '关闭').length === 1, 'settings can be closed from the header');
-  assert.equal(flat(walk(dialog, (node) => node.props && node.props.className === 'aup-pop-hint')[0]), '用量 2 分钟 · 余额 5 分钟', 'footer hint is one short line');
+  const popHint = flat(walk(dialog, (node) => node.props && node.props.className === 'aup-pop-hint')[0]);
+  assert.ok(popHint.length > 0 && popHint.length <= 20, 'footer hint is one short line: ' + popHint);
 
-  // Hidden cards + spend off.
-  const hiddenSettings = { ...DEFAULT_SETTINGS, showCost: false, cards: { session: false, stats: true, account: false } };
-  const hidden = render(
-    { phase: 'ready', ok: true, source: 'platform', days: [{ date: new Date().toISOString().slice(0, 10), tokens: 1000, cost: 0.5, count: 1 }], currency: 'CNY', dimension: 'day', refreshing: false },
-    () => undefined,
-    'day',
-    hiddenSettings
-  );
+  // Hidden cards: each switch owns its own card.
+  const hiddenSettings = { ...DEFAULT_SETTINGS, cards: { session: false, account: true } };
+  const hidden = render(undefined, undefined, hiddenSettings);
   assert.equal(walk(hidden, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-session')).length, 0, 'session card hidden by settings');
-  assert.equal(walk(hidden, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-account')).length, 0, 'account card hidden by settings');
-  const hiddenTotals = walk(hidden, (node) => node.props && node.props.className === 'aup-stats-total').map(flat).filter((value) => value !== '');
-  assert.equal(hiddenTotals.length, 0, 'spend hidden when the option is off');
-  assert.equal(walk(hidden, (node) => node.props && node.props.className === 'aup-series-cost').map(flat).filter((value) => value !== '').length, 0, 'per-row spend hidden');
+  assert.equal(walk(hidden, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-account')).length, 1, 'the account switch leaves the balance card on');
+  assert.equal(walk(hidden, (node) => hasClass(node, 'aup-card-stats')).length, 0, 'no hidden statistics card leaves an empty shell behind');
 
   // All cards hidden -> empty hint, settings still reachable.
-  const empty = render({ phase: 'loading', days: [], refreshing: false, dimension: 'day' }, () => undefined, 'day', {
-    ...DEFAULT_SETTINGS,
-    cards: { session: false, stats: false, account: false }
-  });
+  const empty = render(undefined, undefined, { ...DEFAULT_SETTINGS, cards: { session: false, account: false } });
   assert.equal(walk(empty, (node) => node.props && node.props.className === 'aup-empty').length, 1, 'empty hint when every card is hidden');
   assert.ok(walk(empty, (node) => node.type === 'button' && node.props['aria-haspopup'] === 'dialog').length === 1, 'settings reachable while empty');
 
-  // Persisted preferences are read on mount (initializers, no queued settings value).
+  // Persisted preferences are read on mount (initializers, no queued settings value);
+  // keys from the deleted statistics card are silently ignored.
   storage.set('dsh.account-usage.settings.v1', JSON.stringify({
     dimension: 'week',
     autoRefresh: false,
     showCost: false,
-    cards: { session: false, stats: true, account: true }
+    usageList: true,
+    cards: { session: false, account: true, stats: true }
   }));
-  stateQueue.push(accountState, {
-    phase: 'loading',
-    days: [],
-    refreshing: false,
-    dimension: 'week'
-  });
+  stateQueue.push(
+    accountState,
+    { phase: 'idle', items: [], totalTokens: 0 },
+    { phase: 'idle', byProvider: {} }
+  );
   const restored = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
   stateQueue.length = 0;
   assert.equal(walk(restored, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-session')).length, 0, 'stored card visibility applied');
-  const weekTab = walk(restored, (node) => node.type === 'button' && node.props['aria-selected'] === true);
-  assert.ok(weekTab.length === 1 && flat(weekTab[0]).includes('周'), 'stored default range is applied');
+  assert.equal(walk(restored, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-account')).length, 1, 'the stored account switch is applied');
+  assert.equal(walk(restored, (node) => hasClass(node, 'aup-dim')).length, 0, 'a stored range is ignored: the range picker is gone');
+  assert.equal(walk(restored, (node) => hasClass(node, 'aup-series-row')).length, 0, 'a stored detail-list flag is ignored');
   storage.delete('dsh.account-usage.settings.v1');
 }
 

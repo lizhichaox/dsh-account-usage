@@ -3,7 +3,7 @@
  * Real-browser layout check (no dependencies, uses the installed Chrome).
  *
  * The panel's promises are geometric — cards never overlap text, the pane has no
- * dead band, a dimension switch never moves anything — and only a real layout
+ * dead band, every metric row lines up — and only a real layout
  * engine can confirm them. This script renders the panel's markup with the
  * plugin's actual stylesheet at several pane heights and fails when:
  *   - any two text leaves overlap,
@@ -76,48 +76,47 @@ html,body{margin:0;padding:0;background:#fff;font-size:13px}
 
 // --------------------------------------------------------------- fixtures --
 // Real panel state, so the geometry measured here is production geometry: three
-// providers, four period rows, the provider plan card and a full session card.
+// providers, a balance row per provider, a per-provider session block, four model
+// rows and a full session card. The statistics card is gone (1.0.16), so there is
+// no period data and no dimension axis left to fixture.
 const DAY_MS = 24 * 60 * 60 * 1000;
-function isoDay(offset) {
-  const date = new Date();
-  date.setDate(date.getDate() - offset);
-  return date.toISOString().slice(0, 10);
-}
-const USAGE_DAYS = [0, 1, 2, 3].map((offset, index) => ({
-  date: isoDay(offset),
-  tokens: [46_520_000, 287_000_000, 209_000_000, 543_000_000][index],
-  cost: [4.63, 10.92, 7.72, 23.28][index],
-  count: [120, 300, 260, 840][index]
-}));
+// One provider runs two models, so the per-model block renders (the worst case for
+// content height); the other two run one model each, whose model row would only
+// repeat the provider total and is therefore not drawn (1.0.16).
 const SESSION_MODELS = {
   phase: 'ready',
   totalTokens: 460_050_000,
   lastProvider: 'opencode-go',
   items: [
     { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 251_000_000, requests: 800 },
-    { provider: 'openrouter', model: 'deepseek-flash-latest', tokens: 180_000_000, requests: 420 },
+    { provider: 'openrouter', model: 'deepseek-flash-latest', tokens: 172_000_000, requests: 400 },
+    { provider: 'openrouter', model: 'claude-sonnet-4.5', tokens: 8_000_000, requests: 20 },
     { provider: 'deepseek-account', model: 'deepseek-flash', tokens: 29_050_000, requests: 120 }
   ]
 };
-const PROVIDER_BALANCES = {
-  phase: 'ready',
-  error: undefined,
-  items: [
-    {
-      provider: 'opencode-go',
-      kind: 'opencode-plan',
-      currency: 'USD',
-      fetchedAt: Date.now(),
-      windows: [
-        { id: 'rolling', usedPercent: 16, resetsAt: Date.now() + 3600_000 },
-        { id: 'weekly', usedPercent: 12, resetsAt: Date.now() + DAY_MS },
-        { id: 'monthly', usedPercent: 6, resetsAt: Date.now() + DAY_MS }
-      ]
-    },
-    { provider: 'openrouter', kind: 'credits', currency: 'USD', remaining: 1.5, used: 2, total: 3.5, fetchedAt: Date.now() },
-    { provider: 'deepseek', kind: 'balance', currency: 'CNY', remaining: 12.5, fetchedAt: Date.now() }
+const OPENCODE_PLAN = {
+  provider: 'opencode-go',
+  kind: 'opencode-plan',
+  currency: 'USD',
+  fetchedAt: Date.now(),
+  windows: [
+    { id: 'rolling', usedPercent: 16, resetsAt: Date.now() + 3600_000 },
+    { id: 'weekly', usedPercent: 12, resetsAt: Date.now() + DAY_MS },
+    { id: 'monthly', usedPercent: 6, resetsAt: Date.now() + DAY_MS }
   ]
 };
+const OPENROUTER_CREDITS = { provider: 'openrouter', kind: 'credits', currency: 'USD', remaining: 1.5, used: 2, total: 3.5, fetchedAt: Date.now() };
+// The client keeps one state per provider (`{phase, byProvider}`), exactly like the
+// live body: an entry is `{phase:'ready', data}` or `{phase:'error', code}`.
+function balancesOf(entries) {
+  const byProvider = {};
+  for (const entry of entries) {
+    if (entry.phase === 'error') byProvider[entry.provider] = { phase: 'error', code: entry.code };
+    else byProvider[entry.provider] = { phase: 'ready', data: entry };
+  }
+  return { phase: 'ready', byProvider };
+}
+const PROVIDER_BALANCES = balancesOf([OPENCODE_PLAN, OPENROUTER_CREDITS]);
 // Real projection shapes: without a context window the panel silently skipped the
 // context block and the legend, so the measured content height was ~40px short of
 // production and every ladder threshold was calibrated too low.
@@ -136,11 +135,16 @@ const PROJECTION = (key) => {
   }
 };
 
-function caseOf(dimension) {
+// Mirrors the client rule: a model row is only drawn for a provider that ran more
+// than one model (1.0.16 - a single-model provider's row would repeat its total).
+function detailModelCount(items) {
+  const counts = {};
+  for (const item of items) counts[item.provider] = (counts[item.provider] || 0) + 1;
+  return items.filter((item) => counts[item.provider] > 1).length;
+}
+function caseOf() {
   return {
-    id: dimension,
-    dimension,
-    usageState: { phase: 'ready', ok: true, source: 'platform', days: USAGE_DAYS, currency: 'CNY', dimension, refreshing: false },
+    id: 'session',
     projection: PROJECTION,
     sessionModels: SESSION_MODELS,
     providerBalances: PROVIDER_BALANCES
@@ -224,29 +228,14 @@ const columnEdges = (groupSelector, probeSelector, edge) => {
   return [...edges].sort((a, b) => a - b);
 };
 out.align = {
-  srcLabelLeft: columnEdges('.aup-srcs', '.aup-src-label', 'left'),
-  srcSideRight: columnEdges('.aup-srcs', '.aup-src-side', 'right'),
-  seriesLabelLeft: columnEdges('.aup-card-stats .aup-series', '.aup-series-label', 'left'),
   acctLabelLeft: columnEdges('.aup-acct-srcs', '.aup-acct-src-label, .aup-acct-label', 'left'),
-  acctValueRight: columnEdges('.aup-acct-srcs', '.aup-acct-src-value', 'right')
+  acctValueRight: columnEdges('.aup-acct-srcs', '.aup-acct-src-value', 'right'),
+  // The per-provider block is one shared parent grid: every name starts on the same
+  // line and every figure ends on the same line (1.0.16, session card).
+  provLabelLeft: columnEdges('.aup-providers', '.aup-provider-name', 'left'),
+  provTokensRight: columnEdges('.aup-providers', '.aup-provider-tokens', 'right')
 };
-// One strict table: the provider rows and the period rows share all three columns,
-// so every label starts on one line and every figure ends on one.
-const edgesOf = (selector, edge) => {
-  const edges = new Set();
-  for (const el of document.querySelectorAll('.aup-card-stats ' + selector)) {
-    const rect = el.getBoundingClientRect();
-    if (rect.width < 1) continue;
-    edges.add(Math.round(edge === 'right' ? rect.right : rect.left));
-  }
-  return [...edges].sort((a, b) => a - b);
-};
-out.table = {
-  labelLeft: edgesOf('.aup-src-label, .aup-series-label', 'left'),
-  tokensRight: edgesOf('.aup-src-tokens, .aup-series-tokens', 'right'),
-  amountRight: edgesOf('.aup-src-side, .aup-series-cost', 'right')
-};
-// The two card footers must share one left / centre / right structure.
+// The session card's footer keeps its left / centre / right structure.
 const footerOf = (selector) => {
   const row = document.querySelector(selector);
   if (row === null) return null;
@@ -257,7 +246,7 @@ const footerOf = (selector) => {
   });
   return { left: box.left, right: box.right, center: (box.left + box.right) / 2, cells };
 };
-out.footers = { legend: footerOf('.aup-context-legend'), summary: footerOf('.aup-stats-summary') };
+out.footers = { legend: footerOf('.aup-context-legend') };
 const centring = (groupSelector, probeSelector) => {
   let worst = 0;
   for (const row of document.querySelectorAll(groupSelector + ' > *')) {
@@ -271,27 +260,24 @@ const centring = (groupSelector, probeSelector) => {
   return Math.round(worst * 10) / 10;
 };
 out.centring = {
-  srcLabel: centring('.aup-srcs', '.aup-src-label'),
-  seriesTokens: centring('.aup-card-stats .aup-series', '.aup-series-tokens'),
-  acctValue: centring('.aup-acct-srcs', '.aup-acct-src-value')
+  acctValue: centring('.aup-acct-srcs', '.aup-acct-src-value'),
+  provTokens: centring('.aup-providers', '.aup-provider-tokens')
 };
-const partHeights = {};
-for (const [name, selector] of Object.entries({ srcs: '.aup-srcs', series: '.aup-card-stats .aup-series', summary: '.aup-stats-summary' })) {
-  const el = document.querySelector(selector);
-  partHeights[name] = el === null ? 0 : Math.round(el.getBoundingClientRect().height * 10) / 10;
-}
-out.parts = partHeights;
-const summaryEl = document.querySelector('.aup-stats-summary');
-out.summaryCells = summaryEl === null ? [] : [...summaryEl.children].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
-out.sourceRows = [...document.querySelectorAll('.aup-card-stats .aup-src')].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
-out.seriesRows = [...document.querySelectorAll('.aup-card-stats .aup-series-row')].map((el) => Math.round(el.getBoundingClientRect().height * 10) / 10);
-for (const [name, selector] of [['legend', '.aup-context-legend'], ['summary', '.aup-stats-summary']]) {
+for (const [name, selector] of [['legend', '.aup-context-legend']]) {
   const row = document.querySelector(selector);
   if (row === null) continue;
   const cells = [...row.children];
   out[name + 'Lines'] = new Set(cells.map((el) => Math.round(el.getBoundingClientRect().top))).size;
   out[name + 'Overflow'] = row.scrollWidth > row.clientWidth + 1;
 }
+// Per-provider rows: one line each, and the block order inside the session card is
+// statistics -> per provider -> per model (1.0.16).
+out.providerRows = [...document.querySelectorAll('.aup-providers .aup-provider-row')].map((el) => ({
+  text: el.textContent.slice(0, 40),
+  height: Math.round(el.getBoundingClientRect().height)
+}));
+out.sessionOrder = [...document.querySelectorAll('.aup-card-session .aup-stat-list, .aup-card-session .aup-providers, .aup-card-session .aup-models')]
+  .map((el) => (el.className.match(/aup-(stat-list|providers|models)/) || [])[1] || '');
 out.modelRows = [...document.querySelectorAll('.aup-card-session .aup-model-row')].map((row) => {
   const name = row.querySelector('.aup-model-name');
   const tokens = row.querySelector('.aup-model-tokens');
@@ -334,8 +320,6 @@ document.getElementById('result').textContent = JSON.stringify(out);
 /** One measurement page: real panel markup inside a pane of the given size. */
 function page(css, height, testCase, extraCss = '', width = 420) {
   const markup = panelHtml({
-    dimension: testCase.dimension,
-    usageState: testCase.usageState,
     projection: testCase.projection,
     sessionModels: testCase.sessionModels,
     providerBalances: testCase.providerBalances,
@@ -357,6 +341,13 @@ function measure(css, dir, height, testCase, extraCss = '', width = 420) {
   return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
 }
 
+const EXTRA_BALANCES = [
+  { provider: 'openrouter', phase: 'error', code: 'timeout' },
+  { provider: 'openai', phase: 'error', code: 'unsupported_provider' },
+  { provider: 'anthropic', phase: 'error', code: 'unsupported_provider' },
+  { provider: 'google', phase: 'error', code: 'unsupported_provider' },
+  { provider: 'xai', phase: 'error', code: 'no_credential' }
+];
 const EXTRA_SOURCES = [
   { provider: 'openai', model: 'gpt', tokens: 1260000, requests: 13 },
   { provider: 'anthropic', model: 'claude', tokens: 1890000, requests: 9 },
@@ -364,18 +355,45 @@ const EXTRA_SOURCES = [
   { provider: 'xai', model: 'grok', tokens: 120000, requests: 2 }
 ];
 function sourcesCase(count, locale) {
-  const fixture = caseOf('day');
+  const fixture = caseOf();
   fixture.id = 'sources-' + count + '-' + locale;
   fixture.locale = locale;
   fixture.sessionModels = { ...SESSION_MODELS, lastProvider: 'opencode-go', items: [...SESSION_MODELS.items, ...EXTRA_SOURCES.slice(0, count - 3)] };
-  fixture.providerBalances = { phase: 'ready', byProvider: {
-    'opencode-go': { phase: 'ready', data: PROVIDER_BALANCES.items[0] },
-    openrouter: { phase: 'error', code: 'timeout' },
-    openai: { phase: 'error', code: 'unsupported_provider' },
-    anthropic: { phase: 'error', code: 'unsupported_provider' },
-    google: { phase: 'error', code: 'unsupported_provider' },
-    xai: { phase: 'error', code: 'no_credential' }
-  } };
+  fixture.providerBalances = balancesOf([
+    OPENCODE_PLAN,
+    ...EXTRA_BALANCES
+  ]);
+  return fixture;
+}
+// Every provider ran exactly one model: no per-model row at all, because each such
+// row would only repeat its provider's total (1.0.16).
+function singleModelCase() {
+  const fixture = caseOf();
+  fixture.id = 'single-model';
+  fixture.sessionModels = {
+    phase: 'ready',
+    totalTokens: 460_050_000,
+    lastProvider: 'opencode-go',
+    items: [
+      { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 251_000_000, requests: 800 },
+      { provider: 'openrouter', model: 'deepseek-flash-latest', tokens: 180_000_000, requests: 420 },
+      { provider: 'deepseek-account', model: 'deepseek-flash', tokens: 29_050_000, requests: 120 }
+    ]
+  };
+  return fixture;
+}
+// A DeepSeek-only session: one wallet card with no provider rows, the layout the
+// account-only path draws (kept for the shot tool and the space-allocation checks).
+function accountOnlyCase() {
+  const fixture = caseOf();
+  fixture.id = 'account-only';
+  fixture.sessionModels = {
+    phase: 'ready',
+    totalTokens: 460_050_000,
+    lastProvider: 'deepseek-account',
+    items: [{ provider: 'deepseek-account', model: 'deepseek-flash', tokens: 29_050_000, requests: 120 }]
+  };
+  fixture.providerBalances = balancesOf([]);
   return fixture;
 }
 // Worst case for the plan row: three 4-character percentages (`100%`) at the
@@ -383,10 +401,9 @@ function sourcesCase(count, locale) {
 function wrapCase(locale) {
   const fixture = sourcesCase(3, locale);
   fixture.id = 'wrap-' + locale;
-  const plan = PROVIDER_BALANCES.items[0];
   fixture.providerBalances.byProvider['opencode-go'] = {
     phase: 'ready',
-    data: { ...plan, windows: plan.windows.map((window) => ({ ...window, usedPercent: 0 })) }
+    data: { ...OPENCODE_PLAN, windows: OPENCODE_PLAN.windows.map((window) => ({ ...window, usedPercent: 0 })) }
   };
   return fixture;
 }
@@ -395,11 +412,10 @@ function wrapCase(locale) {
 function mixedPlanCase(locale) {
   const fixture = sourcesCase(3, locale);
   fixture.id = 'mixed-plan-' + locale;
-  const plan = PROVIDER_BALANCES.items[0];
   const used = [0, 0, 16];
   fixture.providerBalances.byProvider['opencode-go'] = {
     phase: 'ready',
-    data: { ...plan, windows: plan.windows.map((window, index) => ({ ...window, usedPercent: used[index] })) }
+    data: { ...OPENCODE_PLAN, windows: OPENCODE_PLAN.windows.map((window, index) => ({ ...window, usedPercent: used[index] })) }
   };
   return fixture;
 }
@@ -414,15 +430,14 @@ function commandCodeCase(locale) {
     ...SESSION_MODELS.items,
     { provider: 'commandcode', model: 'deepseek/deepseek-v4.1-flash-fast', tokens: 98_000, requests: 12 }
   ] };
-  fixture.providerBalances = { phase: 'ready', error: undefined, items: [
+  fixture.providerBalances = balancesOf([
     { provider: 'opencode-go', kind: 'opencode-plan', currency: 'USD', fetchedAt: Date.now(),
       windows: [{ id: 'rolling', usedPercent: 0 }, { id: 'weekly', usedPercent: 0 }, { id: 'monthly', usedPercent: 0 }] },
     { provider: 'openrouter', kind: 'credits', currency: 'USD', remaining: 1.5, fetchedAt: Date.now() },
-    { provider: 'deepseek', kind: 'balance', currency: 'CNY', remaining: 12.5, fetchedAt: Date.now() },
     { provider: 'commandcode', kind: 'commandcode-plan', currency: 'USD', fetchedAt: Date.now(),
       windows: [{ id: 'fiveHour', usedPercent: 0 }, { id: 'weekly', usedPercent: 0 }],
       credits: { monthly: 999.99, purchased: 0, free: 0 } }
-  ] };
+  ]);
   return fixture;
 }
 
@@ -431,24 +446,30 @@ function commandCodeCase(locale) {
 function commandCodeTypicalCase(locale) {
   const fixture = commandCodeCase(locale);
   fixture.id = 'commandcode-typical-' + locale;
-  const entry = fixture.providerBalances.items.find((item) => item.provider === 'commandcode');
+  const entry = fixture.providerBalances.byProvider.commandcode.data;
   entry.windows = entry.windows.map((window, index) => ({ ...window, usedPercent: [0, 50.04][index] }));
   entry.credits = { monthly: 6.9983883725, purchased: 0, free: 0 };
   return fixture;
 }
 
-// `--shot <paneHeight> [dimension] [width]` writes one ready-to-look-at page so a
+// `--shot <paneHeight> [case] [width]` writes one ready-to-look-at page so a
 // human (or an agent with an image viewer) can see the real rendering.
 if (process.argv.includes('--shot')) {
   const index = process.argv.indexOf('--shot');
   const shotHeight = Number(process.argv[index + 1]) || 1080;
-  const shotArg = process.argv[index + 2] || 'day';
+  const shotArg = process.argv[index + 2] || 'session';
   // `--shot 1000 sources-5-en 340` renders a mixed five-source English session.
   const shotCase = shotArg.startsWith('sources-')
     ? sourcesCase(Number(shotArg.split('-')[1]), shotArg.split('-')[2] || 'zh')
     : shotArg.startsWith('mixed-plan-')
       ? mixedPlanCase(shotArg.split('-').pop())
-      : caseOf(shotArg);
+      : shotArg.startsWith('commandcode')
+        ? commandCodeCase(shotArg.split('-').pop())
+        : shotArg === 'account'
+          ? accountOnlyCase()
+          : shotArg === 'single'
+            ? singleModelCase()
+            : caseOf();
   const shotWidth = Number(process.argv[index + 3]) || 420;
   const file = join(tmpdir(), 'aup-shot-' + shotHeight + '-' + shotCase.id + '-' + shotWidth + '.html');
   writeFileSync(file, page(css, shotHeight, shotCase, '', shotWidth));
@@ -463,7 +484,8 @@ if (process.argv.includes('--tiers')) {
   const STEP = [
     ['− token bar', '.aup-compose'],
     ['− model rows', '.aup-card-session .aup-models,.aup-card-session .aup-sep-models'],
-    ['− stat table', '.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats'],
+    ['− stat rows', '.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats'],
+    ['− provider rows', '.aup-card-session .aup-providers,.aup-card-session .aup-sep-providers'],
     ['− context block', '.aup-context,.aup-card-session .aup-sep-context'],
     ['− token 2×2', '.aup-card-session .aup-session-grid']
   ];
@@ -477,10 +499,10 @@ if (process.argv.includes('--tiers')) {
   const tierDir = mkdtempSync(join(tmpdir(), 'aup-tiers-'));
   console.log('tier'.padEnd(20) + 'content   cards');
   for (const [label, extra] of TIERS) {
-    // Keep the pane tall so no ladder step fires, and stop the last card from
-    // stretching, then add the card heights up: that is the natural content height.
-    const extraCss = extra + '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}';
-    const measured = measure(css, tierDir, 1600, tierSources > 3 ? sourcesCase(tierSources, 'zh') : caseOf('day'), extraCss);
+    // Keep the pane tall so no ladder step fires, then freeze both cards at their
+    // natural height and add those heights up: that is the content height.
+    const extraCss = extra + '.aup-cards>.aup-card{flex:0 0 auto}';
+    const measured = measure(css, tierDir, 1600, tierSources > 3 ? sourcesCase(tierSources, 'zh') : caseOf(), extraCss);
     if (measured === undefined) {
       console.log(label.padEnd(20) + 'no measurement');
       continue;
@@ -498,15 +520,15 @@ if (process.argv.includes('--debug-narrow')) {
   const width = Number(process.argv[process.argv.indexOf('--debug-narrow') + 1]) || 299;
   for (const locale of ['zh', 'en']) {
     for (const [name, fixture] of [['typical', sourcesCase(3, locale)], ['worst', wrapCase(locale)]]) {
-      const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-narrow-')), 1400, fixture, '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', width);
-      console.log(locale, width, name.padEnd(8), JSON.stringify(r.acctPairs), 'legend', r.legendLines, r.legendOverflow, 'summary', r.summaryLines, r.summaryOverflow);
+      const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-narrow-')), 1400, fixture, '.aup-cards>.aup-card{flex:0 0 auto}', width);
+      console.log(locale, width, name.padEnd(8), JSON.stringify(r.acctPairs), 'legend', r.legendLines, r.legendOverflow);
     }
   }
   process.exit(0);
 }
 if (process.argv.includes('--debug-wrap')) {
   for (const locale of ['zh', 'en']) {
-    const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-wrap-')), 1600, wrapCase(locale), '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', 340);
+    const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-wrap-')), 1600, wrapCase(locale), '.aup-cards>.aup-card{flex:0 0 auto}', 340);
     console.log(locale, 340, JSON.stringify(r.acctPairs));
   }
   process.exit(0);
@@ -520,10 +542,10 @@ if (process.argv.includes('--debug-commandcode')) {
   for (const locale of ['zh', 'en']) for (const w of widths) for (const [name, percents, credit] of variants) {
     const fixture = commandCodeCase(locale);
     fixture.id = 'commandcode-' + name + '-' + locale;
-    const entry = fixture.providerBalances.items.find((item) => item.provider === 'commandcode');
+    const entry = fixture.providerBalances.byProvider.commandcode.data;
     entry.windows = entry.windows.map((window, index) => ({ ...window, usedPercent: percents[index] }));
     entry.credits = { monthly: credit, purchased: 0, free: 0 };
-    const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-cc-')), 1600, fixture, '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', w);
+    const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-cc-')), 1600, fixture, '.aup-cards>.aup-card{flex:0 0 auto}', w);
     const row = (r?.acctPairs ?? []).find((pair) => pair.label === 'Command Code');
     console.log(locale, w, name.padEnd(8), 'lines=' + row?.lines, 'nat=' + row?.natural, 'avail=' + row?.available);
   }
@@ -538,23 +560,24 @@ if (process.argv.includes('--debug-model')) {
   process.exit(0);
 }
 if (process.argv.includes('--debug-sources')) {
-  for (const [loc, w, n] of [['en', 340, 5], ['zh', 340, 5]]) { const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-debug-')), 1600, sourcesCase(n, loc), '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', w); console.log(loc, w, n, r.cards.map((c) => c.height).join('/'), JSON.stringify(r.acctRows), JSON.stringify(r.sourceRows)); }
+  for (const [loc, w, n] of [['en', 340, 5], ['zh', 340, 5]]) { const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-debug-')), 1600, sourcesCase(n, loc), '.aup-cards>.aup-card{flex:0 0 auto}', w); console.log(loc, w, n, r.cards.map((c) => c.height).join('/'), JSON.stringify(r.acctRows), JSON.stringify(r.providerRows)); }
   process.exit(0);
 }
 const providerFailures = [];
 let providerChecks = 0;
 const providerDir = mkdtempSync(join(tmpdir(), 'aup-provider-rows-'));
 for (const locale of ['zh', 'en']) for (const width of [340, 420]) for (const height of [700, 900, 1080]) {
-  // Seven sources need at least ~802px with every optional block shed
-  // (469px base + 4 × 69px extra + 57px chrome), so 700px is checked up to five.
+  // Seven sources need every optional block shed plus the recorded per-source
+  // budget (see the `--tiers 7` row in AGENTS.md §7.1), so 700px is checked up to five.
   for (const count of height < 802 ? [3, 4, 5] : [3, 4, 5, 7]) {
     const fixture = sourcesCase(count, locale);
     const result = measure(css, providerDir, height, fixture, '', width);
     const label = `${locale} ${width}×${height} ${count} sources`;
-    if (!result || result.cards.length !== 3) { providerFailures.push(label + ': missing cards'); continue; }
-    // The session card never truncates: every model row is rendered, so the rows
-    // are either all visible or all shed as one block - never a "N more models" cut.
-    const expectedModels = fixture.sessionModels.items.length;
+    if (!result || result.cards.length !== 2) { providerFailures.push(label + ': expected two cards, got ' + (result ? result.cards.length : 'none')); continue; }
+    // The session card never truncates: every model row it draws is rendered, so the
+    // rows are either all visible or all shed as one block - never a "N more models"
+    // cut. Only multi-model providers get a detail row (see detailModelCount).
+    const expectedModels = detailModelCount(fixture.sessionModels.items);
     const visibleModels = (result.modelRows ?? []).filter((row) => row.height > 0).length;
     if (visibleModels !== 0 && visibleModels !== expectedModels) {
       providerFailures.push(`${label}: model rows truncated -> ${visibleModels}/${expectedModels}`);
@@ -565,8 +588,16 @@ for (const locale of ['zh', 'en']) for (const width of [340, 420]) for (const he
     if (result.overlaps.length || result.cardOverflow.length || result.horizontal.length || result.scrolls || result.deadBand > 2) {
       providerFailures.push(label + ': geometry invalid ' + JSON.stringify({ overlaps: result.overlaps, cardOverflow: result.cardOverflow, horizontal: result.horizontal, scroll: result.scrollInfo, deadBand: result.deadBand }));
     }
-    for (const name of ['acctLabelLeft', 'acctValueRight']) {
+    for (const name of ['acctLabelLeft', 'acctValueRight', 'provLabelLeft', 'provTokensRight']) {
       if ((result.align?.[name] ?? []).length > 1) providerFailures.push(`${label}: ${name} not aligned -> ${result.align[name].join(' / ')}`);
+    }
+    // One line per provider, and the block sits between the statistics rows and the
+    // per-model rows (1.0.16).
+    for (const row of result.providerRows ?? []) {
+      if (row.height > 20) providerFailures.push(`${label}: provider row wrapped -> ${row.text}`);
+    }
+    if (result.sessionOrder && result.sessionOrder.join(',') !== 'stat-list,providers,models') {
+      providerFailures.push(`${label}: session block order is ${result.sessionOrder.join(',')}`);
     }
     // A balance row never wraps or clips its figures, whatever the source count.
     for (const pair of result.acctPairs ?? []) {
@@ -583,7 +614,7 @@ for (const locale of ['zh', 'en']) for (const width of [340, 420]) for (const he
 for (const locale of ['zh', 'en']) for (const width of [330, 300]) {
   const result = measure(css, providerDir, 900, sourcesCase(3, locale), '', width);
   const label = `${locale} ${width} narrow`;
-  if (!result || result.cards.length !== 3) { providerFailures.push(label + ': missing cards'); continue; }
+  if (!result || result.cards.length !== 2) { providerFailures.push(label + ': expected two cards, got ' + (result ? result.cards.length : 'none')); continue; }
   if (result.overlaps.length || result.cardOverflow.length || result.horizontal.length || result.scrolls || result.deadBand > 2) {
     providerFailures.push(label + ': geometry invalid ' + JSON.stringify({ overlaps: result.overlaps, cardOverflow: result.cardOverflow, horizontal: result.horizontal, scroll: result.scrollInfo, deadBand: result.deadBand }));
   }
@@ -593,8 +624,6 @@ for (const locale of ['zh', 'en']) for (const width of [330, 300]) {
   }
   if (result.legendLines > 1) providerFailures.push(`${label}: context legend wrapped`);
   if (result.legendOverflow) providerFailures.push(`${label}: context legend overflows`);
-  if (result.summaryLines > 1) providerFailures.push(`${label}: stats summary wrapped`);
-  if (result.summaryOverflow) providerFailures.push(`${label}: stats summary overflows`);
   for (const row of result.modelRows ?? []) {
     if (row.height > 20) providerFailures.push(`${label}: model row wrapped -> ${row.text}`);
   }
@@ -613,7 +642,6 @@ for (const locale of ['zh', 'en']) for (const width of [320, 310, 300]) {
     }
     if (result.legendLines > 1) providerFailures.push(`${label}: context legend wrapped`);
     if (result.legendOverflow) providerFailures.push(`${label}: context legend overflows`);
-    if (result.summaryLines > 1) providerFailures.push(`${label}: stats summary wrapped`);
     for (const row of result.modelRows ?? []) {
       if (row.height > 20) providerFailures.push(`${label}: model row wrapped -> ${row.text}`);
     }
@@ -630,7 +658,7 @@ for (const locale of ['zh', 'en']) for (const width of [320, 310, 300]) {
 // and only an unusually wide credit amount may take a second line - that is the recorded
 // physical limit for this longer Provider name, below the comfort width.
 for (const locale of ['zh', 'en']) for (const [width, fixture] of [[420, commandCodeCase], [340, commandCodeCase], [320, commandCodeCase], [310, commandCodeTypicalCase], [300, commandCodeTypicalCase]]) {
-  const result = measure(css, providerDir, 1600, fixture(locale), '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', width);
+  const result = measure(css, providerDir, 1600, fixture(locale), '.aup-cards>.aup-card{flex:0 0 auto}', width);
   const label = `${locale} ${width} command code`;
   if (!result) { providerFailures.push(label + ': no measurement'); continue; }
   const row = (result.acctPairs ?? []).find((pair) => pair.label === 'Command Code');
@@ -663,13 +691,15 @@ if (process.argv.includes('--providers')) {
   console.log('provider row geometry passed'); process.exit(0);
 }
 const SWEEPS = [
-  // 820/821 straddle the first shedding step (hide the token bar at <= 820);
-  // 811/751/667/608 sit on the later steps.
-  { width: 420, heights: [700, 751, 811, 820, 821, 1000, 1080, 1200] },
-  // The documented minimum pane: six range tabs and both tables must still fit.
-  { width: 340, heights: [900, 1080] }
+  // 584/585 straddle the first shedding step (hide the decorative token bar at
+  // <= 584); 575/532/448/384/325 sit on the later steps, and 700/900/1080/1200 cover
+  // the ordinary panes where the whole panel is visible.
+  { width: 420, heights: [325, 384, 448, 532, 575, 584, 585, 700, 900, 1080, 1200] },
+  // The documented minimum width at the first ladder step and at full content.
+  { width: 340, heights: [584, 900, 1080] }
 ];
-const CASES = [caseOf('day'), caseOf('month'), caseOf('all')];
+// The panel has one state now: no range tabs, so no dimension axis to sweep.
+const CASES = [caseOf()];
 
 const dir = mkdtempSync(join(tmpdir(), 'aup-layout-'));
 const failures = [...providerFailures];
@@ -709,9 +739,6 @@ for (const sweep of SWEEPS) {
         failures.push(`${label}: the ${name} footer middle cell is not centred (off by ${(cells[1].center - footer.center).toFixed(1)}px)`);
       }
     }
-    for (const [name, edges] of Object.entries(result.table ?? {})) {
-      if (edges.length > 1) failures.push(`${label}: the usage table column ${name} is not shared -> ${edges.join(' / ')}`);
-    }
     for (const [name, offset] of Object.entries(result.centring ?? {})) {
         if (offset > 1) failures.push(`${label}: ${name} is not vertically centred -> off by ${offset}px`);
       }
@@ -719,48 +746,20 @@ for (const sweep of SWEEPS) {
   }
 }
 
-// Switching a range must not move anything while the window stays put: every range,
-// its loading frame and its empty variant have to measure identically.
-const stabilityDir = mkdtempSync(join(tmpdir(), 'aup-stability-'));
-const STABLE_PANE = 1080;
-const base = [];
-for (const dimension of ['day', 'week', 'month', 'quarter', 'year', 'all']) {
-  const readyCase = caseOf(dimension);
-  const variants = {
-    ready: readyCase,
-    loading: { ...readyCase, usageState: { phase: 'loading', dimension } },
-    empty: { ...readyCase, usageState: { ...readyCase.usageState, days: [] } }
-  };
-  for (const [name, variant] of Object.entries(variants)) {
-    const result = measure(css, stabilityDir, STABLE_PANE, variant);
-    if (result === undefined) {
-      failures.push(`range stability: ${dimension}/${name} produced no result`);
-      continue;
-    }
-    const heights = result.cards.map((card) => Math.round(card.height));
-    if (base.length === 0) {
-      base.push(...heights);
-      continue;
-    }
-    heights.forEach((height, index) => {
-      if (Math.abs(height - base[index]) > 1) {
-        failures.push(`range stability: ${dimension}/${name} card ${String(index + 1)} is ${height}px, but ${base[index]}px for the others`);
-      }
-    });
-  }
-}
-console.log('range stability: every range + loading + empty frame measures ' + base.join('/') + 'px at pane ' + STABLE_PANE + 'px');
-
-// Space allocation: the leftover height must go to the information-dense card, so
-// the session card grows with the pane while the two-row balance card stays put.
+// Space allocation (user 2026-11-09: "底部太挤了 上面太空了 两个卡片的高度没安排好"):
+// the leftover height is shared by BOTH cards in proportion to how much information
+// they carry - the dense session card takes the larger share, the balance card takes
+// a real share of its own instead of being squeezed against the pane bottom.
 const heightOf = (result, className) => {
   const card = result.cards.find((entry) => String(entry.classes).includes(className));
   return card === undefined ? undefined : card.height;
 };
-const pick = (requested) => rows.find((row) => row.requested === requested && row.requestedWidth === 420 && row.caseId === 'day');
-const small = pick(1000);
+const pick = (requested) => rows.find((row) => row.requested === requested && row.requestedWidth === 420 && row.caseId === 'session');
+const small = pick(1080);
 const large = pick(1200);
-if (small !== undefined && large !== undefined) {
+if (small === undefined || large === undefined) {
+  failures.push('space allocation: the 420px 1080/1200 pane measurements are missing');
+} else {
   const smallAccount = heightOf(small, 'aup-card-account');
   const largeAccount = heightOf(large, 'aup-card-account');
   const smallSession = heightOf(small, 'aup-card-session');
@@ -768,44 +767,24 @@ if (small !== undefined && large !== undefined) {
   if (smallAccount === undefined || largeAccount === undefined || smallSession === undefined || largeSession === undefined) {
     failures.push('space allocation: could not find the session and balance cards');
   } else {
-    if (Math.abs(largeAccount - smallAccount) > 1) {
-      failures.push(`space allocation: the balance card stretches with the pane (${smallAccount}px -> ${largeAccount}px) instead of hugging its content`);
+    const accountGrowth = largeAccount - smallAccount;
+    const sessionGrowth = largeSession - smallSession;
+    if (accountGrowth < 20) {
+      failures.push(`space allocation: the balance card does not take its share of the leftover height (${smallAccount}px -> ${largeAccount}px)`);
     }
-    if (largeSession - smallSession < 50) {
-      failures.push(`space allocation: the dense session card does not grow with the pane (${smallSession}px -> ${largeSession}px)`);
+    if (sessionGrowth <= accountGrowth) {
+      failures.push(`space allocation: the dense session card must take the larger share of the leftover height (${smallSession}px -> ${largeSession}px, balance ${smallAccount}px -> ${largeAccount}px)`);
+    }
+    if (largeAccount > (large.paneHeight - 60) * 0.34) {
+      failures.push(`space allocation: the balance card dominates the column (${largeAccount}px of ${large.paneHeight}px)`);
     }
   }
-}
-
-// `--dims [paneHeight]` renders every range at one pane size: clicking a tab must
-// not move anything when the window stays the same.
-if (process.argv.includes('--dims')) {
-  const index = process.argv.indexOf('--dims');
-  const height = Number(process.argv[index + 1]) || 1080;
-  const dir = mkdtempSync(join(tmpdir(), 'aup-dims-'));
-  for (const dimension of ['day', 'week', 'month', 'quarter', 'year', 'all']) {
-    const ready = measure(css, dir, height, caseOf(dimension));
-    const loading = measure(css, dir, height, {
-      ...caseOf(dimension),
-      usageState: { phase: 'loading', dimension }
-    });
-    const list = (result) => (result === undefined ? 'n/a' : result.cards.map((card) => Math.round(card.height)).join('/'));
-    const parts = (result) => (result === undefined ? 'n/a' : 'sum:' + JSON.stringify(result.summaryCells) + ' src:' + JSON.stringify(result.sourceRows) + ' rows:' + JSON.stringify(result.seriesRows));
-    const unusedParts = (result) => (result === undefined || result.parts === undefined ? 'n/a' : Object.entries(result.parts).map(([key, value]) => key + ':' + value).join(' '));
-    console.log(
-      dimension.padEnd(9),
-      'ready', list(ready).padEnd(18), parts(ready).padEnd(34),
-      'loading', list(loading).padEnd(18), parts(loading),
-      'scroll', ready === undefined ? 'n/a' : ready.scrollInfo
-    );
-  }
-  process.exit(0);
 }
 
 // `--debug-footers` prints the measured footer geometry, so a passing run is
 // provably measuring something (and not just skipping a missing selector).
 if (process.argv.includes('--debug-footers')) {
-  const wanted = [...rows].filter((row) => row.requested === 1080 && row.caseId === 'day');
+  const wanted = [...rows].filter((row) => row.requested === 1080 && row.caseId === 'session');
   for (const row of wanted) {
     for (const [name, footer] of Object.entries(row.footers ?? {})) {
       if (footer === null || footer === undefined) { console.log(name, 'missing'); continue; }

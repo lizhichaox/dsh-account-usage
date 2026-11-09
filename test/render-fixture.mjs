@@ -136,23 +136,36 @@ const accountRemote = {
 };
 
 // ------------------------------------------------------------------- fetch --
+// The panel reads two Host routes: per-session model totals and per-provider
+// balances. The platform period-usage route is still served by the Host but has no
+// consumer in the panel any more (user 2026-11-09 deleted the statistics card), so
+// this stub deliberately answers only the two routes the client actually calls.
 let fetchCalls = 0;
-const daysInMonth = (year, month) => new Date(year, month, 0).getDate();
 globalThis.fetch = async (url) => {
   fetchCalls += 1;
   const parsed = new URL(String(url), 'http://127.0.0.1');
-  const year = Number(parsed.searchParams.get('year'));
-  const month = Number(parsed.searchParams.get('month'));
-  const days = [];
-  for (let day = 1; day <= daysInMonth(year, month); day += 1) {
-    days.push({
-      date: year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0'),
-      tokens: 1000,
-      cost: 0.5,
-      requests: 2
-    });
+  if (parsed.pathname === '/account-usage/session/models') {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        ok: true,
+        data: {
+          models: [
+            { provider: 'opencode-go', model: 'deepseek-v4.1-flash', tokens: 251_000_000, requests: 800 },
+            { provider: 'openrouter', model: 'deepseek-flash-latest', tokens: 180_000_000, requests: 420 },
+            { provider: 'deepseek-account', model: 'deepseek-flash', tokens: 29_050_000, requests: 120 }
+          ],
+          totalTokens: 460_050_000,
+          lastRoute: { provider: 'opencode-go', model: 'deepseek-v4.1-flash' }
+        }
+      })
+    };
   }
-  return { status: 200, json: async () => ({ ok: true, data: { year, month, currency: 'CNY', days, month: {}, fetchedAt: Date.now() } }) };
+  if (parsed.pathname === '/account-usage/provider/balance') {
+    return { ok: true, status: 200, json: async () => ({ ok: true, data: { phase: 'ready', items: [] } }) };
+  }
+  return { ok: false, status: 404, json: async () => ({ ok: false, code: 'unknown_route' }) };
 };
 
 // -------------------------------------------------------------- registrations --
@@ -168,26 +181,16 @@ const bodyProps = bodyRegistration.definition.inject('session-1');
   assert.equal(result.locale, 'zh');
 }
 {
-  const now = new Date();
-  const expectedMonths = 25 + now.getMonth();
+  // The session card folds in the per-provider totals; the reader is the only
+  // session-scoped route the panel still calls.
   fetchCalls = 0;
-  const platform = await bodyProps.readUsage('year', false, 'CNY');
-  assert.equal(platform.ok, true, 'platform usage read');
-  assert.equal(platform.source, 'platform');
-  assert.equal(fetchCalls, expectedMonths, 'one route call per month in the window');
-  const stored = JSON.parse(storage.get('dsh.account-usage.months.v1'));
-  assert.equal(Object.keys(stored).length, expectedMonths, 'months persisted');
-  const cached = await bodyProps.readUsage('year', false, 'CNY');
-  assert.equal(cached.ok, true);
-  assert.equal(fetchCalls, expectedMonths, 'second read is served from cache');
-  await bodyProps.readUsage('year', true, 'CNY');
-  assert.equal(fetchCalls, expectedMonths + 1, 'force refresh only re-reads the live month');
-  const reloaded = bootClient();
-  const reloadBody = reloaded.registrations.find((r) => r.definition.name === 'sidebar.right.pane.tab').definition.inject('session-1');
-  fetchCalls = 0;
-  const warm = await reloadBody.readUsage('year', false, 'CNY');
-  assert.equal(warm.ok, true);
-  assert.equal(fetchCalls, 0, 'reload serves the year from persisted months');
+  const models = await bodyProps.readSessionModels('session-1');
+  assert.equal(models.ok, true);
+  assert.equal(fetchCalls, 1, 'one route call for the session model totals');
+  assert.equal(models.models.length, 3);
+  assert.equal(models.models[0].provider, 'opencode-go');
+  assert.equal(models.totalTokens, 460_050_000);
+  assert.equal(models.lastProvider, 'opencode-go');
 }
 
 // ------------------------------------------------------------------ render --
@@ -222,7 +225,7 @@ const flat = (node) => text(node).replace(/\s+/g, ' ').trim();
 {
   const titleRegistration = first.registrations.find((r) => r.definition.name === 'sidebar.right.pane.tab.title');
   const titleTree = titleRegistration.component({ useTabInfo: () => ({ tab: { title: '账号用量' } }), t: (key) => first.t(key) });
-  assert.equal(walk(titleTree, (n) => hasClass(n, 'aup-tab-icon')).length, 1, 'the tab chip keeps its wallet glyph');
+  assert.equal(walk(titleTree, (n) => hasClass(n, 'aup-tab-icon')).length, 1, 'the tab chip keeps its gauge glyph');
   assert.equal(flat(titleTree), '用量', 'the tab chip label stays short');
 }
 
@@ -236,29 +239,25 @@ const accountState = {
     balance: { status: 'ready', value: [{ currency: 'CNY', balance: '542.52' }], bonusWallets: [{ currency: 'CNY', balance: '10' }] }
   }
 };
+// Two cards only (1.0.16): the platform statistics card and its dimension control
+// are gone, so the settings shape has no dimension / showCost / usageList keys.
 const DEFAULT_SETTINGS = {
-  dimension: 'day',
   autoRefresh: true,
-  showCost: true,
   hideComposerStats: true,
-  usageList: true,
-  cards: { session: true, stats: true, account: true }
+  cards: { session: true, account: true }
 };
-function render(usageState, projection, dimensionValue, settingsValue, settingsOpen, sessionModelsValue, providerBalancesValue) {
+function render(settingsValue, settingsOpen, sessionModelsValue, providerBalancesValue, projectionValue) {
   stateQueue.push(
     accountState,
-    usageState,
-    sessionModelsValue || { phase: 'idle', items: [], totalTokens: 0 },
-    providerBalancesValue || { phase: 'idle', items: [], error: undefined },
+    sessionModelsValue || { phase: 'idle', items: [], totalTokens: 0, lastProvider: '' },
+    providerBalancesValue || { phase: 'idle', byProvider: {} },
     settingsValue || DEFAULT_SETTINGS,
-    dimensionValue || 'day',
-    { count: 0, force: false },
     { count: 0, force: false },
     settingsOpen === true
   );
   const tree = bodyRegistration.component({
     t: first.t,
-    useProjection: projection || (() => undefined),
+    useProjection: typeof projectionValue === 'function' ? projectionValue : (typeof projection === 'function' ? projection : () => undefined),
     ...bodyProps
   });
   stateQueue.length = 0;
@@ -328,26 +327,16 @@ function toHtml(node) {
 
 /** The real panel markup for one set of states. */
 function panelHtml(options = {}) {
-  const dimension = options.dimension || 'day';
-  const state = options.usageState ?? {
-    phase: 'ready',
-    ok: true,
-    source: 'platform',
-    days: [],
-    currency: 'CNY',
-    dimension,
-    refreshing: false
-  };
   fixtureLocale = options.locale || 'zh';
   try {
-    const tree = render(state, options.projection, dimension, options.settings, false, options.sessionModels, options.providerBalances);
+    const tree = render(options.settings, false, options.sessionModels, options.providerBalances, options.projection);
     return toHtml(tree);
   } finally { fixtureLocale = 'zh'; }
 }
 
 /** Render the real AccountSection for one state (no browser or live APIs). */
 function accountCard(options) {
-  const tree = render({ phase: 'ready', ok: true, days: [], dimension: 'day' }, undefined, 'day', undefined, false, options.sessionModels, options.providerBalances);
+  const tree = render(undefined, false, options.sessionModels, options.providerBalances);
   function find(node) {
     if (!node || typeof node !== 'object') return undefined;
     if (Array.isArray(node)) return node.map(find).find(Boolean);
