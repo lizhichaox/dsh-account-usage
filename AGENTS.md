@@ -3,7 +3,7 @@
 > 这是用户对本插件的**长期要求清单**。接手前先读本文件，不要重复询问已经写在这里的偏好；
 > 用户不想反复重申。若实现与本文件冲突，以用户当次明确指示为准，并在完成后回写本文件。
 
-最后更新：2026-11-08 · 插件版本：`1.0.10`
+最后更新：2026-11-09 · 插件版本：`1.0.11`
 
 - 插件目录：`/Users/lizhichao/vc/macos/dsh/dsh-preset/account-usage-panel`
 - GitHub：<https://github.com/lizhichaox/dsh-account-usage>
@@ -74,7 +74,7 @@
 | 38 | **上架图标要体现 usage**（2026-11-08：「一点也没体现出来 usage 的概念」） | `icon.svg` = 蓝色圆角块 + 三条递增白色柱状条；设置里的已安装列表与市场 Discover 共用这份图 | `the icon draws three usage bars` / `the wallet artwork is gone` |
 | 39 | **当前会话在用的 Account 要凸显**（2026-11-08） | 最新 assistant 消息的 provider 对应的那一行：整行淡品牌色背景 + 名称加粗；无圆点、无胶囊、不改变列宽与左右边缘；`aria-current` 暴露给读屏 | `exactly one account row is highlighted` / `the row in use is the highlighted one` / `the highlight is exposed to assistive tech` / `the highlight is a background tint, not a pill` |
 | 40 | **介绍语 20 字以内**（2026-11-08，先要 50 再收紧到 20） | 插件列表/市场 Discover 共用一句短介绍：`Balances + tokens.`（18 字符）/「余额与 Token 用量」（12 字）；`package.json.description`、`scripts/finalize-release.mjs`、`market/index.json` 三处同步，`market/check.mjs` 强制 ≤20 | `the plugin intro stays within 20 characters` / `the intro names balances and tokens` / market check 的 `description must stay within 20 characters` |
-| 41 | **账户行在最小宽度也不许换行**（2026-11-08：「不允许缩到换行」） | 两级：≥340px 任何数值（含三个 `100%`）都单行（收紧对间距/字距）；≤330px 进入窄屏紧凑档（间距再收、`proportional-nums`、图例/合计 `nowrap`），典型数值到 ~300px 仍单行。不缩放字号 | layout-check `single-line minimum-width check`（340px + 全 `100%`）与窄屏 330/300 断言 `lines === 1` / `legend wrapped` / `summary wrapped` |
+| 41 | **账户行在最小宽度也不许换行**（2026-11-08 / 2026-11-09：「争取一行放完」） | 三级、全部不缩放字号：≥340px 舒适档（任何值单行）；≤330px 窄屏档（间距收紧、`proportional-nums`、图例/合计 `nowrap`）；≤320px 超窄档（内边距 5px、名称字距 -0.4、对的间距 2px+2px），**三个 `100%`** 这种最坏情况由**确定性 class**（按数值文本长度，非测量）再加紧一档，300px 仍单行 | layout-check 62 态：340px + 全 `100%`；320/310/300 的 worst（三个 `100%`）与 mixed（两个 `100%`）都断言 `lines === 1` / `legend wrapped` / `summary wrapped` |
 
 ## 1. 产品定位
 
@@ -321,11 +321,15 @@
   `aria-current="true"` 暴露给读屏。
   **禁止**为此加圆点 / 胶囊 / 徽标，**禁止**改内边距或列宽——背景不会移动左右边缘，`verify:ui` 的
   `acctLabelLeft` / `acctValueRight` 唯一性断言必须继续通过；单账号会话（只有 DeepSeek 钱包、没有行列表）不加强调。
-- **余额卡的行在最小宽度（340px）也必须单行，不允许换行**（用户 2026-11-08：「不允许缩到换行」）：
-  「短标签 数值」对之间的间距必须收紧到能在 340px 放下最坏情况（3 个 `100%`）；
-  行仍用同一套网格，**禁止**靠加宽面板 / 隐藏窗口 / 改字号来回避。
-  `verify:ui` 会在 340px、中英文、三档都用 `100%` 的夹具上断言每行 `lines === 1`、未裁切；
-  任何来源数量下的余额行也都做同样检查。
+- **余额卡的行在最小宽度（300px）也必须单行，不允许换行**（用户 2026-11-08：「不允许缩到换行」→ 2026-11-09：「真的放不下吗？我觉得还可以优化争取一行放完」）：
+  - ≥340px 舒适档：任何数值（含三个 `100%`）单行；
+  - ≤330px 窄屏档：间距收紧 + `proportional-nums`，图例与合计行 `nowrap`；
+  - ≤320px 超窄档：卡片左右内边距 5px、名称字距 -0.4px、对内间距 2px、对间 1px；
+    三窗口全是 `100%` 的行按**数值文本长度**加 `aup-acct-pairs-tight` 再紧一档（**确定性，不测量**），
+    这样 300px 也放得下。
+  行仍用同一套网格，**禁止**靠加宽面板 / 隐藏窗口 / 改字号 / `transform: scale` 来回避。
+  `verify:ui` 在 340px（全 `100%`）与 320/310/300px（worst + mixed）都要 `lines === 1`、未裁切。
+  已知物理极限：<300px、或名称更长的新 provider，可能仍需要两行——这属于宿主最窄以下，不在保证内。
 - 设置里的「用量明细列表」打开后，在来源行下方追加逐期 `Token · 金额` 明细（悬浮可看完整日期/Token/金额）
 - 明细列表**高度恒定由固定槽位保证**：`SERIES_ROW_SLOTS = 4`，不足的槽位用不可见占位行（`min-height:21px`）补齐，
   切维度（日↔季↔年）时列表高度不变、下方卡片与 tab 行不闪动；行高只设 `min-height` 不设死高度，
@@ -428,13 +432,14 @@
 - **介绍语压到 20 字以内**（1.0.8，先压到 50 又收紧）：取代原来 130 字符的长句，只剩「余额 + Token」。
 - **余额行最小宽度单行**（1.0.9）：收紧对间距/字距，取代「窄面板允许换行」；340px 是舒适宽度（任何值单行）。
 - **最小宽度护栏降到 300px**（1.0.10）：取代 340px 回弹；宿主最窄也能用，330px 以下自动进入紧凑档。
+- **超窄档 + 确定性加紧密**（1.0.11）：取代「300px 下三个 `100%` 只能折行」；按数值文本长度决定是否再紧一档，300px 也单行。
 - **所有货币符号后置**（1.0.9）：取代「只有 ¥ 后置、其它货币按 $11.04 惯例」。
 - **当前 Account 用整行背景凸显**（1.0.6）：取代「当前来源小圆点」（当时被判为无信息量而删除）；
   现在这条信息有意义，但只用**背景 + 字重**表达，不加任何新元素、不产生布局位移。
 - **余额卡只写剩余**：取代「OpenRouter 显示已用」「OpenAI/Anthropic 显示本月花费 + 需管理员密钥」；也取代「当前来源小圆点」。
 - **只有会话卡保留进度条**：取代「用量统计四列表含胶囊条」「账户卡胶囊条」。
 - 793px/851px 是三来源、420px 宽夹具基准，多来源追加 `16 + (n-3)×52`，英文窄栏的长状态会换行增高（因此英文状态都用短词）。
-- 本轮 1.0.10 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
+- 本轮 1.0.11 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
 
 - 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
 - **卡片**不使用 `container-type: size`（内容高度会塌陷成 0）；但**面板根节点必须用**

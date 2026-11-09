@@ -378,6 +378,19 @@ function wrapCase(locale) {
   };
   return fixture;
 }
+
+// The common narrow case: two windows untouched and one partly used.
+function mixedPlanCase(locale) {
+  const fixture = sourcesCase(3, locale);
+  fixture.id = 'mixed-plan-' + locale;
+  const plan = PROVIDER_BALANCES.items[0];
+  const used = [0, 0, 16];
+  fixture.providerBalances.byProvider['opencode-go'] = {
+    phase: 'ready',
+    data: { ...plan, windows: plan.windows.map((window, index) => ({ ...window, usedPercent: used[index] })) }
+  };
+  return fixture;
+}
 // `--shot <paneHeight> [dimension] [width]` writes one ready-to-look-at page so a
 // human (or an agent with an image viewer) can see the real rendering.
 if (process.argv.includes('--shot')) {
@@ -385,7 +398,11 @@ if (process.argv.includes('--shot')) {
   const shotHeight = Number(process.argv[index + 1]) || 1080;
   const shotArg = process.argv[index + 2] || 'day';
   // `--shot 1000 sources-5-en 340` renders a mixed five-source English session.
-  const shotCase = shotArg.startsWith('sources-') ? sourcesCase(Number(shotArg.split('-')[1]), shotArg.split('-')[2] || 'zh') : caseOf(shotArg);
+  const shotCase = shotArg.startsWith('sources-')
+    ? sourcesCase(Number(shotArg.split('-')[1]), shotArg.split('-')[2] || 'zh')
+    : shotArg.startsWith('mixed-plan-')
+      ? mixedPlanCase(shotArg.split('-').pop())
+      : caseOf(shotArg);
   const shotWidth = Number(process.argv[index + 3]) || 420;
   const file = join(tmpdir(), 'aup-shot-' + shotHeight + '-' + shotCase.id + '-' + shotWidth + '.html');
   writeFileSync(file, page(css, shotHeight, shotCase, '', shotWidth));
@@ -496,6 +513,26 @@ for (const locale of ['zh', 'en']) for (const width of [330, 300]) {
   if (result.summaryLines > 1) providerFailures.push(`${label}: stats summary wrapped`);
   if (result.summaryOverflow) providerFailures.push(`${label}: stats summary overflows`);
   providerChecks++;
+}
+// Below 340px the ultra-narrow step must still keep even three `100%` windows on
+// one line (user 2026-11-09: "真的放不下吗？我觉得还可以优化争取一行放完").
+for (const locale of ['zh', 'en']) for (const width of [320, 310, 300]) {
+  for (const [name, fixture] of [['worst', wrapCase(locale)], ['mixed', mixedPlanCase(locale)]]) {
+    const result = measure(css, providerDir, 900, fixture, '', width);
+    const label = `${locale} ${width} narrow ${name}`;
+    if (!result) { providerFailures.push(label + ': no measurement'); continue; }
+    for (const pair of result.acctPairs ?? []) {
+      if (pair.lines !== 1) providerFailures.push(`${label}: balance figures wrapped -> ${pair.text}`);
+      if (pair.clipped) providerFailures.push(`${label}: balance figures clipped -> ${pair.text}`);
+    }
+    if (result.legendLines > 1) providerFailures.push(`${label}: context legend wrapped`);
+    if (result.legendOverflow) providerFailures.push(`${label}: context legend overflows`);
+    if (result.summaryLines > 1) providerFailures.push(`${label}: stats summary wrapped`);
+    if (result.horizontal.length || result.cardOverflow.length || result.overlaps.length) {
+      providerFailures.push(label + ': geometry invalid');
+    }
+    providerChecks++;
+  }
 }
 // The minimum width is the hard floor for the "never wrap" rule (user 2026-11-08):
 // three 4-character percentages must still read as one line at 340px.

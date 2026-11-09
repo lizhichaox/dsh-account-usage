@@ -501,6 +501,9 @@ window.__ModuleLoader__.load({
       // The documented comfort width is 340px (where even three `100%` windows fit); below it,
       // typical values must still read as a single line, without scaling text.
       '@container aup-panel (max-width:330px){.aup-acct-srcs{column-gap:4px}.aup-acct-pair{gap:1px}.aup-acct-pairs{gap:1px 0;letter-spacing:-0.7px;font-variant-numeric:proportional-nums}.aup-context-legend,.aup-stats-summary{column-gap:6px}.aup-context-legend>span,.aup-stats-summary>span{white-space:nowrap}}',
+      // ---- ultra-narrow panes (<=310px): the last spacing step so even three `100%`
+      // windows stay on one line; still 13px text, only tighter rhythm. ----
+      '@container aup-panel (max-width:320px){.aup-card{padding-left:5px;padding-right:5px}.aup-acct-srcs{column-gap:2px}.aup-acct-src-label{letter-spacing:-0.4px}.aup-acct-pair{gap:2px}.aup-acct-pairs{gap:0 1px;letter-spacing:-0.95px}.aup-acct-pairs-tight{gap:0 1px;letter-spacing:-1.05px}}',
       // ---- content shedding on short windows: pure media queries, no measurement ----
       // Measured ladder (test/layout-check.mjs --tiers): each step keeps the whole
       // panel inside its own height so the card column never has to scroll. These are
@@ -1649,8 +1652,8 @@ window.__ModuleLoader__.load({
       const windowCode = (id) => (id === 'rolling' ? t('account.planRolling') : id === 'weekly' ? t('account.planWeekly') : t('account.planMonthly'));
       // One display rule for every source (user 2026-11-08): short muted label + figure
       // pairs, right aligned - `Balance 199.54¥ Bonus 0.00¥`, `5HW 63% WEK 70% MON 85%`.
-      const pairs = (items) => ({
-        value: h('span', { className: 'aup-acct-pairs' },
+      const pairs = (items, extraClass) => ({
+        value: h('span', { className: 'aup-acct-pairs' + (extraClass === undefined ? '' : ' ' + extraClass) },
           items.map(([key, label, figure]) =>
             h('span', { key, className: 'aup-acct-pair' },
               h('span', { className: 'aup-acct-pair-label' }, label),
@@ -1687,7 +1690,10 @@ window.__ModuleLoader__.load({
               .map((id) => entry.windows.find((window) => window && window.id === id))
               .filter((window) => window !== undefined && Number.isFinite(window.usedPercent));
             if (windows.length === 0) return { value: t('account.status.invalid'), muted: true };
-            return pairs(windows.map((window) => [window.id, windowCode(window.id), Math.round((100 - window.usedPercent) * 10) / 10 + '%']));
+            const figures = windows.map((window) => Math.round((100 - window.usedPercent) * 10) / 10 + '%');
+            // Deterministic, not measured: only three `100%` figures need the extra step.
+            const tight = figures.every((figure) => figure.length >= 4);
+            return pairs(windows.map((window, index) => [window.id, windowCode(window.id), figures[index]]), tight ? 'aup-acct-pairs-tight' : undefined);
           }
           const currency = currencyOf(entry);
           const money = (value) => formatMoney(String(value), currency, locale);
