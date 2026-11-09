@@ -14,11 +14,38 @@
  *
  * Usage: node test/layout-check.mjs [--keep]
  */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
+import { request as httpRequest } from 'node:http';
 import { existsSync, mkdtempSync as createTemp, realpathSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { panelHtml } from './render-fixture.mjs';
+
+// One browser per RUN, not per case (see "launcher" below). Set
+// `--no-reuse-browser` to fall back to the old one-launch-per-case behaviour.
+const REUSE_BROWSER = !process.argv.includes('--no-reuse-browser');
+const startedAt = Date.now();
+const browser = { child: null, socket: null, port: 0, seq: 0, started: false, fallback: null, launches: 0, measurements: 0, currentUrl: null };
+
+function killBrowser() {
+  const child = browser.child;
+  const socket = browser.socket;
+  browser.child = null;
+  browser.socket = null;
+  if (socket !== null) { try { socket.close(); } catch (error) { /* already closed */ } }
+  if (child === null || child.exitCode !== null) return;
+  try { child.kill('SIGKILL'); } catch (error) { /* already gone */ }
+}
+
+/** Leave the process deliberately: an open DevTools socket would keep it alive. */
+function shutdown(code) {
+  killBrowser();
+  process.exit(code);
+}
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, () => shutdown(130));
+}
 
 const ownedTempRoots = new Set();
 function mkdtempSync(prefix) {
@@ -27,6 +54,7 @@ function mkdtempSync(prefix) {
   return dir;
 }
 process.on('exit', () => {
+  killBrowser();
   if (process.argv.includes('--keep') || process.argv.includes('--shot')) return;
   for (const dir of ownedTempRoots) {
     // Delete only canonical directories created and recorded by this invocation.
@@ -154,17 +182,203 @@ function caseOf() {
 const chrome = CHROME_CANDIDATES.find((candidate) => existsSync(candidate));
 if (chrome === undefined) {
   console.log('layout check skipped: no Chrome/Chromium found');
-  process.exit(0);
+  shutdown(0);
 }
 const css = readStylesheet();
 
 // ---------------------------------------------------------------- launcher --
-let launchSeq = 0;
+// Every case is the same page skeleton with different CSS + fixture, so one
+// browser can serve all of them: it is started once, and each case is a viewport
+// change (`Emulation.setDeviceMetricsOverride`) plus a navigation. Relaunching
+// Chrome per case was ~87 process starts for ~15s of real layout work, and on
+// macOS each start made a Dock icon appear and vanish.
+//
+// Two paths, same contract (return the text the page left in `#result`):
+//   - `renderWithBrowser`: one shared page target driven over the DevTools
+//     protocol with Node's built-in WebSocket (no dependencies).
+//   - `renderLegacy`: the previous one-launch-per-case `--dump-dom` path. It is
+//     kept as the fallback, and `--no-reuse-browser` forces it, so a browser that
+//     refuses remote debugging can never turn the geometry check into a no-op.
+let legacyLaunches = 0;
 
-/** Run one headless Chrome render, isolating the profile dir and retrying once. */
-function render(file, dir, height) {
-  launchSeq += 1;
-  const profile = join(dir, 'profile-' + String(launchSeq));
+/** A minimal DevTools-protocol client over Node's built-in WebSocket. */
+function connectDevTools(wsUrl) {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(wsUrl);
+    const pending = new Map();
+    const waiters = new Map();
+    let seq = 0;
+    const send = (method, params = {}) => new Promise((res, rej) => {
+      seq += 1;
+      pending.set(seq, { res, rej, method });
+      socket.send(JSON.stringify({ id: seq, method, params }));
+    });
+    const once = (method) => new Promise((res) => {
+      const list = waiters.get(method) ?? [];
+      list.push(res);
+      waiters.set(method, list);
+    });
+    socket.addEventListener('message', (event) => {
+      let message;
+      try { message = JSON.parse(event.data); } catch (error) { return; }
+      if (message.id !== undefined) {
+        const entry = pending.get(message.id);
+        if (entry === undefined) return;
+        pending.delete(message.id);
+        if (message.error !== undefined) entry.rej(new Error(entry.method + ' failed: ' + JSON.stringify(message.error)));
+        else entry.res(message.result);
+        return;
+      }
+      const list = waiters.get(message.method);
+      if (list === undefined || list.length === 0) return;
+      waiters.set(message.method, []);
+      for (const resolveWaiter of list) resolveWaiter(message.params);
+    });
+    socket.addEventListener('error', () => reject(new Error('could not connect to the DevTools socket')));
+    socket.addEventListener('open', () => resolve({ send, once, close: () => socket.close() }));
+  });
+}
+
+/** Start the shared browser once; resolve with a connected page target. */
+async function ensureBrowser() {
+  if (browser.socket !== null) return browser.socket;
+  if (browser.started) throw new Error('the shared browser is not available');
+  browser.started = true;
+  const dir = mkdtempSync(join(tmpdir(), 'aup-browser-'));
+  const profile = join(dir, 'profile');
+  const child = spawn(chrome, [
+    '--headless=new',
+    '--disable-gpu',
+    '--no-sandbox',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-extensions',
+    '--disable-background-networking',
+    '--disable-component-update',
+    '--disable-sync',
+    '--mute-audio',
+    '--hide-scrollbars',
+    '--window-size=520,1200',
+    '--remote-debugging-port=0',
+    `--user-data-dir=${profile}`,
+    'about:blank'
+  ], { stdio: ['ignore', 'ignore', 'ignore'] });
+  browser.child = child;
+  browser.launches += 1;
+  child.on('exit', () => { if (browser.child === child) { browser.child = null; browser.socket = null; } });
+  // `--remote-debugging-port=0` writes the chosen port and the browser socket
+  // path into `<user-data-dir>/DevToolsActivePort` as soon as the server is up.
+  const portFile = join(profile, 'DevToolsActivePort');
+  const deadline = Date.now() + 20000;
+  while (!existsSync(portFile)) {
+    if (child.exitCode !== null) throw new Error('the browser exited before its DevTools port was ready');
+    if (Date.now() > deadline) throw new Error('timed out waiting for the DevTools port');
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  const [port] = readFileSync(portFile, 'utf8').split('\n');
+  browser.port = Number(port);
+  const page = await resolvePageTarget();
+  const socket = await connectDevTools(page.webSocketDebuggerUrl);
+  await socket.send('Page.enable');
+  await socket.send('Runtime.enable');
+  browser.socket = socket;
+  if (process.argv.includes('--debug-browser')) console.log(`[browser] one Chrome on port ${browser.port}, page target ${page.id}`);
+  return socket;
+}
+
+/**
+ * One JSON request to the browser's DevTools HTTP endpoint, over `node:http`.
+ *
+ * `fetch` is unusable here: `test/render-fixture.mjs` replaces `globalThis.fetch`
+ * with an in-process stub that answers the panel's own Host routes, so the test's
+ * DevTools calls would be swallowed by that stub. `node:http` is never stubbed.
+ */
+function devtoolsJson(pathname, method = 'GET') {
+  return new Promise((resolve, reject) => {
+    const request = httpRequest({ host: '127.0.0.1', port: browser.port, path: pathname, method, timeout: 5000 }, (response) => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', (chunk) => { body += chunk; });
+      response.on('end', () => {
+        if (response.statusCode !== 200) { reject(new Error(pathname + ' -> HTTP ' + response.statusCode)); return; }
+        try { resolve(JSON.parse(body)); } catch (error) { reject(new Error(pathname + ' returned no JSON')); }
+      });
+    });
+    request.on('timeout', () => request.destroy(new Error(pathname + ' timed out')));
+    request.on('error', reject);
+    request.end();
+  });
+}
+
+/**
+ * Find a page target. The DevTools port file appears before the initial target is
+ * listed, so this retries; `PUT /json/new` (required on Chrome 111+) creates one we
+ * own rather than depending on startup timing or the shell's own tabs.
+ */
+async function resolvePageTarget() {
+  const deadline = Date.now() + 10000;
+  let lastError;
+  while (Date.now() < deadline) {
+    for (const method of ['PUT', 'GET']) {
+      try {
+        const created = await devtoolsJson('/json/new?about:blank', method);
+        if (created !== null && typeof created.webSocketDebuggerUrl === 'string') return created;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    try {
+      const listed = await devtoolsJson('/json/list');
+      const page = Array.isArray(listed)
+        ? listed.find((target) => target.type === 'page' && typeof target.webSocketDebuggerUrl === 'string')
+        : undefined;
+      if (page !== undefined) return page;
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  throw new Error('the browser exposed no page target' + (lastError === undefined ? '' : ' (' + lastError.message + ')'));
+}
+
+/** Measure one case in the shared browser. */
+async function renderWithBrowser(file, width, height) {
+  const socket = await ensureBrowser();
+  browser.seq += 1;
+  await socket.send('Emulation.setDeviceMetricsOverride', { width: 520, height, deviceScaleFactor: 1, mobile: false });
+  // A file:// URL cannot carry a query string (Chrome reads it as part of the
+  // path), so a repeated file is reloaded by bouncing through about:blank first.
+  const url = pathToFileURL(file).href;
+  if (browser.currentUrl === url) {
+    await socket.send('Page.navigate', { url: 'about:blank' });
+    browser.currentUrl = 'about:blank';
+  }
+  const loaded = socket.once('Page.loadEventFired');
+  await socket.send('Page.navigate', { url });
+  browser.currentUrl = url;
+  // Never wait forever: a page that fails to load must fall back, not hang the run.
+  let timer;
+  const timedOut = new Promise((resolve, reject) => {
+    timer = setTimeout(() => reject(new Error('the page did not finish loading within 15s')), 15000);
+  });
+  try {
+    await Promise.race([loaded, timedOut]);
+  } finally {
+    clearTimeout(timer);
+  }
+  const evaluated = await socket.send('Runtime.evaluate', {
+    expression: 'document.getElementById("result").textContent',
+    returnByValue: true
+  });
+  const text = evaluated === undefined || evaluated.result === undefined ? undefined : evaluated.result.value;
+  if (typeof text !== 'string' || text.startsWith('pending')) throw new Error('the page left no measurement (its script threw)');
+  return text;
+}
+
+/** The original path: one headless Chrome launch per case, retried once. */
+function renderLegacy(file, dir, height) {
+  legacyLaunches += 1;
+  const profile = join(dir, 'profile-' + String(legacyLaunches));
   const args = [
     '--headless=new',
     '--disable-gpu',
@@ -345,13 +559,31 @@ function page(css, height, testCase, extraCss = '', width = 420) {
 <script>${MEASURE_SCRIPT}</script></body></html>`;
 }
 
-function measure(css, dir, height, testCase, extraCss = '', width = 420) {
+/**
+ * Measure one case. Reuses the shared browser by default; if that fails once it
+ * says so and falls back to one launch per case for the rest of the run, so the
+ * check never silently degrades into "no measurement".
+ */
+async function measure(css, dir, height, testCase, extraCss = '', width = 420) {
   const file = join(dir, `pane-${width}x${height}-${testCase.id}.html`);
   writeFileSync(file, page(css, height, testCase, extraCss, width));
-  const dom = render(file, dir, height);
-  const match = dom.match(/<pre id="result">([\s\S]*?)<\/pre>/);
-  if (match === null) return undefined;
-  return JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'));
+  browser.measurements += 1;
+  let text;
+  if (REUSE_BROWSER && browser.fallback === null) {
+    try {
+      text = await renderWithBrowser(file, width, height);
+    } catch (error) {
+      browser.fallback = error.message;
+      console.log(`layout check: shared browser unavailable (${error.message}); falling back to one launch per case`);
+    }
+  }
+  if (text === undefined) {
+    const dom = renderLegacy(file, dir, height);
+    const match = dom.match(/<pre id="result">([\s\S]*?)<\/pre>/);
+    if (match === null) return undefined;
+    text = match[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+  }
+  return JSON.parse(text);
 }
 
 const EXTRA_BALANCES = [
@@ -487,7 +719,7 @@ if (process.argv.includes('--shot')) {
   const file = join(tmpdir(), 'aup-shot-' + shotHeight + '-' + shotCase.id + '-' + shotWidth + '.html');
   writeFileSync(file, page(css, shotHeight, shotCase, '', shotWidth));
   console.log(file);
-  process.exit(0);
+  shutdown(0);
 }
 
 // `--tiers` prints the panel's content height at every shedding tier so the
@@ -515,7 +747,7 @@ if (process.argv.includes('--tiers')) {
     // Keep the pane tall so no ladder step fires, then freeze both cards at their
     // natural height and add those heights up: that is the content height.
     const extraCss = extra + '.aup-cards>.aup-card{flex:0 0 auto}';
-    const measured = measure(css, tierDir, 1600, tierSources > 3 ? sourcesCase(tierSources, 'zh') : caseOf(), extraCss);
+    const measured = await measure(css, tierDir, 1600, tierSources > 3 ? sourcesCase(tierSources, 'zh') : caseOf(), extraCss);
     if (measured === undefined) {
       console.log(label.padEnd(20) + 'no measurement');
       continue;
@@ -523,7 +755,7 @@ if (process.argv.includes('--tiers')) {
     const content = measured.cards.reduce((sum, card) => sum + card.height, 0) + 6 * Math.max(0, measured.cards.length - 1);
     console.log(label.padEnd(20) + String(content).padEnd(10) + measured.cards.map((card) => card.height).join('/'));
   }
-  process.exit(0);
+  shutdown(0);
 }
 
 // Mixed sessions list every source in the balance card (no tabs). More sources add
@@ -533,18 +765,18 @@ if (process.argv.includes('--debug-narrow')) {
   const width = Number(process.argv[process.argv.indexOf('--debug-narrow') + 1]) || 299;
   for (const locale of ['zh', 'en']) {
     for (const [name, fixture] of [['typical', sourcesCase(3, locale)], ['worst', wrapCase(locale)]]) {
-      const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-narrow-')), 1400, fixture, '.aup-cards>.aup-card{flex:0 0 auto}', width);
+      const r = await measure(css, mkdtempSync(join(tmpdir(), 'aup-narrow-')), 1400, fixture, '.aup-cards>.aup-card{flex:0 0 auto}', width);
       console.log(locale, width, name.padEnd(8), JSON.stringify(r.acctPairs), 'legend', r.legendLines, r.legendOverflow);
     }
   }
-  process.exit(0);
+  shutdown(0);
 }
 if (process.argv.includes('--debug-wrap')) {
   for (const locale of ['zh', 'en']) {
-    const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-wrap-')), 1600, wrapCase(locale), '.aup-cards>.aup-card{flex:0 0 auto}', 340);
+    const r = await measure(css, mkdtempSync(join(tmpdir(), 'aup-wrap-')), 1600, wrapCase(locale), '.aup-cards>.aup-card{flex:0 0 auto}', 340);
     console.log(locale, 340, JSON.stringify(r.acctPairs));
   }
-  process.exit(0);
+  shutdown(0);
 }
 if (process.argv.includes('--debug-commandcode')) {
   const widths = (process.argv[process.argv.indexOf('--debug-commandcode') + 1] || '340,320,310,300').split(',').map(Number);
@@ -558,23 +790,23 @@ if (process.argv.includes('--debug-commandcode')) {
     const entry = fixture.providerBalances.byProvider.commandcode.data;
     entry.windows = entry.windows.map((window, index) => ({ ...window, usedPercent: percents[index] }));
     entry.credits = { monthly: credit, purchased: 0, free: 0 };
-    const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-cc-')), 1600, fixture, '.aup-cards>.aup-card{flex:0 0 auto}', w);
+    const r = await measure(css, mkdtempSync(join(tmpdir(), 'aup-cc-')), 1600, fixture, '.aup-cards>.aup-card{flex:0 0 auto}', w);
     const row = (r?.acctPairs ?? []).find((pair) => pair.label === 'Command Code');
     console.log(locale, w, name.padEnd(8), 'lines=' + row?.lines, 'nat=' + row?.natural, 'avail=' + row?.available);
   }
-  process.exit(0);
+  shutdown(0);
 }
 if (process.argv.includes('--debug-model')) {
   const widths = (process.argv[process.argv.indexOf('--debug-model') + 1] || '340,320,300').split(',').map(Number);
   for (const locale of ['zh', 'en']) for (const w of widths) {
-    const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-model-')), 900, sourcesCase(3, locale), '', w);
+    const r = await measure(css, mkdtempSync(join(tmpdir(), 'aup-model-')), 900, sourcesCase(3, locale), '', w);
     console.log(locale, w, JSON.stringify(r.modelRows));
   }
-  process.exit(0);
+  shutdown(0);
 }
 if (process.argv.includes('--debug-sources')) {
-  for (const [loc, w, n] of [['en', 340, 5], ['zh', 340, 5]]) { const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-debug-')), 1600, sourcesCase(n, loc), '.aup-cards>.aup-card{flex:0 0 auto}', w); console.log(loc, w, n, r.cards.map((c) => c.height).join('/'), JSON.stringify(r.acctRows), JSON.stringify(r.providerRows)); }
-  process.exit(0);
+  for (const [loc, w, n] of [['en', 340, 5], ['zh', 340, 5]]) { const r = await measure(css, mkdtempSync(join(tmpdir(), 'aup-debug-')), 1600, sourcesCase(n, loc), '.aup-cards>.aup-card{flex:0 0 auto}', w); console.log(loc, w, n, r.cards.map((c) => c.height).join('/'), JSON.stringify(r.acctRows), JSON.stringify(r.providerRows)); }
+  shutdown(0);
 }
 const providerFailures = [];
 let providerChecks = 0;
@@ -584,7 +816,7 @@ for (const locale of ['zh', 'en']) for (const width of [340, 420]) for (const he
   // budget (see the `--tiers 7` row in AGENTS.md §7.1), so 700px is checked up to five.
   for (const count of height < 802 ? [3, 4, 5] : [3, 4, 5, 7]) {
     const fixture = sourcesCase(count, locale);
-    const result = measure(css, providerDir, height, fixture, '', width);
+    const result = await measure(css, providerDir, height, fixture, '', width);
     const label = `${locale} ${width}×${height} ${count} sources`;
     if (!result || result.cards.length !== 2) { providerFailures.push(label + ': expected two cards, got ' + (result ? result.cards.length : 'none')); continue; }
     // The session card never truncates: every model row it draws is rendered, so the
@@ -625,7 +857,7 @@ for (const locale of ['zh', 'en']) for (const width of [340, 420]) for (const he
 // (container query <=330px): typical two-digit values and both footers must still
 // read as single lines, with no overflow, overlap or scroll.
 for (const locale of ['zh', 'en']) for (const width of [330, 300]) {
-  const result = measure(css, providerDir, 900, sourcesCase(3, locale), '', width);
+  const result = await measure(css, providerDir, 900, sourcesCase(3, locale), '', width);
   const label = `${locale} ${width} narrow`;
   if (!result || result.cards.length !== 2) { providerFailures.push(label + ': expected two cards, got ' + (result ? result.cards.length : 'none')); continue; }
   if (result.overlaps.length || result.cardOverflow.length || result.horizontal.length || result.scrolls || result.deadBand > 2) {
@@ -646,7 +878,7 @@ for (const locale of ['zh', 'en']) for (const width of [330, 300]) {
 // one line (user 2026-11-09: "真的放不下吗？我觉得还可以优化争取一行放完").
 for (const locale of ['zh', 'en']) for (const width of [320, 310, 300]) {
   for (const [name, fixture] of [['worst', wrapCase(locale)], ['mixed', mixedPlanCase(locale)]]) {
-    const result = measure(css, providerDir, 900, fixture, '', width);
+    const result = await measure(css, providerDir, 900, fixture, '', width);
     const label = `${locale} ${width} narrow ${name}`;
     if (!result) { providerFailures.push(label + ': no measurement'); continue; }
     for (const pair of result.acctPairs ?? []) {
@@ -671,7 +903,7 @@ for (const locale of ['zh', 'en']) for (const width of [320, 310, 300]) {
 // and only an unusually wide credit amount may take a second line - that is the recorded
 // physical limit for this longer Provider name, below the comfort width.
 for (const locale of ['zh', 'en']) for (const [width, fixture] of [[420, commandCodeCase], [340, commandCodeCase], [320, commandCodeCase], [310, commandCodeTypicalCase], [300, commandCodeTypicalCase]]) {
-  const result = measure(css, providerDir, 1600, fixture(locale), '.aup-cards>.aup-card{flex:0 0 auto}', width);
+  const result = await measure(css, providerDir, 1600, fixture(locale), '.aup-cards>.aup-card{flex:0 0 auto}', width);
   const label = `${locale} ${width} command code`;
   if (!result) { providerFailures.push(label + ': no measurement'); continue; }
   const row = (result.acctPairs ?? []).find((pair) => pair.label === 'Command Code');
@@ -697,7 +929,7 @@ for (const locale of ['zh', 'en']) for (const [width, fixture] of [[420, command
 // The minimum width is the hard floor for the "never wrap" rule (user 2026-11-08):
 // three 4-character percentages must still read as one line at 340px.
 for (const locale of ['zh', 'en']) {
-  const result = measure(css, providerDir, 900, wrapCase(locale), '', 340);
+  const result = await measure(css, providerDir, 900, wrapCase(locale), '', 340);
   const pairs = result?.acctPairs ?? [];
   if (pairs.length === 0) providerFailures.push(`${locale} 340 minimum width: no balance rows measured`);
   for (const pair of pairs) {
@@ -708,8 +940,14 @@ for (const locale of ['zh', 'en']) {
 }
 console.log(`provider rows: ${providerChecks} states; zh/en, 340/420 wide, 700/900/1080 high, 3/4/5 sources (7 from 900), single-line minimum-width check`);
 if (process.argv.includes('--providers')) {
-  if (providerFailures.length) { console.error(providerFailures.join('\n')); process.exit(1); }
-  console.log('provider row geometry passed'); process.exit(0);
+  const providerSummary = `${providerChecks} provider-row states in ${((Date.now() - startedAt) / 1000).toFixed(1)}s (${browser.launches + legacyLaunches} browser launch${browser.launches + legacyLaunches === 1 ? '' : 'es'})`;
+  if (providerFailures.length) {
+    console.error('provider row geometry failed: ' + providerSummary);
+    for (const failure of providerFailures) console.error('  - ' + failure);
+    shutdown(1);
+  }
+  console.log('provider row geometry passed: ' + providerSummary);
+  shutdown(0);
 }
 const SWEEPS = [
   // 584/585 straddle the first shedding step (hide the decorative token bar at
@@ -728,7 +966,7 @@ const rows = [];
 for (const sweep of SWEEPS) {
   for (const height of sweep.heights) {
     for (const testCase of CASES) {
-      const result = measure(css, dir, height, testCase, '', sweep.width);
+      const result = await measure(css, dir, height, testCase, '', sweep.width);
       const label = `${sweep.width}×${height} ${testCase.id}`;
       if (result === undefined) {
         failures.push(`${label}: no measurement returned`);
@@ -813,7 +1051,7 @@ if (process.argv.includes('--debug-footers')) {
       console.log(`${name}: row ${footer.left.toFixed(1)}..${footer.right.toFixed(1)}  cells ${cells}`);
     }
   }
-  process.exit(0);
+  shutdown(0);
 }
 
 console.log('pane      scrolls  scrollH/clientH  bottom-gap  card heights');
@@ -828,9 +1066,18 @@ for (const result of rows) {
   );
 }
 
+// One run, one set of numbers: the coverage counts used to require a second full
+// run just to read them off, so they are part of every verdict.
+const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
+const launches = browser.launches + legacyLaunches;
+const summary =
+  `${providerChecks} provider-row states + ${rows.length} pane states = ${browser.measurements} measurements in ${elapsed}s` +
+  ` (${browser.fallback === null ? launches + ' browser launch' + (launches === 1 ? '' : 'es') : launches + ' launches, shared browser unavailable'})`;
+
 if (failures.length > 0) {
-  console.error('\nlayout check failed:');
+  console.error('\nlayout check failed: ' + summary);
   for (const failure of failures) console.error('  - ' + failure);
-  process.exit(1);
+  shutdown(1);
 }
-console.log('\nlayout check passed: no overlap, no overflow, no dead band, no scroll, aligned and centred');
+console.log('\nlayout check passed: ' + summary + ' - no overlap, no overflow, no dead band, no scroll, aligned and centred');
+shutdown(0);
