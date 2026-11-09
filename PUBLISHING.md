@@ -4,18 +4,21 @@ Harness 的「插件市场」（Discover）不是中心化商店，而是**索�
 索引 URL（format 1 JSON），DSH 读取索引、展示条目，并用 `plugin_manager.installBundle`
 按条目里的**精确版本**安装。发布 = **可安装的公开源（npm 或 Git commit）+ 一条索引记录**。
 
-## 当前状态（2026-11-08）
+## 当前状态（2026-11-09）
 
 | 项 | 值 |
 |---|---|
 | GitHub 仓库 | <https://github.com/lizhichaox/dsh-account-usage>（public，`main`） |
 | 市场索引 | <https://lizhichaox.github.io/dsh-account-usage/market/index.json> |
 | 索引托管 | GitHub Pages（仓库根目录；`.nojekyll` 保证 JSON 原样输出，无重定向） |
-| 当前安装源 | **npm**：`dsh-account-usage@1.0.14`（索引 `source.type = npm`） |
-| 包名 / 版本 | `dsh-account-usage` / **1.0.14** |
+| 当前安装源 | **npm**：`dsh-account-usage@1.0.16`（索引 `source.type = npm`） |
+| 包名 / 版本 | `dsh-account-usage` / **1.0.16** |
 | 兼容性 | `engines.dsh: ^0.2.2-rc.1`（与当前 runtime 匹配） |
-| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.14`，2026-11-09 06:27:53Z，本地 14:27） |
-| 校验 | `npm run verify` + `npm run verify:ui` 全绿（72 个状态）；npm 包 15 个文件 / 65.8 kB（shasum `16e66233`，与本地 `npm pack` 逐字节一致）；CI `verify` 全绿；Pages 索引已切到 1.0.14，并用官方 `parseMarketIndex` 复核通过 |
+| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.16`，2026-11-09 12:04:17Z，本地 20:04） |
+| 校验 | `npm run verify` + `npm run verify:ui` 全绿（provider 行 72 个状态 + 面板 13 个高度状态）；npm 包 15 个文件 / 55.5 kB（shasum `1599c06b`，与本地 `npm pack` 逐字节一致）；CI `verify` 全绿；Pages 索引已切到 1.0.16，并用官方 `parseMarketIndex` 复核通过 |
+
+> 1.0.15（2026-11-09，会话卡不再截断模型行）已发布到 npm 但当时未重建索引；
+> 1.0.16 的索引直接接管，市场上只保留最新一条精确版本。
 
 安装侧使用：
 
