@@ -403,6 +403,40 @@ function mixedPlanCase(locale) {
   };
   return fixture;
 }
+// Command Code reports two windows plus the credits left, which is the longest row
+// this provider can produce (`CRED 999.99$` is the widest credit figure), so it joins
+// the narrow no-wrap check together with the three-`100%` plan worst case.
+function commandCodeCase(locale) {
+  const fixture = sourcesCase(3, locale);
+  fixture.id = 'commandcode-' + locale;
+  fixture.locale = locale;
+  fixture.sessionModels = { ...SESSION_MODELS, lastProvider: 'commandcode', items: [
+    ...SESSION_MODELS.items,
+    { provider: 'commandcode', model: 'deepseek/deepseek-v4.1-flash-fast', tokens: 98_000, requests: 12 }
+  ] };
+  fixture.providerBalances = { phase: 'ready', error: undefined, items: [
+    { provider: 'opencode-go', kind: 'opencode-plan', currency: 'USD', fetchedAt: Date.now(),
+      windows: [{ id: 'rolling', usedPercent: 0 }, { id: 'weekly', usedPercent: 0 }, { id: 'monthly', usedPercent: 0 }] },
+    { provider: 'openrouter', kind: 'credits', currency: 'USD', remaining: 1.5, fetchedAt: Date.now() },
+    { provider: 'deepseek', kind: 'balance', currency: 'CNY', remaining: 12.5, fetchedAt: Date.now() },
+    { provider: 'commandcode', kind: 'commandcode-plan', currency: 'USD', fetchedAt: Date.now(),
+      windows: [{ id: 'fiveHour', usedPercent: 0 }, { id: 'weekly', usedPercent: 0 }],
+      credits: { monthly: 999.99, purchased: 0, free: 0 } }
+  ] };
+  return fixture;
+}
+
+// The realistic Command Code state (one untouched window, one half used, a small
+// credit balance) - the shape this account actually reports.
+function commandCodeTypicalCase(locale) {
+  const fixture = commandCodeCase(locale);
+  fixture.id = 'commandcode-typical-' + locale;
+  const entry = fixture.providerBalances.items.find((item) => item.provider === 'commandcode');
+  entry.windows = entry.windows.map((window, index) => ({ ...window, usedPercent: [0, 50.04][index] }));
+  entry.credits = { monthly: 6.9983883725, purchased: 0, free: 0 };
+  return fixture;
+}
+
 // `--shot <paneHeight> [dimension] [width]` writes one ready-to-look-at page so a
 // human (or an agent with an image viewer) can see the real rendering.
 if (process.argv.includes('--shot')) {
@@ -474,6 +508,24 @@ if (process.argv.includes('--debug-wrap')) {
   for (const locale of ['zh', 'en']) {
     const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-wrap-')), 1600, wrapCase(locale), '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', 340);
     console.log(locale, 340, JSON.stringify(r.acctPairs));
+  }
+  process.exit(0);
+}
+if (process.argv.includes('--debug-commandcode')) {
+  const widths = (process.argv[process.argv.indexOf('--debug-commandcode') + 1] || '340,320,310,300').split(',').map(Number);
+  const variants = [
+    ['worst', [0, 0], 999.99],
+    ['typical', [0, 50.04], 6.998]
+  ];
+  for (const locale of ['zh', 'en']) for (const w of widths) for (const [name, percents, credit] of variants) {
+    const fixture = commandCodeCase(locale);
+    fixture.id = 'commandcode-' + name + '-' + locale;
+    const entry = fixture.providerBalances.items.find((item) => item.provider === 'commandcode');
+    entry.windows = entry.windows.map((window, index) => ({ ...window, usedPercent: percents[index] }));
+    entry.credits = { monthly: credit, purchased: 0, free: 0 };
+    const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-cc-')), 1600, fixture, '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', w);
+    const row = (r?.acctPairs ?? []).find((pair) => pair.label === 'Command Code');
+    console.log(locale, w, name.padEnd(8), 'lines=' + row?.lines, 'nat=' + row?.natural, 'avail=' + row?.available);
   }
   process.exit(0);
 }
@@ -559,6 +611,28 @@ for (const locale of ['zh', 'en']) for (const width of [320, 310, 300]) {
     }
     providerChecks++;
   }
+}
+// Command Code adds a 5-hour + weekly window and the credits left, so its row is the
+// longest third-party row the panel draws. Measured rule (see AGENTS §7): every value,
+// including three `100%` and a `999.99$` credit balance, stays on one line down to the
+// 320px narrow tier; at 300-319px the realistic state (small credit balance) still does,
+// and only an unusually wide credit amount may take a second line - that is the recorded
+// physical limit for this longer Provider name, below the comfort width.
+for (const locale of ['zh', 'en']) for (const [width, fixture] of [[420, commandCodeCase], [340, commandCodeCase], [320, commandCodeCase], [310, commandCodeTypicalCase], [300, commandCodeTypicalCase]]) {
+  const result = measure(css, providerDir, 1600, fixture(locale), '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', width);
+  const label = `${locale} ${width} command code`;
+  if (!result) { providerFailures.push(label + ': no measurement'); continue; }
+  const row = (result.acctPairs ?? []).find((pair) => pair.label === 'Command Code');
+  if (row === undefined) providerFailures.push(label + ': no Command Code row measured');
+  if (row !== undefined && row.text.includes('CRED') !== (locale === 'en')) providerFailures.push(label + ': wrong credit label -> ' + row.text);
+  for (const pair of result.acctPairs ?? []) {
+    if (pair.lines !== 1) providerFailures.push(`${label}: balance figures wrapped -> ${pair.label} ${pair.text}`);
+    if (pair.clipped) providerFailures.push(`${label}: balance figures clipped -> ${pair.label} ${pair.text}`);
+  }
+  if (result.horizontal.length || result.cardOverflow.length || result.overlaps.length) {
+    providerFailures.push(label + ': geometry invalid');
+  }
+  providerChecks++;
 }
 // The minimum width is the hard floor for the "never wrap" rule (user 2026-11-08):
 // three 4-character percentages must still read as one line at 340px.

@@ -117,6 +117,44 @@ for (const provider of ['openai','anthropic','google','amazon-bedrock','azure','
   const rows = nodes(tree, n => n.props?.className === 'aup-acct-src').map(txt);
   assert(rows.some(row => row.endsWith('MON 39%')) && rows.some(row => row.endsWith('MON 92%')), 'Zen and Go never share alias data: ' + rows);
 }
+// Command Code publishes a 5-hour and a weekly window plus the credits left, so its
+// row keeps the plan rule (share left, fixed order) and appends one CRED pair.
+{
+  const ccModels = { phase: 'ready', lastProvider: 'commandcode', items: [
+    { provider: 'commandcode', model: 'deepseek/deepseek-v4.1-flash-fast', tokens: 98000, requests: 12 }
+  ] };
+  const data = { ok: true, provider: 'commandcode', kind: 'commandcode-plan', currency: 'USD',
+    windows: [
+      { id: 'fiveHour', usedPercent: 100, status: 'exceeded', resetsAt: '2026-11-09T09:58:14.512Z' },
+      { id: 'weekly', usedPercent: 50.04, resetsAt: '2026-11-16T03:38:14.512Z' }
+    ],
+    credits: { monthly: 6.9983883725, purchased: 0, free: 0 } };
+  for (const locale of ['zh', 'en']) {
+    const tree = accountCard({ locale, sessionModels: ccModels,
+      providerBalances: { phase: 'ready', byProvider: { commandcode: { phase: 'ready', data } } } });
+    const rows = rowsOf(tree);
+    assert.deepEqual(Object.keys(rows), ['Command Code'], 'one aligned row for the Command Code source');
+    const row = rows['Command Code'];
+    assert.equal(row.children.length, 2, 'two cells per row');
+    assert.equal(row.props['data-current'], true, 'the in-use source row is highlighted');
+    assert.equal(txt(row), locale === 'en'
+      ? 'Command Code 5HW 0% WEK 50% CRED 6.99$'
+      : 'Command Code 5HW 0% WEK 50% 额度 6.99$',
+      'windows read the share left in fixed order and credits stay the amount left');
+    assert.equal(nodes(tree, n => /aup-acct-(track|fill)/.test(n.props?.className || '')).length, 0, 'no capsule bar for a plan row');
+  }
+  // A plan that only reported credits shows that one figure, never a zeroed window.
+  const creditsOnly = { ...data, windows: [] };
+  let rows = rowsOf(accountCard({ sessionModels: ccModels,
+    providerBalances: { phase: 'ready', byProvider: { commandcode: { phase: 'ready', data: creditsOnly } } } }));
+  assert.equal(txt(rows['Command Code']), 'Command Code CRED 6.99$', 'credits alone still read on the right');
+  // With no reported credits the two windows stand alone.
+  const windowsOnly = { ...data, credits: undefined };
+  rows = rowsOf(accountCard({ sessionModels: ccModels,
+    providerBalances: { phase: 'ready', byProvider: { commandcode: { phase: 'ready', data: windowsOnly } } } }));
+  assert.equal(txt(rows['Command Code']), 'Command Code 5HW 0% WEK 50%', 'absent credits are not invented');
+}
+
 for (const [data, expected] of [[{ remaining: 2, total: 10, used: 8 }, 'Key 2.00$'], [{ used: 8 }, 'No balance']]) {
   const tree = accountCard({ sessionModels: { phase: 'ready', lastProvider: 'openrouter', items: [{ provider: 'openrouter', tokens: 0, requests: 1 }] },
     providerBalances: { phase: 'ready', byProvider: { openrouter: { phase: 'ready', data: { ok: true, provider: 'openrouter', scope: 'key', currency: 'USD', ...data } } } } });

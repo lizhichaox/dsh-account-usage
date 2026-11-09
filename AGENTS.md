@@ -3,7 +3,7 @@
 > 这是用户对本插件的**长期要求清单**。接手前先读本文件，不要重复询问已经写在这里的偏好；
 > 用户不想反复重申。若实现与本文件冲突，以用户当次明确指示为准，并在完成后回写本文件。
 
-最后更新：2026-11-09 · 插件版本：`1.0.12`
+最后更新：2026-11-09 · 插件版本：`1.0.14`
 
 - 插件目录：`/Users/lizhichao/vc/macos/dsh/dsh-preset/account-usage-panel`
 - GitHub：<https://github.com/lizhichaox/dsh-account-usage>
@@ -76,16 +76,21 @@
 | 40 | **介绍语 20 字以内**（2026-11-08，先要 50 再收紧到 20） | 插件列表/市场 Discover 共用一句短介绍：`Balances + tokens.`（18 字符）/「余额与 Token 用量」（12 字）；`package.json.description`、`scripts/finalize-release.mjs`、`market/index.json` 三处同步，`market/check.mjs` 强制 ≤20 | `the plugin intro stays within 20 characters` / `the intro names balances and tokens` / market check 的 `description must stay within 20 characters` |
 | 41 | **账户行在最小宽度也不许换行**（2026-11-08 / 2026-11-09：「争取一行放完」） | 三级、全部不缩放字号：≥340px 舒适档（任何值单行）；≤330px 窄屏档（间距收紧、`proportional-nums`、图例/合计 `nowrap`）；≤320px 超窄档（内边距 5px、名称字距 -0.4、对的间距 2px+2px），**三个 `100%`** 这种最坏情况由**确定性 class**（按数值文本长度，非测量）再加紧一档，300px 仍单行 | layout-check 62 态：340px + 全 `100%`；320/310/300 的 worst（三个 `100%`）与 mixed（两个 `100%`）都断言 `lines === 1` / `legend wrapped` / `summary wrapped` |
 | 42 | **分隔符前后不留空格**（2026-11-09：「去掉-横向前后的空格以及其他空格」） | 所有用作分隔的符号紧贴两侧文字：模型行 `Provider-model`、轮/步 `106/11550`、上下文 `595K/1M（60%）`、中文 `轮/步`；只保留单词之间的必要空格 | `provider and model share one line without spaces around the dash` / `model rows merge provider and model without separator spaces` / smoke 的 `轮/步` 标签断言 |
+| 43 | **Command Code 额度也进右侧栏**（2026-11-09：「可以把这个插件集成到 usage 插件吗？」：装 `@mars-sea/dsh-commandcode-provider` 后额度只能在设置里看，用户习惯在右侧栏看） | Host 读 `GET https://api.commandcode.ai/alpha/billing/credits`（Bearer `COMMANDCODE_API_KEY`，只走 Host）；账户卡该来源一行：`5HW / WEK` 两档**剩余**百分比 + `CRED / 额度` 剩余金额（USD，符号后置）；`cap` 为 0 的窗口不画、缺额度就不写；**只写剩余不写 Used/花费**；用量统计卡照常显示该来源本会话 Token + `PLAN` | smoke `Command Code windows read the share left` / smoke `Command Code credits read the amount left with the symbol last` / provider-host `Command Code plan windows and credits come from the billing endpoint` / provider-client `windows read the share left in fixed order and credits stay the amount left` / verify:ui `command code` 单行断言 |
+| 44 | **入口图标与左侧快捷簇一致**（2026-11-09：「我们的插件 icon 也用左侧这个按钮的 icon 吧 保持一致」） | 右侧栏 tab、开始页卡片都用 `IconGaugeOutlineRegular`（宿主 primitives，失败回退同形内联 SVG），与 shell 的「用量」按钮同一符号；钱包图标不再用于入口 | smoke `the tab glyph is the shell quick-action gauge` / `the guide card uses the same gauge glyph` |
 
 ## 1. 产品定位
 
 - DeepSeek Harness 右侧边栏插件，名称固定为 **「账号用量」**（四个中文）。
 - 面板固定三张卡片，顺序：**会话消耗 → 用量统计 → 账户余额**。
-- 右侧栏 tab 用短标题「用量」（英文 `Usage`），**保留钱包图标**，且必须**照抄宿主的写法**：
+- 右侧栏 tab 用短标题「用量」（英文 `Usage`），图标**与左侧快捷簇的「用量」按钮一致**（2026-11-09：
+  「我们的插件 icon 也用左侧这个按钮的 icon 吧 保持一致」）：用宿主 primitives 的
+  `IconGaugeOutlineRegular`（仪表盘），拿不到时回退到同形内联 SVG，不再用钱包图标。
   tab title 组件返回 **Fragment（裸 SVG + 纯文本）**，不要包一层 `span` 容器——
   宿主的 `GuideTitle` 就是 `<CompassGlyph/> + tab.title` 这种结构，包容器会让 tab 宽度测量错乱、
   切 tab 时文字被压扁变形。图标用 `.aup-tab-icon`（14px、`vertical-align:-2px`），
   **不要自己加 margin**：图标与文字的间距由宿主 chip 的 gap 负责，否则选中/未选中两种状态下间距会不一致。
+  开始页（Guide）卡片图标同样用这个仪表盘，保证「入口按钮 / 标签页 / 开始页」三处是同一个符号。
 - **样式表必须注入 `document.head`**（apply 时用 `<style data-plugin-css="dsh-account-usage">`），
   不能只写在面板 body 里：tab chip 在面板 body 之外，面板切走后 body 卸载、样式随之消失，tab 会「变形」。
 - 面板头部是一条横条，**它的下边线必须是「中间会话区 header 下边线的延长线」**：
@@ -309,6 +314,14 @@
   - opencode / opencode-go / opencode-zen：`GET https://opencode.ai/zen/go/v1/usage`（Bearer Key），
     返回套餐百分比；来源行固定显示 `5HW 63%  WEK 70%  MON 85%`（5 小时 / 周 / 月，**全部是剩余比例**，不写 left/剩余/已用；中英文同一套缩写），不画进度条
     （`opencode-go` 的凭据引用是 `OPENCODE_GO_API_KEY`；`opencode`/`-zen` 用 `OPENCODE_API_KEY`）
+  - `commandcode`（`@mars-sea/dsh-commandcode-provider`）：`GET https://api.commandcode.ai/alpha/billing/credits`（Bearer `COMMANDCODE_API_KEY`），
+    一次请求返回 5 小时 / 周两个窗口的 `used` / `cap` 与额度（`monthlyCredits` 套餐剩余 + `purchasedCredits` / `freeCredits` 充值/赠送）；
+    来源行显示 `5HW 0%  WEK 50%  CRED 6.99$`（中文 `额度`），同样**全是剩余**、不写 Used；`cap` 为 0 的窗口不画（套餐未设限），
+    额度缺失就不写额度对。该插件自己的设置页仍保留完整面板（账号、模型可见性等），这里只做额度只读镜像。
+    这一行是全卡最长的第三方行（两档窗口 + 一档额度），因此 `aup-acct-pairs-tight` 从「仅在 ≤320px」改为
+    **全宽度确定性加紧密**（按数值文本长度触发，覆盖额度），实测：**≥320px 任何值（含三个 `100%` 与 `999.99$`）单行**；
+    300–319px 真实数值（如 `0% / 50% / 6.99$`）单行，只有超额金额（≥`99.99$`）会折两行——
+    这是「名称更长的 Provider」在舒适宽度以下的已知物理极限，verify:ui 用 worst/typical 两个夹具分别锁定。
   - OpenAI / Anthropic：已调研（2026-11-08），调研到的官方接口是**组织花费**（OpenAI Costs API、Anthropic Cost Report，需相应组织权限），**未找到公开余额接口**；用户决定余额卡不写花费，所以两家显示 `Unsupported`，插件不请求花费接口。
   - 其余未接入的 Provider 显示「插件暂不支持 / Unsupported」，不暗示供应商没有 API；本会话 Token 在用量统计卡里看，账户卡不重复。
   - 未配置、鉴权失败、超时、网络失败、凭据读取失败分别显示短状态；不提供任何 Retry / 重试按钮，不因失败立即重发请求。既有顶部刷新与定时刷新保持不变。
@@ -437,6 +450,11 @@
 - **余额行最小宽度单行**（1.0.9）：收紧对间距/字距，取代「窄面板允许换行」；340px 是舒适宽度（任何值单行）。
 - **最小宽度护栏降到 300px**（1.0.10）：取代 340px 回弹；宿主最窄也能用，330px 以下自动进入紧凑档。
 - **超窄档 + 确定性加紧密**（1.0.11）：取代「300px 下三个 `100%` 只能折行」；按数值文本长度决定是否再紧一档，300px 也单行。
+- **Command Code 额度并入账户卡**（1.0.13）：不新开右侧栏 tab、不改 commandcode 提供的设置页，只在账户卡按统一来源行显示
+  `5HW / WEK` 剩余 + `CRED` 剩余；Host 侧独立读取其官方 billing 接口（60 秒缓存、失败只写短状态）。
+  同时把 `aup-acct-pairs-tight` 的加紧密从「只有 ≤320px」改为**全宽度**（-1.2px，≤320px 为 -1.45px），
+  超窄档名称字距放宽到 -0.5px，保证这一行在 340/320px 仍单行；≤310px 的超额金额允许两行（已记录）。
+- **入口图标改用仪表盘**（1.0.14）：tab / 开始页与左侧快捷簇「用量」按钮同一符号，取代钱包图标；primitives 不可用时回退同形内联 SVG。
 - **分隔符去空格**（1.0.12）：模型行改为 `Provider-model`，轮/步与上下文改成 `a/b`，取代带空格的 `Provider - model` / `106 / 11550`。
 - **所有货币符号后置**（1.0.9）：取代「只有 ¥ 后置、其它货币按 $11.04 惯例」。
 - **当前 Account 用整行背景凸显**（1.0.6）：取代「当前来源小圆点」（当时被判为无信息量而删除）；
@@ -444,7 +462,7 @@
 - **余额卡只写剩余**：取代「OpenRouter 显示已用」「OpenAI/Anthropic 显示本月花费 + 需管理员密钥」；也取代「当前来源小圆点」。
 - **只有会话卡保留进度条**：取代「用量统计四列表含胶囊条」「账户卡胶囊条」。
 - 793px/851px 是三来源、420px 宽夹具基准，多来源追加 `16 + (n-3)×52`，英文窄栏的长状态会换行增高（因此英文状态都用短词）。
-- 本轮 1.0.12 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
+- 本轮 1.0.14 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
 
 - 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
 - **卡片**不使用 `container-type: size`（内容高度会塌陷成 0）；但**面板根节点必须用**

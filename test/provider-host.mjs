@@ -10,10 +10,19 @@ const DEEPSEEK_URL = 'https://api.deepseek.com/user/balance';
 const OPENCODE_URL = 'https://opencode.ai/zen/go/v1/usage';
 const CREDITS_URL = 'https://openrouter.ai/api/v1/credits';
 const KEY_URL = 'https://openrouter.ai/api/v1/key';
-const allowedUrls = new Set([DEEPSEEK_URL, OPENCODE_URL, CREDITS_URL, KEY_URL]);
+const COMMANDCODE_URL = 'https://api.commandcode.ai/alpha/billing/credits';
+const allowedUrls = new Set([DEEPSEEK_URL, OPENCODE_URL, CREDITS_URL, KEY_URL, COMMANDCODE_URL]);
 const json = (payload, status = 200) => ({ status, text: async () => JSON.stringify(payload) });
 const balance = (remaining = 24) => json({ balance_infos: [{ total_balance: String(remaining), granted_balance: '2', currency: 'CNY' }] });
 const plan = () => json({ usage: { rolling: { percent: 12.34 }, weekly: { percent: 30 }, monthly: { percent: 60 } } });
+const commandCode = (credits, windowLimits) => json({
+  credits: credits ?? { monthlyCredits: 6.9983883725, purchasedCredits: 0, freeCredits: 0 },
+  windowLimits: windowLimits ?? {
+    limited: true,
+    fiveHour: { used: 3.0016116275, cap: 3, exceeded: true, resetAt: 1794213494512 },
+    weekly: { used: 3.0016116275, cap: 6, exceeded: false, resetAt: 1794800294512 }
+  }
+});
 const namedError = (name) => Object.assign(new Error('simulated failure'), { name });
 const credentials = () => ({ resolve: async () => ({ value: PLACEHOLDER }) });
 
@@ -340,6 +349,69 @@ test('provider Host apply/route contract', async (t) => {
         }
         assert.equal(lookup.length, 0, 'balance-only unsupported paths never access the credential service');
         assert.equal(calls.length, 0, 'normal and forced requests never call organization costs or any external endpoint');
+      });
+    }
+  });
+
+  await t.test('Command Code plan windows and credits come from the billing endpoint', async () => {
+    const refs = [];
+    await withHarness({
+      credentials: { async resolve(ref) { refs.push(ref); return { value: PLACEHOLDER }; } },
+      fetch: async () => commandCode()
+    }, async ({ request, calls }) => {
+      const response = await request('commandcode');
+      assert.equal(response.status, 200);
+      assert.equal(response.body.ok, true);
+      const data = response.body.data;
+      assert.equal(data.provider, 'commandcode');
+      assert.equal(data.kind, 'commandcode-plan');
+      assert.equal(data.currency, 'USD');
+      assert.deepEqual(refs, ['COMMANDCODE_API_KEY'], 'the provider credential reference is the one its bundle resolves');
+      assert.deepEqual(calls, [COMMANDCODE_URL], 'one billing read serves both windows and the credits');
+      // Share consumed, computed from used/cap and clamped; the panel prints what is left.
+      assert.deepEqual(data.windows, [
+        { id: 'fiveHour', usedPercent: 100, status: 'exceeded', resetsAt: new Date(1794213494512).toISOString() },
+        { id: 'weekly', usedPercent: 50, resetsAt: new Date(1794800294512).toISOString() }
+      ]);
+      assert.deepEqual(data.credits, { monthly: 6.9983883725, purchased: 0, free: 0 });
+      assert.ok(Number.isFinite(data.fetchedAt));
+    });
+  });
+
+  await t.test('Command Code skips windows the plan never limited and keeps reported zero credits', async () => {
+    const windowLimits = {
+      limited: false,
+      fiveHour: { used: 12.5, cap: 0, exceeded: false, resetAt: 0 },
+      weekly: { used: 0, cap: 6, exceeded: false, resetAt: 0 }
+    };
+    await withHarness({
+      credentials: credentials(),
+      fetch: async () => commandCode({ monthlyCredits: 0, purchasedCredits: 2.5, freeCredits: 0 }, windowLimits)
+    }, async ({ request }) => {
+      const data = (await request('commandcode')).body.data;
+      assert.deepEqual(data.windows, [{ id: 'weekly', usedPercent: 0 }], 'an uncapped window is not drawn as a zeroed row');
+      assert.deepEqual(data.credits, { monthly: 0, purchased: 2.5, free: 0 }, 'a reported zero credit stays zero, never absent');
+    });
+    await withHarness({
+      credentials: credentials(),
+      fetch: async () => commandCode({ purchasedCredits: 4 }, {})
+    }, async ({ request }) => {
+      const data = (await request('commandcode')).body.data;
+      assert.deepEqual(data.windows, []);
+      assert.deepEqual(data.credits, { purchased: 4 }, 'credits alone are a usable answer');
+    });
+  });
+
+  await t.test('Command Code unusable answers and rejections stay typed', async () => {
+    for (const [fetch, code] of [
+      [() => json({}), 'invalid_response'],
+      [() => json({ credits: {}, windowLimits: { fiveHour: { used: 1, cap: 0 } } }), 'invalid_response'],
+      [() => json({}, 401), 'auth_failed'],
+      [() => json({}, 500), 'invalid_response'],
+      [() => ({ status: 200, text: async () => 'not json' }), 'invalid_response']
+    ]) {
+      await withHarness({ credentials: credentials(), fetch }, async ({ request }) => {
+        expectError(await request('commandcode'), code);
       });
     }
   });

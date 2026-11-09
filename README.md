@@ -170,7 +170,7 @@ DeepSeek API 会话：**会话消耗 → 用量统计 → 账户余额**。
 - **发送**：
   - DeepSeek API 余额/用量请求只发往 `platform.deepseek.com`（与平台「用量」页同源）
   - 第三方 Provider 余额请求只发往该 Provider 的官方接口：OpenRouter `openrouter.ai`、
-    DeepSeek API Key `api.deepseek.com`
+    DeepSeek API Key `api.deepseek.com`、Command Code `api.commandcode.ai`
   - 不向任何自建服务器发送数据；插件没有遥测
 - **第三方凭据**：OpenRouter / DeepSeek API Key 只在 Host 侧通过 `ctx.credentials` /
   `llm-pi-ai/<provider>` 读取，**不会返回浏览器**；60 秒缓存，手动刷新强制重查
@@ -240,14 +240,21 @@ DSH 输入框底部原有一行会话统计（轮数/步数 · tok/s · Token ·
 | `openrouter` | `GET /api/v1/credits`（失败回退 `/api/v1/key`） | 剩余额度（USD）；密钥额度标为 Key，不显示 Used |
 | `deepseek` / `deepseek-api`（API Key 路线） | `GET https://api.deepseek.com/user/balance` | 余额、赠送额度（响应币种） |
 | `opencode` / `opencode-go` / `opencode-zen` | `GET https://opencode.ai/zen/go/v1/usage`（Bearer Key） | `5HW / WEK / MON` 三档剩余百分比（不是金额） |
+| `commandcode`（Command Code 提供方插件） | `GET https://api.commandcode.ai/alpha/billing/credits`（Bearer Key） | `5HW / WEK` 两档剩余百分比 + `CRED / 额度` 剩余额度（USD） |
 
 > opencode 的 Key 从 DSH 凭据读取：`opencode-go` 用 `OPENCODE_GO_API_KEY`，`opencode` / `opencode-zen` 用 `OPENCODE_API_KEY`。
+> Command Code 用 `COMMANDCODE_API_KEY`（与它的 `@mars-sea/dsh-commandcode-provider` 插件同一个引用）。
 | 其他 Provider | 本插件尚未接入余额查询，不代表供应商没有 API | 「插件暂不支持 / Unsupported」（不重复会话 Token，无 Retry） |
 
 - 凭据只在 **Host** 侧读取：`ctx.credentials.resolve('OPENROUTER_API_KEY')` 或 `llm-pi-ai/<provider>`
   的存储记录，**API Key 不会返回给浏览器**
 - opencode 走官方的 `/zen/go/v1/usage`，返回的是套餐用量百分比，卡片显示 `5HW / WEK / MON` 三档剩余比例，无进度条
   （实测该端点可用：`rolling/weekly/monthly` 三档 `percent` + `resetsAt`）
+- Command Code 走官方的 `/alpha/billing/credits`，返回 5 小时 / 周两个窗口的 `used` / `cap` 与剩余额度，
+  卡片显示 `5HW / WEK` 两档剩余比例 + `CRED`（中文「额度」）剩余金额，无进度条；`cap` 为 0（套餐未设限）的窗口不画；
+  一次请求同时拿到窗口与额度（`monthlyCredits` 是套餐剩余，`purchasedCredits` / `freeCredits` 是充值/赠送）。
+  这一行是全卡最长的一行：`verify:ui` 实测 ≥320px 任何数值（含两档 `100%` 与 `999.99$`）都单行，
+  300–319px 真实数值（如 `0% / 50% / 6.99$`）单行，只有 ≥`99.99$` 的超额金额会折两行
 - Provider 余额缓存 60 秒；手动刷新会强制重新查询
 - 未配置 Key 时显示「未配置 … API Key」，接口失败显示「暂时读不到 … 余额」
 - 混合会话仍保留 DeepSeek API 余额，并显示「部分 …」徽标（悬浮提示该部分不消耗 DeepSeek API 余额）；
@@ -288,13 +295,18 @@ npm 页面：<https://www.npmjs.com/package/dsh-account-usage>（也可用 Git �
 | `index.js` | Host 半边：平台用量路由（真实数据、认证、缓存） |
 | `client.js` | 浏览器半边：tab 类型、Guide 卡片、面板、tab 标题、⌘U 快捷键 |
 | `locale/*.json` | 插件管理器的标题与描述（en/zh + ja/es/fr/de/ru/pt 英文回退） |
-| `icon.svg` | 原创钱包图标 |
+| `icon.svg` | 原创「用量」柱状图图标 |
 
 ## 限制
 
 - 右侧栏只在选中会话时存在，因此面板是会话级的
 - 平台「用量」接口是网页私有接口，非官方公开 API；平台改版时可能失效，届时自动回退本地估算
 - 平台按 UTC 切分每日数据，面板按平台给出的日期直接分桶（与平台「用量」页日期一致）
+
+## 1.0.14 更新摘要
+
+- **入口图标与左侧快捷簇一致**：右侧栏「用量」tab 与开始页卡片改用仪表盘图标（宿主 primitives
+  `IconGaugeOutlineRegular`，拿不到时回退同形内联 SVG），与窗口左上角的「用量」按钮同一个符号
 
 ## 1.0.12 更新摘要
 

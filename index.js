@@ -469,7 +469,11 @@ const PROVIDER_BALANCE_SPECS = {
   'deepseek-api-key': { kind: 'deepseek', currency: 'CNY', keyEnv: 'DEEPSEEK_API_KEY' },
   opencode: { kind: 'opencode-plan', keyEnv: 'OPENCODE_API_KEY' },
   'opencode-go': { kind: 'opencode-plan', keyEnv: 'OPENCODE_GO_API_KEY' },
-  'opencode-zen': { kind: 'opencode-plan', keyEnv: 'OPENCODE_API_KEY' }
+  'opencode-zen': { kind: 'opencode-plan', keyEnv: 'OPENCODE_API_KEY' },
+  // Command Code stores its key through the credentials service on the
+  // `COMMANDCODE_API_KEY` reference (its provider bundle resolves the same ref),
+  // so the llm-pi-ai record fallback below simply finds nothing for it.
+  commandcode: { kind: 'commandcode-plan', keyEnv: 'COMMANDCODE_API_KEY' }
 };
 
 function finiteNumber(value) {
@@ -477,6 +481,20 @@ function finiteNumber(value) {
   if (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))) return Number(value);
   return undefined;
 }
+
+/** Command Code serves its billing endpoints from the same origin as its chat API. */
+const COMMANDCODE_API_BASE = 'https://api.commandcode.ai';
+
+/**
+ * Headers the Command Code CLI sends on every account endpoint. The version
+ * header is informational, but it is pinned so the request identifies itself
+ * like the official CLI instead of a bare bearer-token probe.
+ */
+const COMMANDCODE_HEADERS = {
+  'accept-encoding': 'identity',
+  'x-command-code-version': '1.88.5',
+  'x-cli-environment': 'production'
+};
 
 /** Read one provider API key from the Host credential seam, never from the client. */
 async function resolveProviderKey(ctx, spec, provider) {
@@ -506,11 +524,11 @@ async function resolveProviderKey(ctx, spec, provider) {
   return undefined;
 }
 
-async function getJson(url, key, signal) {
+async function getJson(url, key, signal, extraHeaders) {
   let text;
   try {
     const response = await fetch(url, {
-      headers: { authorization: 'Bearer ' + key, accept: 'application/json' },
+      headers: { authorization: 'Bearer ' + key, accept: 'application/json', ...extraHeaders },
       redirect: 'manual',
       signal
     });
@@ -616,6 +634,61 @@ async function readOpenCodePlan(key, signal) {
   return { provider: 'opencode-go', kind: 'opencode-plan', windows };
 }
 
+/**
+ * Plan usage for Command Code: its billing endpoint reports the two windows an
+ * account actually runs into (5-hour and weekly) plus the credits left.
+ *   GET https://api.commandcode.ai/alpha/billing/credits  (Bearer <key>)
+ *   -> { credits: { monthlyCredits, purchasedCredits, freeCredits },
+ *        windowLimits: { fiveHour: { used, cap, exceeded, resetAt }, weekly: {...} } }
+ * A window whose `cap` is 0 was not limited by the plan, so it is skipped rather
+ * than drawn as a zeroed row; `usedPercent` is the share CONSUMED (the account
+ * card prints the share left). Credits are USD amounts: `monthlyCredits` is what
+ * is LEFT of the plan allowance and `purchasedCredits` / `freeCredits` are
+ * on-demand top-ups, so the three add up to the remaining balance.
+ */
+async function readCommandCodePlan(key, signal) {
+  const payload = await getJson(COMMANDCODE_API_BASE + '/alpha/billing/credits', key, signal, COMMANDCODE_HEADERS);
+  const root = payload !== null && typeof payload === 'object' ? payload : {};
+  const limits = root.windowLimits !== null && typeof root.windowLimits === 'object' ? root.windowLimits : undefined;
+  const data = root.credits !== null && typeof root.credits === 'object' ? root.credits : undefined;
+  const windows = [];
+  for (const id of ['fiveHour', 'weekly']) {
+    const block = limits === undefined ? undefined : limits[id];
+    if (block === null || typeof block !== 'object') continue;
+    const used = finiteNumber(block.used);
+    const cap = finiteNumber(block.cap);
+    if (used === undefined || cap === undefined || cap <= 0) continue;
+    const resetAt = finiteNumber(block.resetAt);
+    windows.push({
+      id,
+      usedPercent: Math.min(100, Math.max(0, Math.round((used / cap) * 1000) / 10)),
+      ...(block.exceeded === true ? { status: 'exceeded' } : {}),
+      ...(resetAt !== undefined && resetAt > 0 ? { resetsAt: new Date(resetAt).toISOString() } : {})
+    });
+  }
+  const monthly = data === undefined ? undefined : finiteNumber(data.monthlyCredits);
+  const purchased = data === undefined ? undefined : finiteNumber(data.purchasedCredits);
+  const free = data === undefined ? undefined : finiteNumber(data.freeCredits);
+  if (windows.length === 0 && monthly === undefined && purchased === undefined && free === undefined) {
+    throw codedError('invalid_response', 'commandcode plan response missing usage');
+  }
+  const credits =
+    monthly === undefined && purchased === undefined && free === undefined
+      ? undefined
+      : {
+          ...(monthly === undefined ? {} : { monthly }),
+          ...(purchased === undefined ? {} : { purchased }),
+          ...(free === undefined ? {} : { free })
+        };
+  return {
+    provider: 'commandcode',
+    kind: 'commandcode-plan',
+    currency: 'USD',
+    windows,
+    ...(credits === undefined ? {} : { credits })
+  };
+}
+
 /** One cached provider balance read; unsupported providers and missing keys stay typed. */
 function createProviderBalanceReader(ctx) {
   const cache = new Map();
@@ -633,7 +706,9 @@ function createProviderBalanceReader(ctx) {
           ? await readOpenRouterBalance(key, signal)
           : spec.kind === 'opencode-plan'
             ? await readOpenCodePlan(key, signal)
-            : await readDeepSeekKeyBalance(key, signal);
+            : spec.kind === 'commandcode-plan'
+              ? await readCommandCodePlan(key, signal)
+              : await readDeepSeekKeyBalance(key, signal);
       // Endpoint readers share canonical shapes, but UI identity/cache keys must
       // remain the requested provider (aliases may use different credentials).
       const result = { ok: true, data: { ...data, provider, fetchedAt: Date.now() } };

@@ -27,6 +27,18 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react');
     const h = React.createElement;
+    // The quick-action cluster next to the traffic lights renders the usage entry with
+    // the shipped gauge glyph; the tab chip uses the same one so both entries read as
+    // the same feature (user 2026-11-09). Primitives are host-provided like react.
+    let GaugeIcon = null;
+    try {
+      const primitives = require('@deepseek-ai/dsh-client-ui-primitives');
+      if (primitives !== null && primitives !== undefined && typeof primitives.IconGaugeOutlineRegular === 'function') {
+        GaugeIcon = primitives.IconGaugeOutlineRegular;
+      }
+    } catch (error) {
+      GaugeIcon = null;
+    }
 
     /** Module identity: the tab type id and the slot cell key collide by design. */
     const ID = 'dsh-account-usage';
@@ -191,6 +203,7 @@ window.__ModuleLoader__.load({
       'account.planRolling': '5HW',
       'account.planWeekly': 'WEK',
       'account.planMonthly': 'MON',
+      'account.creditsLabel': '额度',
     };
 
     /** English dictionary, checked against the Chinese key set. */
@@ -297,6 +310,7 @@ window.__ModuleLoader__.load({
       'account.planRolling': '5HW',
       'account.planWeekly': 'WEK',
       'account.planMonthly': 'MON',
+      'account.creditsLabel': 'CRED',
     };
 
     // ----------------------------------------------------------------- styles --
@@ -376,6 +390,10 @@ window.__ModuleLoader__.load({
       '.aup-acct-src[data-current]{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 10%,transparent);border-radius:6px}',
       '.aup-acct-src[data-current] .aup-acct-src-label{font-weight:600}',
       '.aup-acct-pairs{display:inline-flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 2px;letter-spacing:-0.4px}',
+      // Worst-case figures (three `100%`, or two windows plus a wide credit amount) get
+      // one more deterministic step everywhere, not only in the ultra-narrow tier: the
+      // Command Code row adds a third pair and must stay single-line at 340px.
+      '.aup-acct-pairs.aup-acct-pairs-tight{letter-spacing:-1.2px}',
       '.aup-acct-pair{display:inline-flex;align-items:baseline;gap:2px;white-space:nowrap}',
       '.aup-acct-pair-label{color:var(--aup-label-2);font-weight:500}',
       '.aup-acct-label{min-width:0;color:var(--aup-label-2);overflow-wrap:anywhere}',
@@ -503,7 +521,7 @@ window.__ModuleLoader__.load({
       '@container aup-panel (max-width:330px){.aup-acct-srcs{column-gap:4px}.aup-acct-pair{gap:1px}.aup-acct-pairs{gap:1px 0;letter-spacing:-0.7px;font-variant-numeric:proportional-nums}.aup-context-legend,.aup-stats-summary{column-gap:6px}.aup-context-legend>span,.aup-stats-summary>span{white-space:nowrap}.aup-model-row{gap:2px 6px}.aup-model-name{letter-spacing:-0.2px}}',
       // ---- ultra-narrow panes (<=310px): the last spacing step so even three `100%`
       // windows stay on one line; still 13px text, only tighter rhythm. ----
-      '@container aup-panel (max-width:320px){.aup-card{padding-left:5px;padding-right:5px}.aup-acct-srcs{column-gap:2px}.aup-acct-src-label{letter-spacing:-0.4px}.aup-acct-pair{gap:2px}.aup-acct-pairs{gap:0 1px;letter-spacing:-0.95px}.aup-acct-pairs-tight{gap:0 1px;letter-spacing:-1.05px}.aup-model-row{gap:2px 5px}.aup-model-name{letter-spacing:-0.4px}}',
+      '@container aup-panel (max-width:320px){.aup-card{padding-left:5px;padding-right:5px}.aup-acct-srcs{column-gap:2px}.aup-acct-src-label{letter-spacing:-0.5px}.aup-acct-pair{gap:2px}.aup-acct-pairs{gap:0 1px;letter-spacing:-1px}.aup-acct-pairs.aup-acct-pairs-tight{gap:0 1px;letter-spacing:-1.6px}.aup-model-row{gap:2px 5px}.aup-model-name{letter-spacing:-0.4px}}',
       // ---- content shedding on short windows: pure media queries, no measurement ----
       // Measured ladder (test/layout-check.mjs --tiers): each step keeps the whole
       // panel inside its own height so the card column never has to scroll. These are
@@ -574,6 +592,30 @@ window.__ModuleLoader__.load({
           stroke: 'currentColor',
           strokeWidth: 1.5
         })
+      );
+    }
+
+    /** Gauge glyph: the tab / guide mark shared with the shell's quick-action button. */
+    function GaugeGlyph({ size = 14, className }) {
+      if (GaugeIcon !== null) return h(GaugeIcon, { size, className });
+      return h(
+        'svg',
+        {
+          viewBox: '0 0 24 24',
+          width: size,
+          height: size,
+          fill: 'none',
+          stroke: 'currentColor',
+          strokeWidth: 1.6,
+          strokeLinecap: 'round',
+          strokeLinejoin: 'round',
+          'aria-hidden': true,
+          focusable: 'false',
+          className
+        },
+        h('path', { d: 'M4.2 16.4a8 8 0 1 1 15.6 0' }),
+        h('path', { d: 'M12 12.2l3.3-2.5' }),
+        h('circle', { cx: 12, cy: 13.1, r: 1.1, fill: 'currentColor', stroke: 'none' })
       );
     }
 
@@ -778,6 +820,7 @@ window.__ModuleLoader__.load({
       opencode: 'OpenCode',
       'opencode-go': 'OpenCode Go',
       'opencode-zen': 'OpenCode Zen',
+      commandcode: 'Command Code',
       ollama: 'Ollama',
       azure: 'Azure',
       bedrock: 'AWS Bedrock',
@@ -1651,7 +1694,7 @@ window.__ModuleLoader__.load({
       const providerPhase = providerBalances === null || providerBalances === undefined ? 'loading' : providerBalances.phase;
       const providerRows = providerPhase === 'ready' && Array.isArray(providerBalances.items) ? providerBalances.items : [];
       const currencyOf = (entry) => (typeof entry.currency === 'string' ? entry.currency : 'USD');
-      const windowCode = (id) => (id === 'rolling' ? t('account.planRolling') : id === 'weekly' ? t('account.planWeekly') : t('account.planMonthly'));
+      const windowCode = (id) => (id === 'rolling' || id === 'fiveHour' ? t('account.planRolling') : id === 'weekly' ? t('account.planWeekly') : t('account.planMonthly'));
       // One display rule for every source (user 2026-11-08): short muted label + figure
       // pairs, right aligned - `Balance 199.54¥ Bonus 0.00¥`, `5HW 63% WEK 70% MON 85%`.
       const pairs = (items, extraClass) => ({
@@ -1681,24 +1724,46 @@ window.__ModuleLoader__.load({
         ]);
       };
 
+      /**
+       * Remaining Command Code credits: the plan allowance left plus any on-demand
+       * top-ups. Absent credits are unknown, never zero.
+       */
+      const creditsRemaining = (credits) => {
+        if (credits === null || typeof credits !== 'object') return undefined;
+        const parts = ['monthly', 'purchased', 'free']
+          .map((key) => credits[key])
+          .filter((value) => Number.isFinite(value));
+        if (parts.length === 0) return undefined;
+        // Pass the raw sum: `formatMoney` truncates positive amounts to cents, the
+        // same rule the platform amounts follow, so this must not round first.
+        return parts.reduce((sum, value) => sum + value, 0);
+      };
+
       const providerSummary = (source) => {
         const status = providerBalances && providerBalances.byProvider && providerBalances.byProvider[source.id];
         const entry = status ? status.data : providerRows.find((row) => row && row.provider === source.id);
         if (entry !== undefined && (!status || status.phase === 'ready')) {
-          if (entry.kind === 'opencode-plan' && Array.isArray(entry.windows) && entry.windows.length > 0) {
-            // Plan rule (user 2026-11-08): `5HW 63%  WEK 70%  MON 85%` - every figure is
-            // the share LEFT, so no "left/used" wording; fixed order 5h -> week -> month.
-            const windows = ['rolling', 'weekly', 'monthly']
-              .map((id) => entry.windows.find((window) => window && window.id === id))
-              .filter((window) => window !== undefined && Number.isFinite(window.usedPercent));
-            if (windows.length === 0) return { value: t('account.status.invalid'), muted: true };
-            const figures = windows.map((window) => Math.round((100 - window.usedPercent) * 10) / 10 + '%');
-            // Deterministic, not measured: only three `100%` figures need the extra step.
-            const tight = figures.every((figure) => figure.length >= 4);
-            return pairs(windows.map((window, index) => [window.id, windowCode(window.id), figures[index]]), tight ? 'aup-acct-pairs-tight' : undefined);
-          }
           const currency = currencyOf(entry);
           const money = (value) => formatMoney(String(value), currency, locale);
+          if (Array.isArray(entry.windows)) {
+            // Plan rule (user 2026-11-08): `5HW 63%  WEK 70%  MON 85%` - every figure is
+            // the share LEFT, so no "left/used" wording; fixed order 5h -> week -> month.
+            // Command Code publishes a 5-hour and a weekly window plus the credits left
+            // beside them, so its row appends one `CRED / 额度` pair.
+            const windows = ['rolling', 'fiveHour', 'weekly', 'monthly']
+              .map((id) => entry.windows.find((window) => window && window.id === id))
+              .filter((window) => window !== undefined && Number.isFinite(window.usedPercent));
+            const figures = windows.map((window) => Math.round((100 - window.usedPercent) * 10) / 10 + '%');
+            const items = windows.map((window, index) => [window.id, windowCode(window.id), figures[index]]);
+            const creditsLeft = creditsRemaining(entry.credits);
+            const creditFigure = creditsLeft === undefined ? undefined : money(creditsLeft);
+            if (creditFigure !== undefined) items.push(['credits', t('account.creditsLabel'), creditFigure]);
+            if (items.length === 0) return { value: t('account.status.noBalance'), muted: true };
+            // Deterministic, not measured: only wide figure text needs the extra step
+            // (three `100%`, or Command Code's two windows plus a wide credit amount).
+            const tight = figures.concat(creditFigure === undefined ? [] : [creditFigure]).join('').length >= 10;
+            return pairs(items, tight ? 'aup-acct-pairs-tight' : undefined);
+          }
           const remaining = Number.isFinite(entry.remaining) ? entry.remaining : undefined;
           const granted = Number.isFinite(entry.granted) ? entry.granted : undefined;
           // The balance card shows what is LEFT only (user 2026-11-08: no costs here) -
@@ -2859,11 +2924,11 @@ window.__ModuleLoader__.load({
       return true;
     }
 
-    /** Tab chip: wallet glyph plus the short tab title (never the cached long title). */
+    /** Tab chip: gauge glyph plus the short tab title (never the cached long title). */
     function AccountUsageTitle({ useTabInfo, t }) {
       const info = useTabInfo();
       const label = typeof t === 'function' ? t('tab.title') : info.tab.title;
-      return h(React.Fragment, null, h(WalletGlyph, { size: 14, className: 'aup-tab-icon' }), label);
+      return h(React.Fragment, null, h(GaugeGlyph, { size: 14, className: 'aup-tab-icon' }), label);
     }
 
     // ----------------------------------------------------------------- apply --
@@ -3051,7 +3116,7 @@ window.__ModuleLoader__.load({
                 commandId: SHORTCUT_ID,
                 title: () => t('guide.title'),
                 description: () => t('guide.description'),
-                icon: WalletGlyph
+                icon: GaugeGlyph
               }
             ]
           }),

@@ -581,7 +581,9 @@ const flat = (node) => text(node).replace(/\s+/g, ' ').trim();
 {
   const titleRegistration = first.registrations.find((r) => r.definition.name === 'sidebar.right.pane.tab.title');
   const titleTree = titleRegistration.component({ useTabInfo: () => ({ tab: { title: '账号用量' } }), t: (key) => first.t(key) });
-  assert.equal(walk(titleTree, (n) => hasClass(n, 'aup-tab-icon')).length, 1, 'the tab chip keeps its wallet glyph');
+  assert.equal(walk(titleTree, (n) => hasClass(n, 'aup-tab-icon')).length, 1, 'the tab chip keeps its glyph cell');
+  assert.ok(source.includes('IconGaugeOutlineRegular'), 'the tab glyph is the shell quick-action gauge');
+  assert.ok(source.includes('icon: GaugeGlyph'), 'the guide card uses the same gauge glyph');
   assert.equal(flat(titleTree), '用量', 'the tab chip label stays short');
 }
 
@@ -926,6 +928,36 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   // Plan format (user 2026-11-08): `5HW 63%  WEK 70%  MON 85%`, every figure is the share left.
   assert.ok(planText.includes('5HW 99% WEK 88% MON 65%'), 'plan windows read 5HW / WEK / MON as the share left: ' + planText);
   assert.ok(!/剩余|已用|left|used/.test(planText.replace('账户余额', '')), 'plan figures carry no left/used wording: ' + planText);
+
+  // Command Code publishes the same 5-hour / weekly plan windows as a share and the
+  // credits left beside them; the row reuses the plan format and appends one pair.
+  stateQueue.push(
+    accountState,
+    { phase: 'ready', ok: true, source: 'platform', days: [], currency: 'CNY', dimension: 'day', refreshing: false },
+    { phase: 'ready', items: [{ provider: 'commandcode', model: 'deepseek/deepseek-v4.1-flash-fast', tokens: 4_500_000, requests: 400 }], totalTokens: 4_500_000 },
+    { phase: 'ready', items: [{
+      provider: 'commandcode',
+      kind: 'commandcode-plan',
+      currency: 'USD',
+      windows: [{ id: 'fiveHour', usedPercent: 100, status: 'exceeded' }, { id: 'weekly', usedPercent: 50.04 }],
+      credits: { monthly: 6.9983883725, purchased: 0, free: 0 }
+    }], error: undefined },
+    DEFAULT_SETTINGS,
+    'day',
+    { count: 0, force: false },
+    { count: 0, force: false },
+    false
+  );
+  const commandCodeTree = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
+  stateQueue.length = 0;
+  const commandCodeCard = walk(commandCodeTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
+  const commandCodeText = flat(commandCodeCard);
+  // Share left in fixed order, then the credits left - never "used" or a spend figure.
+  assert.ok(commandCodeText.includes('Command Code'), 'the Command Code source keeps its own display name: ' + commandCodeText);
+  assert.ok(commandCodeText.includes('5HW 0% WEK 50%'), 'Command Code windows read the share left: ' + commandCodeText);
+  assert.ok(commandCodeText.includes('CRED 6.99$') || commandCodeText.includes('额度 6.99$'), 'Command Code credits read the amount left with the symbol last: ' + commandCodeText);
+  const commandCodeStats = flat(walk(commandCodeTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-stats'))[0]);
+  assert.ok(commandCodeStats.includes('Command Code') && commandCodeStats.includes('4.5M'), 'the statistics card names the Command Code source: ' + commandCodeStats);
 
   // Mixed sessions split the platform statistics by source instead of one flat total.
   stateQueue.push(

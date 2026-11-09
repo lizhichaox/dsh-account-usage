@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.0.13 — 2026-11-09
+
+### 第三方 Provider
+
+- **Command Code 额度也能在右侧栏看**（用户：装了 `@mars-sea/dsh-commandcode-provider` 后额度只能在设置里看，
+  习惯在右侧栏看额度状态）。账户卡的 Command Code 来源行显示 `5HW / WEK` 两档**剩余**百分比与
+  `CRED / 额度` 剩余金额，例如 `5HW 0%  WEK 50%  CRED 6.99$`；不新开 tab、不改它的设置页。
+- Host 侧读取它官方的 `GET https://api.commandcode.ai/alpha/billing/credits`
+  （Bearer `COMMANDCODE_API_KEY`，只走 Host，60 秒缓存）：一次请求同时拿到 5 小时 / 周两个窗口的
+  `used` / `cap` 与 `monthlyCredits`（套餐剩余）/ `purchasedCredits` + `freeCredits`（充值/赠送）。
+  `cap` 为 0（套餐未设限）的窗口不画；额度缺失就不写额度对；失败只显示短状态，无 Retry。
+- 用量统计卡照常显示 Command Code 来源的本会话 Token 与 `PLAN` 标记。
+- 测试：`provider-host` 覆盖窗口换算、未设限窗口、额度为零/缺失、鉴权与格式错误；`provider-client` 覆盖
+  中英文行文案、只有额度/只有窗口两种降级；冒烟测试锁定 `5HW / WEK` 与 `CRED` 的格式。
+
+## 1.0.14 — 2026-11-09
+
+### 图标
+
+- 右侧栏「用量」tab 与开始页卡片的图标改为宿主 primitives 的 `IconGaugeOutlineRegular`（仪表盘），
+  与窗口左上角快捷簇里的「用量」按钮同一符号；primitives 不可用时回退到同形内联 SVG。
+  钱包图标不再作为入口图标（账户余额卡内部的卡片图标保留）。
+
 ## 1.0.12 — 2026-11-09
 
 ### 排版
