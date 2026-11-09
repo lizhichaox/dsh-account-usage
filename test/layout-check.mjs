@@ -572,9 +572,15 @@ async function measure(css, dir, height, testCase, extraCss = '', width = 420) {
   if (REUSE_BROWSER && browser.fallback === null) {
     try {
       text = await renderWithBrowser(file, width, height);
+      // The emulated viewport is what the geometry depends on. If the browser
+      // ignored it the numbers would silently describe the wrong pane, so such a
+      // measurement is discarded and re-taken through the legacy launch, which
+      // sizes the window instead.
+      if (JSON.parse(text).paneHeight !== height) throw new Error('the browser ignored the emulated viewport');
     } catch (error) {
       browser.fallback = error.message;
-      console.log(`layout check: shared browser unavailable (${error.message}); falling back to one launch per case`);
+      text = undefined;
+      console.log(`layout check: shared browser unusable (${error.message}); falling back to one launch per case`);
     }
   }
   if (text === undefined) {
