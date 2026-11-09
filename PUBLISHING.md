@@ -11,14 +11,13 @@ Harness 的「插件市场」（Discover）不是中心化商店，而是**索�
 | GitHub 仓库 | <https://github.com/lizhichaox/dsh-account-usage>（public，`main`） |
 | 市场索引 | <https://lizhichaox.github.io/dsh-account-usage/market/index.json> |
 | 索引托管 | GitHub Pages（仓库根目录；`.nojekyll` 保证 JSON 原样输出，无重定向） |
-| 当前安装源 | **npm**：`dsh-account-usage@1.0.16`（索引 `source.type = npm`） |
-| 包名 / 版本 | `dsh-account-usage` / **1.0.16** |
+| 当前安装源 | **npm**：`dsh-account-usage@1.0.17`（索引 `source.type = npm`） |
+| 包名 / 版本 | `dsh-account-usage` / **1.0.17** |
 | 兼容性 | `engines.dsh: ^0.2.2-rc.1`（与当前 runtime 匹配） |
-| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.16`，2026-11-09 12:04:17Z，本地 20:04） |
-| 校验 | `npm run verify` + `npm run verify:ui` 全绿（provider 行 72 个状态 + 面板 13 个高度状态）；npm 包 15 个文件 / 55.5 kB（shasum `1599c06b`，与本地 `npm pack` 逐字节一致）；CI `verify` 全绿；Pages 索引已切到 1.0.16，并用官方 `parseMarketIndex` 复核通过 |
+| npm | **已发布**：<https://www.npmjs.com/package/dsh-account-usage>（`1.0.17`，2026-11-09 12:43:31Z，本地 20:43） |
+| 校验 | `npm run verify` + `npm run verify:ui` 全绿（provider 行 72 个状态 + 面板 15 个高度状态）；npm 包 15 个文件 / 56.8 kB（shasum `53e69be8`，与本地 `npm pack` 逐字节一致）；CI `verify` 全绿；Pages 索引已切到 1.0.17，并用官方 `parseMarketIndex` 复核通过 |
 
-> 1.0.15（2026-11-09，会话卡不再截断模型行）已发布到 npm 但当时未重建索引；
-> 1.0.16 的索引直接接管，市场上只保留最新一条精确版本。
+> 索引每次发版都会重建，市场上只保留最新一条精确版本；1.0.15 当年漏建索引的问题已由 1.0.16 接手。
 
 安装侧使用：
 
