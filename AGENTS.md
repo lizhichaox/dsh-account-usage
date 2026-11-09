@@ -3,7 +3,7 @@
 > 这是用户对本插件的**长期要求清单**。接手前先读本文件，不要重复询问已经写在这里的偏好；
 > 用户不想反复重申。若实现与本文件冲突，以用户当次明确指示为准，并在完成后回写本文件。
 
-最后更新：2026-11-09 · 插件版本：`1.0.11`
+最后更新：2026-11-09 · 插件版本：`1.0.12`
 
 - 插件目录：`/Users/lizhichao/vc/macos/dsh/dsh-preset/account-usage-panel`
 - GitHub：<https://github.com/lizhichaox/dsh-account-usage>
@@ -75,6 +75,7 @@
 | 39 | **当前会话在用的 Account 要凸显**（2026-11-08） | 最新 assistant 消息的 provider 对应的那一行：整行淡品牌色背景 + 名称加粗；无圆点、无胶囊、不改变列宽与左右边缘；`aria-current` 暴露给读屏 | `exactly one account row is highlighted` / `the row in use is the highlighted one` / `the highlight is exposed to assistive tech` / `the highlight is a background tint, not a pill` |
 | 40 | **介绍语 20 字以内**（2026-11-08，先要 50 再收紧到 20） | 插件列表/市场 Discover 共用一句短介绍：`Balances + tokens.`（18 字符）/「余额与 Token 用量」（12 字）；`package.json.description`、`scripts/finalize-release.mjs`、`market/index.json` 三处同步，`market/check.mjs` 强制 ≤20 | `the plugin intro stays within 20 characters` / `the intro names balances and tokens` / market check 的 `description must stay within 20 characters` |
 | 41 | **账户行在最小宽度也不许换行**（2026-11-08 / 2026-11-09：「争取一行放完」） | 三级、全部不缩放字号：≥340px 舒适档（任何值单行）；≤330px 窄屏档（间距收紧、`proportional-nums`、图例/合计 `nowrap`）；≤320px 超窄档（内边距 5px、名称字距 -0.4、对的间距 2px+2px），**三个 `100%`** 这种最坏情况由**确定性 class**（按数值文本长度，非测量）再加紧一档，300px 仍单行 | layout-check 62 态：340px + 全 `100%`；320/310/300 的 worst（三个 `100%`）与 mixed（两个 `100%`）都断言 `lines === 1` / `legend wrapped` / `summary wrapped` |
+| 42 | **分隔符前后不留空格**（2026-11-09：「去掉-横向前后的空格以及其他空格」） | 所有用作分隔的符号紧贴两侧文字：模型行 `Provider-model`、轮/步 `106/11550`、上下文 `595K/1M（60%）`、中文 `轮/步`；只保留单词之间的必要空格 | `provider and model share one line without spaces around the dash` / `model rows merge provider and model without separator spaces` / smoke 的 `轮/步` 标签断言 |
 
 ## 1. 产品定位
 
@@ -238,6 +239,9 @@
   - 列宽按内容自适应（日期列用 `max-content`）
 - 不允许出现 `text-overflow: ellipsis`（当前全文件已清零）。
 - Token 单位自动 `K → M → B → T`，最多两位小数；金额固定两位小数（正数按平台规则截断）。
+- **分隔符前后不留空格**（用户 2026-11-09）：`Provider-model`、`106/11550`、`595K/1M（60%）`、
+  「轮/步」——横线、斜杠两侧都紧贴文字，只保留单词之间天然的空格。窄面板下每个空格都是
+  宝贵的横向空间，逗号/句号同理不要前置空格。
 - **金额只显示货币符号、不显示货币代码，且符号一律放在数字后面**（用户 2026-11-08：
   「留个¥就行 CN 没必要」→「金额符号放在价格后面吧¥」→「货币符号都放到金额后面」）：
   - 统一规则：`23.28¥`、`9.50$`、`12.00€`、`-5.00¥`；**不写** `CN¥` / `CNY` / `$11.04`
@@ -433,13 +437,14 @@
 - **余额行最小宽度单行**（1.0.9）：收紧对间距/字距，取代「窄面板允许换行」；340px 是舒适宽度（任何值单行）。
 - **最小宽度护栏降到 300px**（1.0.10）：取代 340px 回弹；宿主最窄也能用，330px 以下自动进入紧凑档。
 - **超窄档 + 确定性加紧密**（1.0.11）：取代「300px 下三个 `100%` 只能折行」；按数值文本长度决定是否再紧一档，300px 也单行。
+- **分隔符去空格**（1.0.12）：模型行改为 `Provider-model`，轮/步与上下文改成 `a/b`，取代带空格的 `Provider - model` / `106 / 11550`。
 - **所有货币符号后置**（1.0.9）：取代「只有 ¥ 后置、其它货币按 $11.04 惯例」。
 - **当前 Account 用整行背景凸显**（1.0.6）：取代「当前来源小圆点」（当时被判为无信息量而删除）；
   现在这条信息有意义，但只用**背景 + 字重**表达，不加任何新元素、不产生布局位移。
 - **余额卡只写剩余**：取代「OpenRouter 显示已用」「OpenAI/Anthropic 显示本月花费 + 需管理员密钥」；也取代「当前来源小圆点」。
 - **只有会话卡保留进度条**：取代「用量统计四列表含胶囊条」「账户卡胶囊条」。
 - 793px/851px 是三来源、420px 宽夹具基准，多来源追加 `16 + (n-3)×52`，英文窄栏的长状态会换行增高（因此英文状态都用短词）。
-- 本轮 1.0.11 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
+- 本轮 1.0.12 发布 npm；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
 
 - 布局几何一律用 `npm run verify:ui` 在真机 Chrome 里量；**不再靠「看代码推断布局」交付**
 - **卡片**不使用 `container-type: size`（内容高度会塌陷成 0）；但**面板根节点必须用**
@@ -448,7 +453,7 @@
   `justify-content:space-evenly` 摊开；余额卡（3 行数字）`flex:0 0 auto` 收紧；
   取代了「三张卡都 `flex:1 1 0` 平分」（会把卡片压到内容以下 → 叠字根因）
   和「最后一张卡吸收」（信息最少的余额卡吃掉整屏空白，被用户点名）两种写法
-- 按模型统计：无冗余小标题，每行 `Provider - 模型短名    Tokens`（最多 3 行，过长换行，绝不降字号）
+- 按模型统计：无冗余小标题，每行 `Provider-模型短名    Tokens`（最多 3 行，过长换行，绝不降字号）
 - 统计区为**对齐两列表格**（标签列 `max-content`、值列右对齐，行高 18px、列间距 16px）；
   数值过长时只允许收紧字距（`statValueClass` → letter-spacing），**绝不能改字号、也不能与相邻列重叠**；时长使用紧凑格式（如 1时44分 / 2分57秒 / 1.7秒）；用量统计每日行单行显示 Token · 金额，行高有下限，禁止重叠
 - 卡片文本无省略号；长文本换行、长金额只收紧字距（字号恒 13px）
@@ -462,7 +467,7 @@
   上下文块 / 2×2 明细；滚动条外观全部去掉，`overflow-y:auto` 只作隐形兜底；
   **禁止**任何基于运行时测量的行数调整（09:29 崩溃成因），也禁止 `overflow:hidden` 假装修好。
   取代了此前用 `@media (max-height:)` 按**窗口**判定的写法——窗口比面板高约 90px，判定基准错了，所以阶梯一直没能阻止滚动。
-- 面板最小宽度 300px（340px 是舒适宽度），低于它会被自动纠正；万一纠正失败，模型行 `Provider - 模型名` 换行显示（不降字号）
+- 面板最小宽度 300px（340px 是舒适宽度），低于它会被自动纠正；万一纠正失败，模型行 `Provider-模型名` 换行显示（不降字号）
   （`.aup-model-row` 用 `flex-wrap`），token 数值 `margin-left:auto`，绝不压到文字上
 - 底栏 dock + ContextMeter 一起隐藏（只隐藏 slot 不够）
 - 三张卡固定叫「会话消耗 / 用量统计 / 账户余额」，**不许改名、不许新增第四张卡**（「会话明细」已废弃）；

@@ -292,6 +292,18 @@ for (const [name, selector] of [['legend', '.aup-context-legend'], ['summary', '
   out[name + 'Lines'] = new Set(cells.map((el) => Math.round(el.getBoundingClientRect().top))).size;
   out[name + 'Overflow'] = row.scrollWidth > row.clientWidth + 1;
 }
+out.modelRows = [...document.querySelectorAll('.aup-card-session .aup-model-row')].map((row) => {
+  const name = row.querySelector('.aup-model-name');
+  const tokens = row.querySelector('.aup-model-tokens');
+  const rowRect = row.getBoundingClientRect();
+  const nameRect = name === null ? null : name.getBoundingClientRect();
+  const tokenRect = tokens === null ? null : tokens.getBoundingClientRect();
+  return {
+    text: row.textContent.slice(0, 60),
+    height: Math.round(rowRect.height),
+    sameLine: nameRect === null || tokenRect === null ? true : Math.round(nameRect.top) === Math.round(tokenRect.top)
+  };
+});
 out.acctRows = [...document.querySelectorAll('.aup-acct-src, .aup-acct-row')].map((el) => Math.round(el.getBoundingClientRect().height) + ':' + el.textContent.slice(0, 40));
 out.acctPairs = [...document.querySelectorAll('.aup-acct-srcs .aup-acct-src')].flatMap((row) => {
   const pairs = row.querySelector('.aup-acct-pairs');
@@ -465,6 +477,14 @@ if (process.argv.includes('--debug-wrap')) {
   }
   process.exit(0);
 }
+if (process.argv.includes('--debug-model')) {
+  const widths = (process.argv[process.argv.indexOf('--debug-model') + 1] || '340,320,300').split(',').map(Number);
+  for (const locale of ['zh', 'en']) for (const w of widths) {
+    const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-model-')), 900, sourcesCase(3, locale), '', w);
+    console.log(locale, w, JSON.stringify(r.modelRows));
+  }
+  process.exit(0);
+}
 if (process.argv.includes('--debug-sources')) {
   for (const [loc, w, n] of [['en', 340, 5], ['zh', 340, 5]]) { const r = measure(css, mkdtempSync(join(tmpdir(), 'aup-debug-')), 1600, sourcesCase(n, loc), '.aup-cards>.aup-card-session-fixed{flex:0 0 auto}', w); console.log(loc, w, n, r.cards.map((c) => c.height).join('/'), JSON.stringify(r.acctRows), JSON.stringify(r.sourceRows)); }
   process.exit(0);
@@ -512,6 +532,9 @@ for (const locale of ['zh', 'en']) for (const width of [330, 300]) {
   if (result.legendOverflow) providerFailures.push(`${label}: context legend overflows`);
   if (result.summaryLines > 1) providerFailures.push(`${label}: stats summary wrapped`);
   if (result.summaryOverflow) providerFailures.push(`${label}: stats summary overflows`);
+  for (const row of result.modelRows ?? []) {
+    if (row.height > 20) providerFailures.push(`${label}: model row wrapped -> ${row.text}`);
+  }
   providerChecks++;
 }
 // Below 340px the ultra-narrow step must still keep even three `100%` windows on
@@ -528,6 +551,9 @@ for (const locale of ['zh', 'en']) for (const width of [320, 310, 300]) {
     if (result.legendLines > 1) providerFailures.push(`${label}: context legend wrapped`);
     if (result.legendOverflow) providerFailures.push(`${label}: context legend overflows`);
     if (result.summaryLines > 1) providerFailures.push(`${label}: stats summary wrapped`);
+    for (const row of result.modelRows ?? []) {
+      if (row.height > 20) providerFailures.push(`${label}: model row wrapped -> ${row.text}`);
+    }
     if (result.horizontal.length || result.cardOverflow.length || result.overlaps.length) {
       providerFailures.push(label + ': geometry invalid');
     }

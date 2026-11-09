@@ -167,13 +167,13 @@ window.__ModuleLoader__.load({
       'tokens.cacheWrite': '缓存写入',
       'tokens.empty': '本次会话还没有 Token 记录。',
       'tokens.context': '上下文占用',
-      'tokens.contextValue': '{used} / {window}（{percent}%）',
+      'tokens.contextValue': '{used}/{window}（{percent}%）',
       'tokens.contextUnknown': '暂无上下文数据',
       'tokens.moreModels': '另有 {count} 个模型',
       'tokens.stat.requests': '请求次数',
       'tokens.stat.cacheHit': '缓存命中',
       'tokens.stat.avg': '平均',
-      'tokens.stat.turnsSteps': '轮 / 步',
+      'tokens.stat.turnsSteps': '轮/步',
       'tokens.stat.speed': '输出速度',
       'tokens.stat.llm': '模型用时',
       'tokens.stat.tool': '工具用时',
@@ -273,7 +273,7 @@ window.__ModuleLoader__.load({
       'tokens.cacheWrite': 'Cache write',
       'tokens.empty': 'This session has no token records yet.',
       'tokens.context': 'Context usage',
-      'tokens.contextValue': '{used} / {window} ({percent}%)',
+      'tokens.contextValue': '{used}/{window} ({percent}%)',
       'tokens.contextUnknown': 'No context data yet',
       'tokens.moreModels': '{count} more models',
       'tokens.stat.requests': 'Requests',
@@ -500,10 +500,10 @@ window.__ModuleLoader__.load({
       // ---- narrow panes: one more compaction step so balance rows stay on one line ----
       // The documented comfort width is 340px (where even three `100%` windows fit); below it,
       // typical values must still read as a single line, without scaling text.
-      '@container aup-panel (max-width:330px){.aup-acct-srcs{column-gap:4px}.aup-acct-pair{gap:1px}.aup-acct-pairs{gap:1px 0;letter-spacing:-0.7px;font-variant-numeric:proportional-nums}.aup-context-legend,.aup-stats-summary{column-gap:6px}.aup-context-legend>span,.aup-stats-summary>span{white-space:nowrap}}',
+      '@container aup-panel (max-width:330px){.aup-acct-srcs{column-gap:4px}.aup-acct-pair{gap:1px}.aup-acct-pairs{gap:1px 0;letter-spacing:-0.7px;font-variant-numeric:proportional-nums}.aup-context-legend,.aup-stats-summary{column-gap:6px}.aup-context-legend>span,.aup-stats-summary>span{white-space:nowrap}.aup-model-row{gap:2px 6px}.aup-model-name{letter-spacing:-0.2px}}',
       // ---- ultra-narrow panes (<=310px): the last spacing step so even three `100%`
       // windows stay on one line; still 13px text, only tighter rhythm. ----
-      '@container aup-panel (max-width:320px){.aup-card{padding-left:5px;padding-right:5px}.aup-acct-srcs{column-gap:2px}.aup-acct-src-label{letter-spacing:-0.4px}.aup-acct-pair{gap:2px}.aup-acct-pairs{gap:0 1px;letter-spacing:-0.95px}.aup-acct-pairs-tight{gap:0 1px;letter-spacing:-1.05px}}',
+      '@container aup-panel (max-width:320px){.aup-card{padding-left:5px;padding-right:5px}.aup-acct-srcs{column-gap:2px}.aup-acct-src-label{letter-spacing:-0.4px}.aup-acct-pair{gap:2px}.aup-acct-pairs{gap:0 1px;letter-spacing:-0.95px}.aup-acct-pairs-tight{gap:0 1px;letter-spacing:-1.05px}.aup-model-row{gap:2px 5px}.aup-model-name{letter-spacing:-0.4px}}',
       // ---- content shedding on short windows: pure media queries, no measurement ----
       // Measured ladder (test/layout-check.mjs --tiers): each step keeps the whole
       // panel inside its own height so the card column never has to scroll. These are
@@ -840,7 +840,9 @@ window.__ModuleLoader__.load({
     function modelRowLabel(item, t) {
       const model = shortModelName(item.model);
       const provider = typeof item.provider === 'string' && item.provider !== '' ? providerLabel(item.provider, t) : '';
-      return provider === '' ? model : provider + ' - ' + model;
+      // No spaces around the separator (user 2026-11-09): the model row is the
+      // widest single line in a narrow pane, so `Provider-model` saves two spaces.
+      return provider === '' ? model : provider + '-' + model;
     }
 
     /** Size class for the merged "Provider - model" label. */
@@ -2090,7 +2092,7 @@ window.__ModuleLoader__.load({
           ? duration(sessionStats.ttftMs / sessionStats.ttftSteps)
           : undefined;
       const detailItems = [
-        { key: 'turnsSteps', label: t('tokens.stat.turnsSteps'), value: turns === undefined && steps === undefined ? undefined : (turns === undefined ? '—' : String(turns)) + ' / ' + (steps === undefined ? '—' : String(steps)) },
+        { key: 'turnsSteps', label: t('tokens.stat.turnsSteps'), value: turns === undefined && steps === undefined ? undefined : (turns === undefined ? '—' : String(turns)) + '/' + (steps === undefined ? '—' : String(steps)) },
         { key: 'requests', label: t('tokens.stat.requests'), value: requestCount > 0 ? String(requestCount) : undefined },
         { key: 'cacheHit', label: t('tokens.stat.cacheHit'), value: cacheHit === undefined ? undefined : cacheHit + '%' },
         { key: 'average', label: t('tokens.stat.avg'), value: average === undefined || average <= 0 ? undefined : formatTokens(average) },
@@ -2277,7 +2279,6 @@ window.__ModuleLoader__.load({
       const platformBusy = account.refreshing === true || usage.refreshing === true;
       const sessionProviders = [...new Set((sessionModels.items || []).map((item) => item.provider).filter((provider) => typeof provider === 'string' && provider !== ''))];
       const offAccountProviders = sessionProviders.filter((provider) => !isAccountProvider(provider));
-      const offAccountLabel = [...new Set(offAccountProviders.map((provider) => providerLabel(provider, t)))].join(' / ');
       const offAccountAll = sessionProviders.length > 0 && offAccountProviders.length === sessionProviders.length;
       const busy = offAccountAll !== true && platformBusy;
       const accountSources = [

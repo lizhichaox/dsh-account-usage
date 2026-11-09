@@ -674,10 +674,10 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   const statLabels = walk(statsTree, (n) => hasClass(n, 'aup-stat-label')).map(flat);
   assert.deepEqual(
     statLabels,
-    ['轮 / 步', '请求次数', '缓存命中', '平均', '输出速度', '首 Token', '模型用时', '工具用时'],
+    ['轮/步', '请求次数', '缓存命中', '平均', '输出速度', '首 Token', '模型用时', '工具用时'],
     'session stats are grouped in semantic pairs: ' + JSON.stringify(statLabels)
   );
-  assert.deepEqual(statLabels.slice(0, 2), ['轮 / 步', '请求次数'], 'the volume pair opens the table');
+  assert.deepEqual(statLabels.slice(0, 2), ['轮/步', '请求次数'], 'the volume pair opens the table');
   assert.deepEqual(statLabels.slice(4, 6), ['输出速度', '首 Token'], 'speed and ttft share the responsiveness row');
   assert.deepEqual(statLabels.slice(6, 8), ['模型用时', '工具用时'], 'the two durations close the table');
 
@@ -828,9 +828,9 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   stateQueue.length = 0;
   assert.equal(walk(tree, (node) => hasClass(node, 'aup-models-caption')).length, 0, 'no redundant 按模型 caption');
   const modelNames = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat);
-  assert.ok(modelNames[0].includes('DeepSeek API - deepseek-chat'), 'provider and model share one line: ' + modelNames[0]);
+  assert.ok(modelNames[0] === 'DeepSeek API-deepseek-chat', 'provider and model share one line without spaces around the dash: ' + modelNames[0]);
   const modelTokens = walk(tree, (node) => hasClass(node, 'aup-model-tokens')).map(flat);
-  assert.deepEqual(modelNames, ['DeepSeek API - deepseek-chat', 'DeepSeek API - deepseek-reasoner'], 'model rows merge provider and model');
+  assert.deepEqual(modelNames, ['DeepSeek API-deepseek-chat', 'DeepSeek API-deepseek-reasoner'], 'model rows merge provider and model without separator spaces');
   assert.deepEqual(modelTokens, ['5K', '3K'], 'model rows show compact token totals');
 }
 
@@ -859,7 +859,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   assert.ok(walk(offAccountStats, (node) => hasClass(node, 'aup-src')).length > 0, 'same source-row layout as a mixed session');
   assert.ok(flat(offAccountStats).includes('OpenRouter'), 'off-account stats list the session sources');
   const modelName = walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat)[0];
-  assert.equal(modelName, 'OpenRouter - deepseek-flash', 'model row merges provider and model name');
+  assert.equal(modelName, 'OpenRouter-deepseek-flash', 'model row merges provider and model name without separator spaces');
   assert.equal(walk(tree, (node) => hasClass(node, 'aup-models-provider')).length, 0, 'provider caption rows are gone');
 
   // Provider balance mode renders the provider amounts instead of the DeepSeek wallet.
@@ -958,7 +958,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
     { count: 0, force: false },
     false
   );
-  const wideProjection = (key) => (key === 'sessionStats' ? { turns: 106, steps: 1155, decodeTokens: 900000, decodeMs: 5000, llmMs: 9180000, toolMs: 2476000, ttftMs: 2300, ttftSteps: 1 } : undefined);
+  const wideProjection = (key) => (key === 'sessionStats' ? { turns: 106, steps: 11550, decodeTokens: 900000, decodeMs: 5000, llmMs: 9180000, toolMs: 2476000, ttftMs: 2300, ttftSteps: 1 } : undefined);
   const wideTree = bodyRegistration.component({ t: first.t, useProjection: wideProjection, ...bodyProps });
   stateQueue.length = 0;
   const wideValues = walk(wideTree, (node) => hasClass(node, 'aup-stat-value')).map((node) => ({ text: flat(node), shrunk: hasClass(node, 'aup-stat-value-s') || hasClass(node, 'aup-stat-value-xs') }));
@@ -1096,7 +1096,7 @@ function render(usageState, projection, dimensionValue, settingsValue, settingsO
   stateQueue.length = 0;
   const titles = walk(tree, (n) => hasClass(n, 'aup-card-title')).map((n) => flat(n));
   assert.deepEqual(titles, ['Session usage', 'Usage statistics', 'Account balance'], 'non-Chinese locales render English titles');
-  assert.ok(walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat).some((text) => text.startsWith('DeepSeek API - ')), 'provider names localize to English');
+  assert.ok(walk(tree, (node) => hasClass(node, 'aup-model-name')).map(flat).some((text) => text.startsWith('DeepSeek API-')), 'provider names localize to English');
 }
 
 // --------------------------------------------------------------- settings --
