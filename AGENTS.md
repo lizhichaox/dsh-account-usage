@@ -3,7 +3,7 @@
 > 这是用户对本插件的**长期要求清单**。接手前先读本文件，不要重复询问已经写在这里的偏好；
 > 用户不想反复重申。若实现与本文件冲突，以用户当次明确指示为准，并在完成后回写本文件。
 
-最后更新：2026-11-09 · 插件版本：`1.0.16`
+最后更新：2026-11-09 · 插件版本：`1.0.17`
 
 - 插件目录：本仓库 `dsh-preset/account-usage-panel`（本地 link 安装）
 - GitHub：<https://github.com/lizhichaox/dsh-account-usage>
@@ -42,13 +42,13 @@
 | 13 | 开始页要显示键位 | guide entry 带 `commandId` = `SHORTCUT_ID` | `guide card links to the shortcut for its key hint` |
 | 14 | **不许把 DSH 搞崩** | 禁止 ResizeObserver + setState 自反馈布局 | `row trimming never feeds back from a resize observer` |
 | 15 | 底栏会话统计默认隐藏 | `<html data-account-usage-hide-stats>` | `the composer dock stats are hidden by default` |
-| 16 | 头部齿轮设置（2026-11-09 收敛为 4 项） | `.aup-pop` 弹层 + localStorage：显示卡片（会话消耗 / 账户余额）、自动刷新、隐藏底栏会话统计、恢复默认 | `settings button` |
+| 16 | 头部齿轮设置（1.0.17 #51 收敛为 **2 项开关**） | `.aup-pop` 弹层 + localStorage：隐藏底栏会话统计（默认开）、自动刷新（默认开）、恢复默认；两张卡**永远渲染**、没有显隐开关 | `settings button` / `settings keep exactly two switches` |
 | 17 | 不显示身份信息、不放跳转链接 | 不读用户资料、无外链 | `account reader does not fetch the profile` |
 | 18 | **要求写进 AGENTS.md，别让人重复** | 本节 §0 | 见各条 |
 | 19 | **英文文本不许看着浅** | 拉丁字体栈优先 + 根 500 基线 + `--aup-label-2` 混色 | `Latin families precede CJK ones in the stack` / `secondary text is darkened from theme tokens` / `the panel root sets a 500 baseline weight` |
 | 20 | **切维度不许抖动** | **已废弃（1.0.16，见 #46）**：维度 tab、固定槽位 `SERIES_ROW_SLOTS=4`、全维度预热只服务已删除的统计卡 | —（随统计卡删除） |
 | 21 | **放不下就少放点，绝不许遮挡，也不许留白** | 卡片按内容撑开**永不被压缩**（遮挡从结构上不可能）+ `@container aup-panel`（**容器查询，按面板自身高度**判定，不是窗口高度）逐级整块隐藏 + `npm run verify:ui` 真机测量 | `cards size to their content and are never squeezed` / `cards never clip their content` / `the measured shedding ladder contains: …`（去 Token 彩条那一级）/ `the old viewport ladder is gone`（负向：`@media (max-height)` 写法已不存在）/ `the card column never shows a scrollbar` |
-| 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（三来源夹具内容 **526px** + 面板 chrome **58px**）+ 容器查询阶梯（**584/575/532/448/384/325**，按来源数追加预算 **`(n-3)×44`**）+ 阶梯末尾带 `!important` + `scrollbar-width:none`；会话卡永不截断行 | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 3` / `the card column never shows a scrollbar` |
+| 22 | **不允许滚动、不允许出现滚动条，且尽量显示全部信息** | 先压缩高度（三来源夹具内容 **526px** + 面板 chrome **58px**）+ 容器查询阶梯（**584/575/532/448/384/330**，按来源数追加预算 **`(n-3)×44`**）+ 阶梯末尾带 `!important` + `scrollbar-width:none`；会话卡永不截断行 | `the panel root is a size container` / `the measured shedding ladder contains: …` / `the old viewport ladder is gone` / `cards are padding 8 / gap 3` / `the card column never shows a scrollbar` |
 | 23 | **同一组行左右对齐 + 行内垂直居中** | 父级网格 + 行 `grid-template-columns:subgrid` + 行 `align-items:center`；适用于账户卡来源行与按 provider 行（逐期行已随统计卡删除） | `the balance rows share one card grid` / `rows take their columns from the shared grid` / `subgrid rows centre their cells vertically` / `the provider rows share one parent grid` / `provider rows take their columns from the shared grid and centre their cells` / `the provider figure is pinned to the right edge`；layout-check 的 `acctLabelLeft`、`acctValueRight`、`provLabelLeft`、`provTokensRight` 边缘唯一性断言 + `${label}: ${name} not vertically centred` + `${label}: provider row wrapped` |
 | 24 | **用量统计是三列严格对齐的表（无胶囊条）** | **已废弃（1.0.16，见 #46）**：整张统计卡（`描述 \| 用量 \| 金额`、`PLAN` 标记、逐期明细）随卡片删除，无消费方 | —（随统计卡删除） |
 | 25 | **金额只留货币符号，且一律后置**（2026-11-08 扩展：所有货币） | `Intl.formatToParts` 重排，任何货币都是「数字 + 符号」：`23.28¥`、`9.50$`、`12.00€`；不显示货币代码 | `amounts use the narrow currency symbol` / `the balance row ends with the ¥ symbol` / `every currency keeps its symbol after the amount` / `no currency keeps the prefix form` |
@@ -62,19 +62,22 @@
 | 33 | **不许连着两条分割线**（2026-11-08） | 每条 `aup-session-sep` 绑定它引出的区块，阶梯隐藏区块时一起隐藏 | `each session separator belongs to one block: …` |
 | 34 | **OpenAI / Anthropic 先调研 API，确实不行才写 Unsupported** | 已调研（2026-11-08）：找到组织花费 API，未找到公开余额 API；余额卡不写花费 → `Unsupported`，不请求花费接口 | provider-host `openai/anthropic unsupported` 测试 / provider-client `OpenAI Unsupported` |
 | 35 | **余额卡只写剩余，不写 costs**（2026-11-08） | 只显示 Balance / Bonus / Key / 套餐剩余；`Used`、本月花费一律不出现；**面板里不再展示消费金额**（#46），卡内也不许出现「花费」字样 | `the balance card shows what is left, never costs` / `no spend (Used) in the balance card` |
-| 36 | **额度显示规范** | 套餐：`5HW 63%  WEK 70%  MON 85%`（全是剩余，不写 left）；DeepSeek：`Balance 199.54¥  Bonus 0.00¥`（中文 `余额 / 赠送`） | `plan windows read 5HW / WEK / MON as the share left` / `DeepSeek reads Balance x Bonus y on the right` |
+| 36 | **额度显示规范**（1.0.17 缩短标签，#50） | 套餐：`5H 63%  WE 70%  MO 85%`（全是剩余，不写 left）；DeepSeek：`Bal 199.54¥  Bon 0.00¥`（中文仍是 `余额 / 赠送`）；**标签与数值之间必须有可见间隙**（组间 12px / 对内 5px 起，见 #50） | `plan windows read the shortened 5H / WE / MO codes as the share left: …` / `the wallet labels are shortened to Bal / Bon` / `DeepSeek reads Balance x Bonus y on the right` |
 | 37 | **不需要 Retry 按钮，获取不到就算了**（2026-11-08） | 失败只显示状态，不显示重试按钮、不自动重试；保留既有顶部刷新及定时刷新 | `failed reads never render Retry buttons` / provider-client 全部错误态无按钮、顶部刷新和旧响应回归 |
 | 38 | **上架图标要体现 usage**（2026-11-08：「一点也没体现出来 usage 的概念」） | `icon.svg` = 蓝色圆角块 + 三条递增白色柱状条；设置里的已安装列表与市场 Discover 共用 | `the icon draws three usage bars` / `the wallet artwork is gone` |
 | 39 | **当前会话在用的 Account 要凸显**（2026-11-08） | 最新 assistant 消息 provider 对应那一行：整行淡品牌色背景 + 名称加粗；无圆点、无胶囊、不改变列宽与左右边缘；`aria-current` 暴露给读屏 | `exactly one account row is highlighted` / `the row in use is the highlighted one` / `the highlight is exposed to assistive tech` / `the highlight is a background tint, not a pill` |
 | 40 | **介绍语 20 字以内**（2026-11-08，先要 50 再收紧到 20） | 列表 / 市场 Discover 共用：`Balances + tokens.`（18 字符）/「余额与 Token 用量」（12 字）；`package.json.description`、`scripts/finalize-release.mjs`、`market/index.json` 同步，`market/check.mjs` 强制 ≤20 | `the plugin intro stays within 20 characters` / `the intro names balances and tokens` / market check `description must stay within 20 characters` |
-| 41 | **账户行在最小宽度也不许换行**（2026-11-08 / 2026-11-09：「争取一行放完」） | 三级、全部不缩放字号：≥340px 舒适档（任何值单行）；≤330px 窄屏档（间距收紧、`proportional-nums`、图例 / 合计 `nowrap`）；≤320px 超窄档（内边距 5px、名称字距 -0.4、对的间距 2px+2px）；最坏情况（三个 `100%`）按**数值文本长度**用确定性 class 再紧一档（非测量），300px 仍单行 | layout-check 62 态：340px + 全 `100%`，320/310/300 的 worst（三个 `100%`）与 mixed（两个 `100%`）断言 `lines === 1` / `legend wrapped` / `summary wrapped` |
+| 41 | **账户行在最小宽度也不许换行**（2026-11-08 / 2026-11-09：「争取一行放完」） | 三级、全部不缩放字号：≥340px 舒适档（任何值单行）；≤330px 窄屏档（间距收紧、`proportional-nums`、图例 / 合计 `nowrap`）；≤320px 超窄档（内边距 5px、名称字距 -0.4、对的间距 2px+2px）；最坏情况（三个 `100%`）按**数值文本长度**用确定性 class 再紧一档（非测量），300px 仍单行；1.0.17 #50 起宽面板**不再用负字距**，变窄时按档收 `gap`（12 → 9 → 7 → 5），**任何档位都不许把标签与数值贴合** | layout-check 62 态：340px + 全 `100%`，320/310/300 的 worst（三个 `100%`）与 mixed（两个 `100%`）断言 `lines === 1` / `legend wrapped` / `summary wrapped` |
 | 42 | **分隔符前后不留空格**（2026-11-09：「去掉-横向前后的空格以及其他空格」） | 所有分隔符号紧贴两侧文字：模型行 `Provider-model`、轮 / 步 `106/11550`、上下文 `595K/1M（60%）`、中文 `轮/步`；只保留单词之间的必要空格 | `provider and model share one line without spaces around the dash` / `model rows merge provider and model without separator spaces` / smoke 的 `轮/步` 标签断言 |
-| 43 | **Command Code 额度也进右侧栏**（2026-11-09：「可以把这个插件集成到 usage 插件吗？」） | Host 读 `GET https://api.commandcode.ai/alpha/billing/credits`（Bearer `COMMANDCODE_API_KEY`，只走 Host）；账户卡该来源一行：`5HW / WEK` 两档**剩余**百分比 + `CRED / 额度` 剩余金额（USD，符号后置）；`cap` 为 0 的窗口不画、缺额度就不写；**只写剩余不写 Used / 花费**；本会话 Token 出现在会话卡「按 provider 的会话内消耗」行 | smoke `Command Code windows read the share left` / `Command Code credits read the amount left with the symbol last` / provider-host `Command Code plan windows and credits come from the billing endpoint` / provider-client `windows read the share left in fixed order and credits stay the amount left` / verify:ui `command code` 单行断言 |
+| 43 | **Command Code 额度也进右侧栏**（2026-11-09：「可以把这个插件集成到 usage 插件吗？」） | Host 读 `GET https://api.commandcode.ai/alpha/billing/credits`（Bearer `COMMANDCODE_API_KEY`，只走 Host）；账户卡该来源一行：`5H / WE` 两档**剩余**百分比 + `CR / 额度` 剩余金额（USD，符号后置）；`cap` 为 0 的窗口不画、缺额度就不写；**只写剩余不写 Used / 花费**；本会话 Token 出现在会话卡「按 provider 的会话内消耗」行 | smoke `Command Code windows read the share left` / `Command Code credits read the amount left with the symbol last` / provider-host `Command Code plan windows and credits come from the billing endpoint` / provider-client `windows read the share left in fixed order and credits stay the amount left` / verify:ui `command code` 单行断言 |
 | 44 | **入口图标与左侧快捷簇一致**（2026-11-09：「我们的插件 icon 也用左侧这个按钮的 icon 吧 保持一致」） | 右侧栏 tab、开始页卡片都用 `IconGaugeOutlineRegular`（宿主 primitives，失败回退同形内联 SVG），与 shell「用量」按钮同一符号；钱包图标不再用于入口 | `the tab glyph is the shell quick-action gauge` / `the guide card uses the same gauge glyph` |
 | 45 | **会话卡里的信息一律不许隐藏**（2026-11-09：「session usage 里的任何信息都是不允许隐藏的」） | 模型行**该画的行全量渲染**（单模型 provider 的行按 #48 不画），取消「最多 3 行 + 另有 N 个模型」；高度靠压缩框架换取（卡片 `gap:3px`、会话体 `gap:4px`、统计 / 网格间距收紧、`aup-model-more` 样式与文案删除）；短面板仍按阶梯整块隐藏，但绝不截断行 | smoke `every model of a multi-model provider renders, none truncated` / `the fourth model is folded, never a counter` / `no truncation line exists`；layout-check `${label}: model rows truncated` |
-| 46 | **删掉「用量统计」卡，按 provider 的会话内消耗并入会话卡**（2026-11-09：「第二个卡片的 usage statistics 没什么用，不想要了，把按 provider 类型对应的会话内消耗都归到 session usage，删掉，只剩下 session usage 和 Account balance」） | 面板只剩**两张卡**：会话消耗 + 账户余额；会话卡在「按模型明细」**之前**新增「按 provider 的会话内消耗」块：容器 `.aup-providers`、行 `.aup-provider-row`、名称 `.aup-provider-name`、数值 `.aup-provider-tokens`，分割线 `span.aup-session-sep.aup-sep-providers` 与块**同生共死**，位于 `.aup-stat-list` 之后、`.aup-models` 之前；每行 = 该 provider 本会话 Token 合计，**不含金额**。同时删除：维度 tab、`SERIES_ROW_SLOTS`、维度缓存与预热、三列表 `描述 \| 用量 \| 金额`、`PLAN` 标记、逐期明细、平台来源行 `.aup-srcs`、两卡页脚三列网格、平台周期用量与消费金额展示；client 不再调用 `readUsage`，Host 路由**保留未删**但面板内无消费方；设置从 7 项收敛为 4 项（见 §6）。被取代的规则：#3 #10 #20 #24 #26 #28 #29 | smoke `the panel renders exactly two cards: 2` / `the deleted statistics card never renders` / `four-character card titles` / `the deleted statistics copy is gone: …`（用量统计 / Usage statistics / PLAN / 套餐 / 订阅）/ `one row per provider used this session` / `each provider row names its provider` / `each provider row totals that provider session tokens` / `the per-provider rows carry no amount` / `the provider block sits after the statistics table` / `the provider block sits before the per-model detail` / `the provider block has exactly one separator` / `the provider separator goes with its block` / `no provider rows without session models` / `the client no longer calls the platform usage reader` / `the deleted statistics surface is gone: …`；设置区：smoke `settings keep exactly four switches` / `the four switches are the two cards, the composer-stats toggle and auto refresh`（`deepEqual` 顺序 `['会话消耗','账户余额','隐藏底栏会话统计','自动刷新']`）/ `no range picker remains in the settings` / `reset action present` / `settings title is short` / `settings can be closed from the header` / `footer hint is one short line: …` |
-| 47 | **两张卡的高度要按信息密度分摊，别「底部太挤、上面太空」**（2026-11-09：「底部太挤了 上面太空了 两个卡片的高度没安排好」） | 删掉统计卡后剩余高度**不再全部灌进会话卡**：`.aup-cards>.aup-card-session-fixed{flex:3 1 auto}`、`.aup-card-account{flex:1 1 auto}`、`.aup-card-account-provider{flex:1 1 auto}`（最后一条原写死 `flex:0 0 auto`，是「底部太挤」的实际生效点），余额卡内部 `.aup-acct-srcs{flex:1 1 auto;min-height:0;align-content:space-evenly}` 让几行数字在卡内均匀摊开（空出的是**行距**，不是一整块空白）；全部确定性 CSS、无运行时测量。实测 1080px → 会话卡 780 / 余额卡 236，1200px → 870 / 266，余额卡始终 **≤ 列高 34%** 且会话卡增长量更大。取代 #5 中「余额卡按内容收紧 `flex:0 0 auto` / 禁止 `space-evenly`」的那半条 | 剩余高度按 **3:1** 分摊（会话卡约四分之三、余额卡约四分之一）；smoke `the dense session card absorbs the largest share of the leftover height` / `the balance card shares the leftover height instead of hugging its content` / `the provider balance card takes the same share as the plain one` / `no balance card rule pins the card to its content` / `the balance card never outgrows the session card` / `the session content spreads evenly over the space it gets` / `the balance rows fill the space their card is given` / `the balance rows spread out inside the balance card` / `the panel fills the pane height` / `no card earns space just for being last`；layout-check `space allocation`（余额卡随面板增长 ≥20px、会话卡增长更多、余额卡 ≤ 列高 34%） |
-| 48 | **provider 与模型重复统计只保留一次**（2026-11-09：「重复了 provider+type 保留一次统计即可」，截图里 provider 行与 `Provider-模型` 行数值一一相同） | 按模型明细**只为「该 provider 本会话跑了 ≥2 个模型」画行**；单模型 provider **不画模型行**——它的模型行与按 provider 行数值完全相同，属于纯重复，信息由上方「按 provider 的会话内消耗」行承担（合计 = 该模型 tokens），**零信息丢失**，#45 不破；多模型 provider 仍逐模型一行 `Provider-model`（#42），和 = provider 行；阶梯里的「去按模型明细」一级（`.aup-models` + `.aup-sep-models`）不变。单模型 provider 是**不画**，不是截断，也仍不写「另有 N 个模型」 | layout-check `${label}: model rows truncated -> N/M`（M = 应画行数 = 多模型 provider 的模型数；夹具助手 `detailModelCount()`）；smoke `an all-single-model session renders no per-model detail` / `one provider row per provider, never one per model: …` / `a folded single-model provider row still carries that model tokens, so nothing is lost: …` / `no "另有 N 个模型" counter replaces a folded provider` / `a multi-model provider keeps one row per model: …` / `the multi-model provider row is the sum of its model rows: …` / `a mixed session details exactly the multi-model model rows: …` / `every detail row belongs to the multi-model provider: …` / `a single-model provider is not repeated in the per-model detail` / `the per-model separator goes with the dropped detail` |
+| 46 | **删掉「用量统计」卡，按 provider 的会话内消耗并入会话卡**（2026-11-09：「第二个卡片的 usage statistics 没什么用，不想要了，把按 provider 类型对应的会话内消耗都归到 session usage，删掉，只剩下 session usage 和 Account balance」） | 面板只剩**两张卡**：会话消耗 + 账户余额；会话卡在「按模型明细」**之前**新增「按 provider 的会话内消耗」块：容器 `.aup-providers`、行 `.aup-provider-row`、名称 `.aup-provider-name`、数值 `.aup-provider-tokens`，分割线 `span.aup-session-sep.aup-sep-providers` 与块**同生共死**，位于 `.aup-stat-list` 之后、`.aup-models` 之前；每行 = 该 provider 本会话 Token 合计，**不含金额**。同时删除：维度 tab、`SERIES_ROW_SLOTS`、维度缓存与预热、三列表格、`PLAN` 标记、逐期明细、平台来源行 `.aup-srcs`、两卡页脚三列网格；client 不再调用 `readUsage`，Host 路由**保留未删**但面板内无消费方；设置 7 项 → 4 项（§6），1.0.17 #51 再收敛为 **2 项**。被取代的规则：#3 #10 #20 #24 #26 #28 #29 | smoke `the panel renders exactly two cards: 2` / `the deleted statistics card never renders` / `four-character card titles` 等 15 条（完整清单见 `test/smoke.mjs`）；设置区断言见 #51（1.0.17 起只有 2 项开关） |
+| 47 | **两张卡的高度要按信息密度分摊，别「底部太挤、上面太空」**（2026-11-09：「底部太挤了 上面太空了 两个卡片的高度没安排好」） | 删掉统计卡后剩余高度**不再全部**灌进会话卡：`.aup-cards>.aup-card-session-fixed{flex:3 1 auto}` / `.aup-card-account{flex:1 1 auto}` / `.aup-card-account-provider{flex:1 1 auto}`（原写死 `flex:0 0 auto` 是「底部太挤」的生效点），余额卡内部 `.aup-acct-srcs{flex:1 1 auto;min-height:0;align-content:space-evenly}` 摊行距；确定性 CSS、无测量（实测 1080px → 780/236、1200px → 870/266，余额卡 ≤ 列高 34%）。**取代** #5 中「余额卡按内容收紧 / 禁止 `space-evenly`」那半条 | 剩余高度按 **3:1** 分摊（会话卡约四分之三、余额卡约四分之一）；smoke `the dense session card absorbs the largest share of the leftover height` / `the balance card shares the leftover height instead of hugging its content` / `the balance rows spread out inside the balance card` 等 10 条；layout-check `space allocation`（余额卡随面板增长 ≥20px、会话卡增长更多、余额卡 ≤ 列高 34%） |
+| 48 | **provider 与模型重复统计只保留一次**（2026-11-09：「重复了 provider+type 保留一次统计即可」，截图里 provider 行与 `Provider-模型` 行数值一一相同） | 按模型明细**只为「该 provider 本会话跑了 ≥2 个模型」画行**；单模型 provider **不画模型行**——它的模型行与按 provider 行数值完全相同，属于纯重复，信息由上方「按 provider 的会话内消耗」行承担（合计 = 该模型 tokens），**零信息丢失**，#45 不破；多模型 provider 仍逐模型一行 `Provider-model`（#42），和 = provider 行；阶梯里的「去按模型明细」一级（`.aup-models` + `.aup-sep-models`）不变（#49 后它在合计行之前）。单模型 provider 是**不画**，不是截断，也仍不写「另有 N 个模型」 | layout-check `${label}: model rows truncated -> N/M`（M = 应画行数 = 多模型 provider 的模型数；夹具助手 `detailModelCount()`）；smoke `an all-single-model session renders no per-model detail` / `one provider row per provider, never one per model: …` / `a folded single-model provider row still carries that model tokens, so nothing is lost: …` 等 10 条 |
+| 49 | **上下文占用与合计对调**（2026-11-09：「我想 contextusage 的位置和 total 换一下是不是更好」） | `.aup-context` 打头、合计收尾；`aup-sep-context` 删除、`aup-sep-total` 与合计同生共死；阶梯末档 325→**330**（chrome 58） | `the context block opens the session card` / `the session total closes the session card` / `context usage is read before the session total` |
+| 50 | **缩短标签、英文与数字留空隙**（2026-11-09：「缩短一下…能看懂就行」「英文和数字之间也加个空格吧」「数字重叠严重」） | 窗口 `5H/WE/MO`、英文 `Bal/Bon/CR`（中文「余额/赠送/额度」不变）；`.aup-acct-pairs{gap:2px 12px}` / `.aup-acct-pair{gap:5px}`，窄档 9/4 → 7/3 → 5/2；宽面板取消负字距 | `the window code is shortened to 5H`（WE / MO 同形）/ `the wallet labels are shortened to Bal / Bon` / `no pair glues its label to the figure` |
+| 51 | **设置只留 2 项开关**（2026-11-09：「这两项配置删掉 就俩卡片 没有配置的必要」） | 隐藏底栏会话统计 + 自动刷新 + 恢复默认，提示行「余额每 5 分钟自动刷新」；`DEFAULT_SETTINGS={autoRefresh,hideComposerStats}`，持久化删 `cards`，`.aup-empty` 删除 | `settings keep exactly two switches` / `the two switches are the composer-stats toggle and auto refresh` / `no per-card switch copy remains` |
 
 ## 1. 产品定位
 
@@ -112,18 +115,19 @@
   3. ~~明细列表固定槽位 `SERIES_ROW_SLOTS = 4`~~（**已随统计卡删除**，1.0.16，#46）：面板内不再有按维度切换的列表。
   4. **绝不允许滚动、绝不出现滚动条，并且尽量把信息全部显示**：
      - **先压缩：不删信息，只压高度**。卡片 `padding:8px` / `gap:3px`，会话体 `gap:4px`、Token 网格 `gap:4px`、模型行 `gap:0`。三来源夹具实测整屏内容（卡片高度和 + 6px 卡间距）**526px**（会话卡 408 + 余额卡 112 + 6；按 #48 只画多模型 provider 的模型行，若把单模型 provider 也画出来会更高，那不是当前形态）；面板 chrome（横条 + 底栏）= **58px**，所以「阶梯阈值 = 该级内容高度 + 58」。
-     - **再按面板自身高度逐级收窄，用 `@container`（不是 `@media`）**：`.aup-root{container-type:size;container-name:aup-panel}`，阈值 **584 → 575 → 532 → 448 → 384 → 325**，顺序：`584 去 Token 彩条 → 575 去按模型明细 → 532 去统计行 → 448 去按 provider 行 → 384 去上下文块 → 325 去 Token 2×2 明细`（对应内容 526 / 517 / 474 / 390 / 326 / 267 / 185，各 + 58 chrome）。1.0.15 的历史值见 §13 的历史基准表；`node test/layout-check.mjs --tiers` 可重新量。
+     - **再按面板自身高度逐级收窄，用 `@container`（不是 `@media`）**：`.aup-root{container-type:size;container-name:aup-panel}`，阈值 **584 → 575 → 532 → 448 → 384 → 330**，顺序：`584 去 Token 彩条 → 575 去按模型明细 → 532 去统计行 → 448 去按 provider 行 → 384 去上下文块 → 330 去 Token 2×2 明细`（内容 526 / 517 / 474 / 390 / 326 / 272，各 + 58 chrome）。1.0.15 的历史值见 §13 的历史基准表；`node test/layout-check.mjs --tiers` 可重新量。
      - 每个区块与引出它的分割线（`aup-sep-models/-stats/-providers` 等）必须**同生共死**（#33）。
      - 来源 ≥4 时按 `data-source-count` 追加预算 **`(n-3)×44`** px（实测 4 / 5 / 7 来源 = 570 / 614 / 702，叠加在所有阈值上；每多一个来源 +44 ≈ 余额行 25 + 按 provider 行及行距 19；单模型 provider 不再多一行模型）。
      - **必须用容器查询**：窗口比面板高（右侧栏 tab 条 + 面板 chrome），`@media (max-height)` 判定基准错了。
      - 阈值由 `node test/layout-check.mjs --tiers` 用**真实面板 markup** 实测；规则放在样式表最末并带 `!important`。
      - **夹具数据必须与生产同形**：曾经夹具没给上下文字段，量出的内容高度比生产少 36px；`contextPressure`（projectedTokens / contextWindow）、`contextTokens`、`tokenUsage`、`sessionStats` 必须给真实形状。
-     - 结论（三来源）：**面板 ≥584px 全部可见（内容 526px）**；584 / 575 / 532 / 448 / 384 / 325 逐级整块隐藏；面板 < 325px 时只剩基础信息；7 来源全部收窄后约需 **343px**（内容 285 + chrome 58）。阈值每次都要用 `--tiers` 重新量、改完同步更新本文件。
+     - 结论（三来源）：**面板 ≥584px 全部可见（内容 526px）**；584 / 575 / 532 / 448 / 384 / 330 逐级整块隐藏；面板 < 330px 时只剩基础信息；7 来源全部收窄后约需 **343px**（内容 285 + chrome 58）。阈值每次都要用 `--tiers` 重新量、改完同步更新本文件。
   5. 明令禁止：用 `ResizeObserver` / `getBoundingClientRect` 的内容高度做动态减行（09:29 崩溃成因）、用 `overflow:hidden` 或省略号假装解决。
-  6. **必须用真机浏览器验证几何，而且必须量真实 markup**：`test/render-fixture.mjs` 用与冒烟测试相同的桩启动真正的 Chrome，把元素树序列化成 HTML；`npm run verify:ui`（`test/layout-check.mjs`）在无头模式固定面板里测量，覆盖 420px 宽 × `325/384/448/532/575/584/585/700/900/1080/1200`px 与 340px 宽 × `584/900/1080`px（另测 330/300px 窄屏余额行不换行）。断言**文本零重叠、卡片零溢出、无横向溢出、无死带、跨行列边缘对齐、行内垂直居中**，外加 #47 的 layout-check `space allocation`（余额卡随面板增长 ≥20px、会话卡增长更多、余额卡 ≤ 列高 34%）。曾经用手写 markup 近似面板，结果和真实渲染脱节。
+  6. **必须用真机浏览器验证几何，而且必须量真实 markup**：`test/render-fixture.mjs` 用与冒烟测试相同的桩启动真正的 Chrome，把元素树序列化成 HTML；`npm run verify:ui`（`test/layout-check.mjs`）在无头模式固定面板里测量，覆盖 420px 宽 × `330/331/384/448/532/575/584/585/700/900/1080/1200`px 与 340px 宽 × `584/900/1080`px（另测 330/300px 窄屏余额行不换行）。断言**文本零重叠、卡片零溢出、无横向溢出、无死带、跨行列边缘对齐、行内垂直居中**，外加 #47 的 layout-check `space allocation`（余额卡随面板增长 ≥20px、会话卡增长更多、余额卡 ≤ 列高 34%）。曾经用手写 markup 近似面板，结果和真实渲染脱节。
 - **任何地方都不允许滚动**（2026-11-08，取代旧的「卡内可滚动」）：`.aup-cards` 的 `overflow-y:auto` 只是一层**不可见的兜底**（滚动条外观全去掉），正常由容器查询阶梯保证装得下：**先减内容（阶梯）→ 装不下才轮到隐形兜底 → 绝不裁切** (#22)。
 - **同一组数据行必须共用一个网格，左右都要对齐**（#23）：余额卡来源行（`.aup-acct-srcs`）与会话卡按 provider 行（`.aup-providers`）都用「父级 `grid-template-columns:minmax(0,1fr) auto` + 每行 `display:grid;grid-template-columns:subgrid;grid-column:1/-1`」。**禁止每行各写一套 `grid-template-columns`**：那样标签列按行内容算，右侧数值会随行漂移（实测差 13px）。行内单元格必须显式 `align-items:center`，漏掉会退化成 stretch / 顶对齐（曾实测偏 7px）。
 - ~~**用量统计卡是一张三列表**~~（**已随统计卡删除**，1.0.16，#46）：`描述 | 用量 | 金额` 三列表、`.aup-stats-body` 列模板、来源组、第 3 列金额与 `PLAN` 标记、`::before` hairline 分组、期数标签（`YYYY Qn` / `YYYY`）全部删除。保留下来的教训仍适用于余额卡来源行与按 provider 行：每行单元格数**恒定**（绝不条件性少一格，否则整列错位）；分组 hairline **不能用 padding / border 撑行高**（会让行内元素偏心）。
+- **会话卡的区块顺序**（1.0.17，#49）：`.aup-context`（上下文：head + bar + legend）→ `.aup-compose`（Token 构成条）→ `.aup-session-grid`（2×2 明细）→ `.aup-stat-list`（统计表）→ `.aup-providers` → `.aup-models` → `span.aup-session-sep.aup-sep-total` → `.aup-session-total`。**上下文占用打头、合计收尾**（原来上下文压底部、合计在顶部）。上下文块位置变了就**不再拥有分割线**（`aup-sep-context` 已删除）；`aup-sep-total` 与合计行同生共死（#33）。
 - **「按 provider 的会话内消耗」块**（1.0.16，#46）：
   - 位置：`.aup-stat-list`（统计表）**之后**、`.aup-models`（按模型明细）**之前**；
   - 分割线 `span.aup-session-sep.aup-sep-providers` 与容器 `.aup-providers` 同生共死：阶梯隐藏容器时必须一起隐藏分割线（#33）；
@@ -154,14 +158,18 @@
 
 ## 4. 会话卡内容
 
-必须覆盖原 DSH 底栏 + 「会话统计」弹窗能看到的全部数据：
+必须覆盖原 DSH 底栏 + 「会话统计」弹窗能看到的全部数据，**按实际渲染顺序**排列：
 
-- Token 合计、输入（未缓存）、输出、缓存读取、缓存写入
-- 轮数、步数、请求次数、缓存命中率、平均每请求、输出速度（tok/s）
-- 模型用时、工具用时、首 token 平均（TTFT）
-- 输出 Tokens
-- 上下文占用 `已用 / 窗口（百分比）`、系统 / 工具 / 消息构成条与百分比
-- **按 provider 的会话内消耗**（1.0.16 从已删除的统计卡并入 #46）：每个 provider 一行「名称 Tokens」，只写本会话 Token 合计、**不含金额**；位置在统计表之后、按模型明细之前。**按模型明细只为跑了 ≥2 个模型的 provider 画行**（#48），单模型 provider 由这一行代表，不重复
+1. 上下文占用：`已用 / 窗口（百分比）`、系统 / 工具 / 消息构成条与百分比（`.aup-context`，卡片最前）
+2. Token 合计 + Token 构成条（`.aup-compose` / `.aup-session-grid`）
+3. 输入（未缓存）、输出、缓存读取、缓存写入
+4. 轮 / 步、请求次数、缓存命中率、平均每请求、输出速度（tok/s）、首 token 平均（TTFT）、模型用时、工具用时
+5. 输出 Tokens
+6. **按 provider 的会话内消耗**（1.0.16 从已删除的统计卡并入 #46）：每个 provider 一行「名称 Tokens」，只写本会话 Token 合计、**不含金额**；位置在统计表之后、按模型明细之前
+7. **按模型明细**：只为跑了 ≥2 个模型的 provider 画行（#48），单模型 provider 由上一行代表，不重复
+8. 合计（`.aup-session-total`，卡片最末，与 `aup-sep-total` 同生共死）
+
+**渲染顺序即上面这个顺序（1.0.17 #49）**：`.aup-context` 在最前、`.aup-session-total` 在最后，中间依次 `.aup-compose` → `.aup-session-grid` → `.aup-stat-list` → `.aup-providers` → `.aup-models`。
 
 ## 5. 快捷键与右侧栏
 
@@ -174,21 +182,21 @@
 
 ## 6. 设置（头部左侧齿轮）
 
-标题就叫**「设置」**；弹层要精简、优雅。**2026-11-09 收敛为 4 项开关 + 恢复默认**（1.0.16，#46）：
+标题就叫**「设置」**；弹层要精简、优雅。**2026-11-09（1.0.17，#51）收敛为 2 项开关 + 恢复默认**：
 
-- **会话消耗卡**（显示 / 隐藏）
-- **账户余额卡**（显示 / 隐藏）
-- **自动刷新**（开 / 关；余额 5 分钟；页面隐藏暂停）
 - **隐藏底栏会话统计**（默认开；关掉恢复 DSH 原底栏）
+- **自动刷新**（默认开；余额 5 分钟；页面隐藏暂停）
+- 提示行：**「余额每 5 分钟自动刷新」/「Balance refreshes every 5 min」**（单行，不换行、不省略）
 - 恢复默认
 
-**已删除的设置项**（1.0.16，随统计卡失去消费方）：~~默认维度（日/周/月/季/年/全）~~（维度 tab 已删除）、~~显示消费金额~~（面板已不再展示任何消费金额，该开关无意义）、~~用量明细列表~~（逐期明细随统计卡删除）。
+两张卡**永远渲染**，没有显隐开关（用户：「这两项配置删掉 就俩卡片 没有配置的必要」）。开关顺序固定为上面两项的先后。
 
-旧 localStorage 键（`dimension` / `showCost` / `usageList` / `cards.stats`）**静默忽略**：不报错、不迁移、不弹提示。
+**已删除的设置项**：~~会话消耗卡 / 账户余额卡显隐~~（1.0.17，#51）、~~默认维度（日/周/月/季/年/全）~~（维度 tab 已随统计卡删除）、~~显示消费金额~~（面板不再展示任何消费金额）、~~用量明细列表~~（逐期明细随统计卡删除）。
+
+旧 localStorage 键（`cards.session` / `cards.account` / `cards.stats` / `dimension` / `showCost` / `usageList`）**静默忽略**：不报错、不迁移、不弹提示。`DEFAULT_SETTINGS` 只有 `{autoRefresh, hideComposerStats}`，持久化结构里没有 `cards`；`.aup-empty` 样式 / `aup-empty` 节点 / `settings.allHidden` 与两张卡的开关文案已删除，旧偏好不会让面板变空。
 
 要求：
 
-- 底部提示单行，不换行、不省略
 - 设置持久化到 localStorage（`dsh.account-usage.settings.v1`）
 - `Esc` / 遮罩 / `×` 可关闭，关闭后焦点回到齿轮
 - 开关 `role="switch"`，键盘可操作
@@ -199,13 +207,13 @@
 
 - 从**当前会话持久日志**读取 `assistant/message` 的 `source.provider` 判断。
 - 全部第三方：**隐藏 DeepSeek 账户余额与 DeepSeek 平台用量**，账户卡改为显示对应 Provider 的余额（OpenRouter `/api/v1/credits`，失败回退 `/api/v1/key`；DeepSeek API Key 用 `/user/balance`）：
-  - opencode / opencode-go / opencode-zen：`GET https://opencode.ai/zen/go/v1/usage`（Bearer Key），返回套餐百分比；来源行固定 `5HW 63%  WEK 70%  MON 85%`（5 小时 / 周 / 月，**全是剩余比例**，不写 left/剩余/已用；中英文同一套缩写），不画进度条。（`opencode-go` 用 `OPENCODE_GO_API_KEY`；`opencode`/`-zen` 用 `OPENCODE_API_KEY`）
-  - `commandcode`（`@mars-sea/dsh-commandcode-provider`）：`GET https://api.commandcode.ai/alpha/billing/credits`（Bearer `COMMANDCODE_API_KEY`），一次请求返回 5 小时 / 周两窗口的 `used` / `cap` 与额度（`monthlyCredits` 套餐剩余 + `purchasedCredits` / `freeCredits` 充值 / 赠送）；来源行显示 `5HW 0%  WEK 50%  CRED 6.99$`（中文 `额度`），同样**全是剩余**、不写 Used；`cap` 为 0 的窗口不画，额度缺失就不写额度对。该插件自己的设置页仍保留完整面板，这里只做额度只读镜像。这一行是全卡最长的第三方行（#43），因此 `aup-acct-pairs-tight` 从「仅 ≤320px」改为**全宽度确定性加紧密**（按数值文本长度触发）：实测 **≥320px 任何值（含三个 `100%` 与 `999.99$`）单行**；300–319px 真实数值单行，只有超额金额（≥`99.99$`）会折两行——这是「名称更长的 Provider」在舒适宽度以下的已知物理极限，verify:ui 用 worst / typical 两个夹具分别锁定。
+  - opencode / opencode-go / opencode-zen：`GET https://opencode.ai/zen/go/v1/usage`（Bearer Key），返回套餐百分比；来源行固定 `5H 63%  WE 70%  MO 85%`（5 小时 / 周 / 月，**全是剩余比例**，不写 left/剩余/已用；中英文同一套缩写，#50），不画进度条。（`opencode-go` 用 `OPENCODE_GO_API_KEY`；`opencode`/`-zen` 用 `OPENCODE_API_KEY`）
+  - `commandcode`（`@mars-sea/dsh-commandcode-provider`）：`GET https://api.commandcode.ai/alpha/billing/credits`（Bearer `COMMANDCODE_API_KEY`），一次请求返回 5 小时 / 周两窗口的 `used` / `cap` 与额度（`monthlyCredits` 套餐剩余 + `purchasedCredits` / `freeCredits` 充值 / 赠送）；来源行显示 `5H 0%  WE 50%  CR 6.99$`（中文 `额度`），同样**全是剩余**、不写 Used；`cap` 为 0 的窗口不画，额度缺失就不写额度对。该插件自己的设置页仍保留完整面板，这里只做额度只读镜像。这一行是全卡最长的第三方行（#43），因此 `aup-acct-pairs-tight` 从「仅 ≤320px」改为**全宽度确定性加紧密**（按数值文本长度触发）：实测 **≥320px 任何值（含三个 `100%` 与 `999.99$`）单行**；300–319px 真实数值单行，只有超额金额（≥`99.99$`）会折两行——这是「名称更长的 Provider」在舒适宽度以下的已知物理极限，verify:ui 用 worst / typical 两个夹具分别锁定。
   - OpenAI / Anthropic：已调研（2026-11-08），官方接口是**组织花费**（OpenAI Costs API、Anthropic Cost Report，需组织权限），**未找到公开余额接口**；用户决定余额卡不写花费，所以两家显示 `Unsupported`，插件不请求花费接口 (#34)。
   - 其余未接入的 Provider 显示「插件暂不支持 / Unsupported」，不暗示供应商没有 API；本会话 Token 在会话卡「按 provider 的会话内消耗」块里看，账户卡不重复。
   - 未配置、鉴权失败、超时、网络失败、凭据读取失败分别显示短状态；不提供任何 Retry / 重试按钮，不因失败立即重发请求；既有顶部刷新与定时刷新保持不变 (#37)。
-  - **余额卡只写剩余** (#35)：`Balance` / `Bonus` / `Key`（OpenRouter 密钥额度）/ 套餐剩余；`Used`、本月花费不出现；只有用量没有剩余时写「无余额数据 / No balance」，绝不当成 0。
-  - 统一显示规范 (#36)：右侧是「短标签（次要色） 数值（加粗）」对，多对之间 8px，如 DeepSeek `Balance 199.54¥  Bonus 0.00¥`（中文 `余额 / 赠送`）。不画进度条。
+  - **余额卡只写剩余** (#35)：`Bal` / `Bon` / `Key`（OpenRouter 密钥额度）/ 套餐剩余；`Used`、本月花费不出现；只有用量没有剩余时写「无余额数据 / No balance」，绝不当成 0。
+  - 统一显示规范 (#36)：右侧是「短标签（次要色） 数值（加粗）」对，**组间 12px、对内 5px**（`.aup-acct-pairs{gap:2px 12px}` / `.aup-acct-pair{gap:5px}`，变窄时按档递减到 9/7/5 与 4/3/2，见 #50），如 DeepSeek `Bal 199.54¥  Bon 0.00¥`（中文 `余额 / 赠送`）、opencode `5H 63%  WE 70%  MO 85%`。不画进度条。
 - 只要出现第三方来源（含单 Provider 会话），账户卡**每个来源一行**（`.aup-acct-srcs`，取代来源 tab：tab 多于 3 个会换行、短 pane 留白，用户点名不美观），来源名左对齐，右侧「短标签 数值」对右对齐；**不加任何装饰**（曾给当前来源加小圆点，用户：「没有用就删掉，别浪费注意力」）；没有任何切换，因此不存在「点 tab 改变高度」的问题；第三方余额与 DeepSeek 钱包一样实时读取（opencode 走套餐百分比）；平台周期用量与消费金额**不再在面板内展示**；Host 侧 usage 路由**保留未删**（`test/provider-host.mjs` 仍在跑），只是面板内没有消费方。卡标题不挂任何徽标。
 - **当前会话正在使用的来源要凸显** (#39，2026-11-08「给当前会话正在使用的 Account 加个凸显样式」)：判定 = 日志里**最新一条 assistant 消息的 `source.provider`**（`deepseek-account` 映射到 DeepSeek API 那一行），对应行加整行淡品牌色背景（`color-mix(in srgb, brand-primary 10%, transparent)`）+ 名称字重 600，`aria-current="true"` 暴露给读屏。**禁止**为此加圆点 / 胶囊 / 徽标，**禁止**改内边距或列宽——背景不移动左右边缘，`verify:ui` 的 `acctLabelLeft` / `acctValueRight` 唯一性断言必须继续通过；单账号会话（只有 DeepSeek 钱包、没有行列表）不加强调。
 - **余额卡的行在最小宽度（300px）也必须单行** (#41)：≥340px 舒适档任何数值（含三个 `100%`）单行；≤330px 窄屏档间距收紧 + `proportional-nums`、图例与合计行 `nowrap`；≤320px 超窄档卡片左右内边距 5px、名称字距 -0.4px、对内间距 2px、对间 1px，三窗口全 `100%` 的行按**数值文本长度**加 `aup-acct-pairs-tight` 再紧一档（确定性，不测量）。行仍用同一套网格，**禁止**靠加宽面板 / 隐藏窗口 / 改字号 / `transform: scale` 回避。`verify:ui` 在 340px（全 `100%`）与 320/310/300px（worst + mixed）都要 `lines === 1`、未裁切。已知物理极限：<300px 或名称更长的新 provider 可能仍需两行——属于宿主最窄以下，不在保证内。
@@ -245,7 +253,7 @@
 
 ## 9. 性能
 
-- 余额 5 分钟自动刷新（用量 2 分钟随统计卡删除）；页面隐藏时暂停，回前台补一次。
+- 余额 5 分钟自动刷新；页面隐藏时暂停，回前台补一次。
 - ~~月份缓存 / 维度结果内存缓存 / 全维度预热~~（**已随统计卡删除**，1.0.16）：client 不再调用 `readUsage`，`dimensionResults`、`WARM_ORDER`、骨架槽位一并移除；Host 侧平台 usage 路由**保留未删**、登录态缓存 30 秒不变，只是面板内没有消费方。
 - 首屏骨架屏；尊重 `prefers-reduced-motion`。
 - **无障碍与动效（属于原则，不是可选 polish，#27）**：
@@ -294,7 +302,7 @@
 - **余额行最小宽度单行**（1.0.9，#41）：收紧对间距 / 字距，取代「窄面板允许换行」；340px 是舒适宽度。
 - **最小宽度护栏降到 300px**（1.0.10）：取代 340px 回弹；宿主最窄也能用，330px 以下自动进入紧凑档。
 - **超窄档 + 确定性加紧密**（1.0.11）：取代「300px 下三个 `100%` 只能折行」；按数值文本长度决定是否再紧一档。
-- **Command Code 额度并入账户卡**（1.0.13，#43）：不新开 tab、不改其设置页，只在账户卡按统一来源行显示 `5HW / WEK` 剩余 + `CRED` 剩余；Host 侧独立读取官方 billing 接口（60 秒缓存、失败只写短状态；字段见 §7）。同时把 `aup-acct-pairs-tight` 改为**全宽度**触发的确定性加紧密，超窄档名称字距放宽到 -0.5px；≤310px 的超额金额允许两行（已记录）。
+- **Command Code 额度并入账户卡**（1.0.13，#43）：不新开 tab、不改其设置页，只在账户卡按统一来源行显示余额 + 额度；Host 侧独立读取官方 billing 接口（60 秒缓存、失败只写短状态；字段见 §7）。`aup-acct-pairs-tight` 改为**全宽度**确定性加紧密；≤310px 的超额金额允许两行（已记录）。（1.0.17 #50 起标签为 `5H / WE` + `CR`，窗口 `5HW / WEK` / `CRED` 是历史写法）
 - **会话卡不截断模型行**（1.0.15，#45）：取消「最多 3 行 / 另有 N 个模型」，模型全量渲染；同时压缩框架（gap 4→3、会话体 6→4、统计行距 2→1、token 条 8→6），整屏内容 793→763px，阶梯阈值随之下移。
 - **入口图标改用仪表盘**（1.0.14，#44）：tab / 开始页与左侧快捷簇「用量」按钮同一符号，取代钱包图标；primitives 不可用时回退同形内联 SVG。
 - **分隔符去空格**（1.0.12，#42）：模型行改 `Provider-model`，轮 / 步与上下文改 `a/b`，取代带空格的 `Provider - model` / `106 / 11550`。
@@ -320,7 +328,10 @@
 - ~~**「全」(ALL) tab 在「年」之后**~~（**已随统计卡删除**，1.0.16）：按年分桶、6 年回溯、`dsh.account-usage.all-start.v1` 随维度 tab 一起移除。
 - ~~**优先左右结构**：统计来源行用 `标签 | Tokens | 金额/PLAN` 三列网格~~（**已随统计卡删除**，1.0.16）。保留的部分：账户卡的余额 / 套餐标题与数值必须在同一行（标签左、数值右），不要把「套餐剩余 / 99%」上下堆叠导致右侧大片空白。
 - **快捷开栏不改宽度**：只在面板实测宽度 < 300px 时自动加宽回 300px（测不到就不猜），失败静默（§5）。
-- **本轮 1.0.16 发布 npm**；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
+- **上下文占用打头、合计收尾**（1.0.17，#49）：`.aup-session-body` 顺序改为 上下文 → 构成条 → 2×2 → 统计表 → 按 provider → 按模型 → `aup-sep-total` → 合计；`aup-sep-context` 删除。**取代**「上下文压卡片底部、合计在顶部」的旧顺序（顺序明细见 §2）。
+- **标签缩短 + 英文与数字留空隙**（1.0.17，#50）：窗口 `5H/WE/MO`、英文 `Bal/Bon/CR`（中文不变）；间距改由 `gap` 分档（宽 12/5，窄 9/4 → 7/3 → 5/2），**取消宽面板负字距**。**取代**「靠负字距把 `5HW100%` 挤进一行」（「数字重叠」的直接成因）。
+- **设置删掉两张卡的显隐开关**（1.0.17，#51）：只剩 2 项开关 + 恢复默认；`DEFAULT_SETTINGS` 只剩 `{autoRefresh,hideComposerStats}`，持久化删 `cards`，`.aup-empty` / `settings.allHidden` 删除。**取代** #16 / #46 的「4 项开关」写法（详见 §6）。
+- **本轮 1.0.17 发布 npm**；本地插件通过 Plugin Manager 重载，不能把 applied 等同于实时 GUI 像素验收。Client HMR 只有确认同 checkout 的 `pnpm run dev:web` watcher 在运行才可承诺；否则要求刷新现有页面，不开替代服务器。
 
 历史基准表（仅历史对照，**当前值以 §2 为准**）：
 
@@ -329,4 +340,5 @@
 | 1.0.4 | 838px | 895 · 883 · 823 · 739 · 681 | — | — |
 | 1.0.5 | 793px | 850 · 838 · 771 · 680 · 615 | `16+(n-3)×52` | — |
 | 1.0.15（#45 压框架） | 763px | 820 · 811 · 751 · 667 · 608 | `(n-3)×69` | 802px |
-| **1.0.16（当前）** | **526px**（会话 408 + 余额 112 + 6） | **584 · 575 · 532 · 448 · 384 · 325** | **`(n-3)×44`** | **343px** |
+| 1.0.16 | 526px（会话 408 + 余额 112 + 6） | 584 · 575 · 532 · 448 · 384 · 325 | `(n-3)×44` | 343px |
+| **1.0.17（当前）** | **526px**（会话 408 + 余额 112 + 6） | **584 · 575 · 532 · 448 · 384 · 330** | **`(n-3)×44`** | **343px** |

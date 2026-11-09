@@ -41,9 +41,9 @@ for (const locale of ['zh', 'en']) {
     assert.equal(highlighted.length, 1, 'exactly one account row is highlighted');
     assert.equal(txt(highlighted[0]), locale === 'en' ? 'OpenAI Unsupported' : 'OpenAI 插件暂不支持', 'the session provider row is the highlighted one');
     assert.equal(highlighted[0].props['aria-current'], 'true', 'the highlight is exposed to assistive tech');
-    assert.equal(txt(rows['OpenCode Go']), 'OpenCode Go 5HW 96% WEK 84% MON 92%', 'plan windows show the share left in fixed order');
+    assert.equal(txt(rows['OpenCode Go']), 'OpenCode Go 5H 96% WE 84% MO 92%', 'plan windows show the share left in fixed order');
     assert.equal(txt(rows.OpenAI), locale === 'en' ? 'OpenAI Unsupported' : 'OpenAI 插件暂不支持');
-    assert.match(txt(rows['DeepSeek API']), locale === 'en' ? /^DeepSeek API Balance \S+¥ Bonus \S+¥$/ : /^DeepSeek API 余额 \S+¥ 赠送 \S+¥$/, 'DeepSeek reads Balance x Bonus y');
+    assert.match(txt(rows['DeepSeek API']), locale === 'en' ? /^DeepSeek API Bal \S+¥ Bon \S+¥$/ : /^DeepSeek API 余额 \S+¥ 赠送 \S+¥$/, 'DeepSeek reads Bal x Bon');
     assert.equal(txt(rows.OpenRouter), locale === 'en' ? 'OpenRouter Key not configured' : 'OpenRouter 未配置密钥');
     assert(!/386M|1\.26M|804/.test(txt(tree)), 'session totals stay in the statistics card');
     assert.equal(nodes(tree, n => n.props?.className === 'aup-retry').length, 0);
@@ -86,7 +86,7 @@ for (const code of ['loading','no_credential','auth_failed','credential_failed',
   assert.equal(nodes(tree, n => n.type === 'button').length, 0, 'all balance states are read-only: ' + code);
   assert.deepEqual(calls, [], 'failed reads do not initiate retries');
   assert.equal(rows.OpenAI.props['aria-busy'], code === 'loading' ? true : undefined);
-  assert(txt(rows['OpenCode Go']).includes('MON 92%'), 'another source failure never hides a success');
+  assert(txt(rows['OpenCode Go']).includes('MO 92%'), 'another source failure never hides a success');
 }
 
 // DeepSeek failures stay quiet both alone and in mixed-source sessions.
@@ -115,7 +115,7 @@ for (const provider of ['openai','anthropic','google','amazon-bedrock','azure','
     'opencode-go': { phase: 'ready', data: plan }
   } } });
   const rows = nodes(tree, n => n.props?.className === 'aup-acct-src').map(txt);
-  assert(rows.some(row => row.endsWith('MON 39%')) && rows.some(row => row.endsWith('MON 92%')), 'Zen and Go never share alias data: ' + rows);
+  assert(rows.some(row => row.endsWith('MO 39%')) && rows.some(row => row.endsWith('MO 92%')), 'Zen and Go never share alias data: ' + rows);
 }
 // Command Code publishes a 5-hour and a weekly window plus the credits left, so its
 // row keeps the plan rule (share left, fixed order) and appends one CRED pair.
@@ -138,8 +138,8 @@ for (const provider of ['openai','anthropic','google','amazon-bedrock','azure','
     assert.equal(row.children.length, 2, 'two cells per row');
     assert.equal(row.props['data-current'], true, 'the in-use source row is highlighted');
     assert.equal(txt(row), locale === 'en'
-      ? 'Command Code 5HW 0% WEK 50% CRED 6.99$'
-      : 'Command Code 5HW 0% WEK 50% 额度 6.99$',
+      ? 'Command Code 5H 0% WE 50% CR 6.99$'
+      : 'Command Code 5H 0% WE 50% 额度 6.99$',
       'windows read the share left in fixed order and credits stay the amount left');
     assert.equal(nodes(tree, n => /aup-acct-(track|fill)/.test(n.props?.className || '')).length, 0, 'no capsule bar for a plan row');
   }
@@ -147,12 +147,12 @@ for (const provider of ['openai','anthropic','google','amazon-bedrock','azure','
   const creditsOnly = { ...data, windows: [] };
   let rows = rowsOf(accountCard({ sessionModels: ccModels,
     providerBalances: { phase: 'ready', byProvider: { commandcode: { phase: 'ready', data: creditsOnly } } } }));
-  assert.equal(txt(rows['Command Code']), 'Command Code CRED 6.99$', 'credits alone still read on the right');
+  assert.equal(txt(rows['Command Code']), 'Command Code CR 6.99$', 'credits alone still read on the right');
   // With no reported credits the two windows stand alone.
   const windowsOnly = { ...data, credits: undefined };
   rows = rowsOf(accountCard({ sessionModels: ccModels,
     providerBalances: { phase: 'ready', byProvider: { commandcode: { phase: 'ready', data: windowsOnly } } } }));
-  assert.equal(txt(rows['Command Code']), 'Command Code 5HW 0% WEK 50%', 'absent credits are not invented');
+  assert.equal(txt(rows['Command Code']), 'Command Code 5H 0% WE 50%', 'absent credits are not invented');
 }
 
 for (const [data, expected] of [[{ remaining: 2, total: 10, used: 8 }, 'Key 2.00$'], [{ used: 8 }, 'No balance']]) {

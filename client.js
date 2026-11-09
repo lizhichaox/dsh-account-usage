@@ -53,8 +53,7 @@ window.__ModuleLoader__.load({
     const SETTINGS_KEY = 'dsh.account-usage.settings.v1';
     const DEFAULT_SETTINGS = {
       autoRefresh: true,
-      hideComposerStats: true,
-      cards: { session: true, account: true }
+      hideComposerStats: true
     };
 
     /** Read persisted preferences, falling back to defaults on any malformed or unknown value. */
@@ -64,16 +63,12 @@ window.__ModuleLoader__.load({
         if (raw === null || raw === undefined) return DEFAULT_SETTINGS;
         const parsed = JSON.parse(raw);
         if (parsed === null || typeof parsed !== 'object') return DEFAULT_SETTINGS;
-        const cards = parsed.cards !== null && typeof parsed.cards === 'object' ? parsed.cards : {};
-        // `dimension` / `showCost` / `usageList` / `cards.stats` from older versions are
-        // simply ignored: their card no longer exists (user 2026-11-09).
+        // `dimension` / `showCost` / `usageList` / `cards.*` from older versions are
+        // simply ignored: the cards are no longer configurable (user 2026-11-09:
+        // 这两项配置删掉 就俩卡片 没有配置的必要).
         return {
           autoRefresh: typeof parsed.autoRefresh === 'boolean' ? parsed.autoRefresh : DEFAULT_SETTINGS.autoRefresh,
-          hideComposerStats: typeof parsed.hideComposerStats === 'boolean' ? parsed.hideComposerStats : DEFAULT_SETTINGS.hideComposerStats,
-          cards: {
-            session: typeof cards.session === 'boolean' ? cards.session : DEFAULT_SETTINGS.cards.session,
-            account: typeof cards.account === 'boolean' ? cards.account : DEFAULT_SETTINGS.cards.account
-          }
+          hideComposerStats: typeof parsed.hideComposerStats === 'boolean' ? parsed.hideComposerStats : DEFAULT_SETTINGS.hideComposerStats
         };
       } catch (error) {
         return DEFAULT_SETTINGS;
@@ -105,14 +100,11 @@ window.__ModuleLoader__.load({
       'retry': '重试',
       'settings.aria': '设置',
       'settings.title': '设置',
-      'settings.card.session': '会话消耗',
-      'settings.card.account': '账户余额',
       'settings.autoRefresh': '自动刷新',
-      'settings.autoRefreshHint': '用量 2 分钟 · 余额 5 分钟',
+      'settings.autoRefreshHint': '余额每 5 分钟自动刷新',
       'settings.hideComposerStats': '隐藏底栏会话统计',
       'settings.reset': '恢复默认',
       'settings.close': '关闭',
-      'settings.allHidden': '三张卡片都已隐藏，点右上角设置可重新开启。',
       'account.title': '账户余额',
       'account.signedOut': '当前未登录 DeepSeek API',
       'account.signedOutHint': '设置 → 账号 登录后显示余额',
@@ -172,9 +164,9 @@ window.__ModuleLoader__.load({
       'balance.total': '总额',
       'tokens.sessionUsage': '本会话用量',
       'tokens.requestsCount': '{count} 次请求',
-      'account.planRolling': '5HW',
-      'account.planWeekly': 'WEK',
-      'account.planMonthly': 'MON',
+      'account.planRolling': '5H',
+      'account.planWeekly': 'WE',
+      'account.planMonthly': 'MO',
       'account.creditsLabel': '额度',
     };
 
@@ -192,24 +184,21 @@ window.__ModuleLoader__.load({
       'retry': 'Retry',
       'settings.aria': 'Settings',
       'settings.title': 'Settings',
-      'settings.card.session': 'Session usage',
-      'settings.card.account': 'Account balance',
       'settings.autoRefresh': 'Auto refresh',
-      'settings.autoRefreshHint': 'Usage 2 min · Balance 5 min',
+      'settings.autoRefreshHint': 'Balance refreshes every 5 min',
       'settings.hideComposerStats': 'Hide composer stats',
       'settings.reset': 'Reset to defaults',
       'settings.close': 'Close',
-      'settings.allHidden': 'All three cards are hidden. Turn them back on in the display settings.',
       'account.title': 'Account balance',
       'account.signedOut': 'No DeepSeek API account is signed in',
       'account.signedOutHint': 'Sign in via Settings to see the balance',
-      'balance.recharge': 'Balance',
+      'balance.recharge': 'Bal',
       'provider.deepseekAccount': 'DeepSeek API',
       'provider.deepseekApiKey': 'DeepSeek API key',
       'balance.used': 'Used',
       'account.status.loading': 'Loading',
       'account.status.signedOut': 'Signed out',
-      'account.bonusLabel': 'Bonus',
+      'account.bonusLabel': 'Bon',
       'account.keyLabel': 'Key',
       'account.status.noBalance': 'No balance',
       'account.status.unsupported': 'Unsupported',
@@ -259,10 +248,10 @@ window.__ModuleLoader__.load({
       'balance.total': 'Total',
       'tokens.sessionUsage': 'Session usage',
       'tokens.requestsCount': '{count} requests',
-      'account.planRolling': '5HW',
-      'account.planWeekly': 'WEK',
-      'account.planMonthly': 'MON',
-      'account.creditsLabel': 'CRED',
+      'account.planRolling': '5H',
+      'account.planWeekly': 'WE',
+      'account.planMonthly': 'MO',
+      'account.creditsLabel': 'CR',
     };
 
     // ----------------------------------------------------------------- styles --
@@ -298,7 +287,7 @@ window.__ModuleLoader__.load({
       '.aup-toggle-knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:999px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 1px 2px color-mix(in srgb,var(--dsw-alias-label-primary) 20%,transparent);transition:transform .15s}',
       '.aup-toggle[data-on] .aup-toggle-knob{transform:translateX(14px)}',
       '.aup-toggle:focus-visible,.aup-pop-link:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
-      '.aup-empty{padding:12px;color:var(--aup-label-2);font-size:var(--aup-fs-text);line-height:18px;font-weight:500;text-align:center}',      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
+      '.aup-icon-button:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}',
       '.aup-spin{animation:aup-spin 1s linear infinite}',
       // Motion is decoration only: honour the preference everywhere.
       '@media (prefers-reduced-motion:reduce){.aup-toggle,.aup-toggle-knob,.aup-icon-button,.aup-pop-link{transition:none}.aup-spin{animation:none}}',
@@ -326,12 +315,19 @@ window.__ModuleLoader__.load({
       // no layout change (a background cannot shift the shared column edges).
       '.aup-acct-src[data-current]{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 10%,transparent);border-radius:6px}',
       '.aup-acct-src[data-current] .aup-acct-src-label{font-weight:600}',
-      '.aup-acct-pairs{display:inline-flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 2px;letter-spacing:-0.4px}',
+      // Every pair keeps a visible gap before the NEXT pair's label (user 2026-11-09:
+      // 「Bonus 前面加个空格」) - the column gap must survive the negative letter-spacing
+      // of the tight step, which eats into the preceding glyph's trailing space.
+      // Pairs must stay legible (user 2026-11-09: 「数字重叠严重」「比例也看不清」):
+      // no negative letter-spacing at comfortable widths, and a real gap both between a
+      // label and its own figure and between one pair and the next. The panel is wide
+      // enough here; the tiers below give the space back only as the pane narrows.
+      '.aup-acct-pairs{display:inline-flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 12px;letter-spacing:normal}',
       // Worst-case figures (three `100%`, or two windows plus a wide credit amount) get
       // one more deterministic step everywhere, not only in the ultra-narrow tier: the
       // Command Code row adds a third pair and must stay single-line at 340px.
-      '.aup-acct-pairs.aup-acct-pairs-tight{letter-spacing:-1.2px}',
-      '.aup-acct-pair{display:inline-flex;align-items:baseline;gap:2px;white-space:nowrap}',
+      '.aup-acct-pairs.aup-acct-pairs-tight{column-gap:10px}',
+      '.aup-acct-pair{display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap}',
       '.aup-acct-pair-label{color:var(--aup-label-2);font-weight:500}',
       '.aup-acct-label{min-width:0;color:var(--aup-label-2);overflow-wrap:anywhere}',
       '.aup-card-head{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;flex:none}',
@@ -414,11 +410,15 @@ window.__ModuleLoader__.load({
       // ---- narrow panes: one more compaction step so balance rows stay on one line ----
       // The documented comfort width is 340px (where even three `100%` windows fit); below it,
       // typical values must still read as a single line, without scaling text.
-      '@container aup-panel (max-width:330px){.aup-acct-srcs{column-gap:4px}.aup-acct-pair{gap:1px}.aup-acct-pairs{gap:1px 0;letter-spacing:-0.7px;font-variant-numeric:proportional-nums}.aup-context-legend{column-gap:6px}.aup-context-legend>span{white-space:nowrap}.aup-model-row{gap:2px 6px}.aup-model-name{letter-spacing:-0.2px}}',
+      // Between the comfortable width and the comfort minimum the pairs give back only the
+      // extra air the wide layout added - never the label/figure separation itself.
+      '@container aup-panel (max-width:440px){.aup-acct-pairs{gap:2px 9px}.aup-acct-pairs.aup-acct-pairs-tight{column-gap:8px}.aup-acct-pair{gap:4px}}',
+      '@container aup-panel (max-width:380px){.aup-acct-pairs{gap:2px 7px;letter-spacing:-0.3px}.aup-acct-pairs.aup-acct-pairs-tight{column-gap:6px}.aup-acct-pair{gap:3px}}',
+      '@container aup-panel (max-width:330px){.aup-acct-srcs{column-gap:4px}.aup-acct-pair{gap:2px}.aup-acct-pairs{gap:1px 5px;letter-spacing:-0.7px;font-variant-numeric:proportional-nums}.aup-context-legend{column-gap:6px}.aup-context-legend>span{white-space:nowrap}.aup-model-row{gap:2px 6px}.aup-model-name{letter-spacing:-0.2px}}',
       // ---- ultra-narrow panes (<=310px): the last spacing step so even three `100%`
       // windows stay on one line; still 13px text, only tighter rhythm. ----
-      '@container aup-panel (max-width:320px){.aup-card{padding-left:5px;padding-right:5px}.aup-acct-srcs{column-gap:2px}.aup-acct-src-label{letter-spacing:-0.5px}.aup-acct-pair{gap:2px}.aup-acct-pairs{gap:0 1px;letter-spacing:-1px}.aup-acct-pairs.aup-acct-pairs-tight{gap:0 1px;letter-spacing:-1.6px}.aup-model-row{gap:2px 5px}.aup-model-name{letter-spacing:-0.4px}}',
-      // ---- content shedding on short windows: pure media queries, no measurement ----
+      '@container aup-panel (max-width:320px){.aup-card{padding-left:5px;padding-right:5px}.aup-acct-srcs{column-gap:2px}.aup-acct-src-label{letter-spacing:-0.5px}.aup-acct-pair{gap:2px}.aup-acct-pairs{gap:0 5px;letter-spacing:-1px}.aup-acct-pairs.aup-acct-pairs-tight{gap:0 5px;letter-spacing:-1.6px}.aup-model-row{gap:2px 5px}.aup-model-name{letter-spacing:-0.4px}}',
+      // ---- content shedding on short panes: container queries, no measurement ----
       // Measured ladder (test/layout-check.mjs --tiers): each step keeps the whole
       // panel inside its own height so the card column never has to scroll. These are
       // CONTAINER queries on the panel root, not media queries on the window: the pane
@@ -429,13 +429,16 @@ window.__ModuleLoader__.load({
       // They must stay LAST and carry !important: a query adds no specificity.
       // Thresholds = `layout-check --tiers` content height + 58px of panel chrome,
       // re-measured for the two-card panel (1.0.16): 526 content -> 584, then one step
-      // per shed block (575 / 532 / 448 / 384 / 325).
+      // per shed block (575 / 532 / 448 / 384 / 330; the last step moved 325 -> 330
+      // when the context block became the leading block and stopped owning a hairline).
       '@container aup-panel (max-height:584px){.aup-compose{display:none!important}}',
       '@container aup-panel (max-height:575px){.aup-card-session .aup-models,.aup-card-session .aup-sep-models{display:none!important}}',
       '@container aup-panel (max-height:532px){.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats{display:none!important}}',
       '@container aup-panel (max-height:448px){.aup-card-session .aup-providers,.aup-card-session .aup-sep-providers{display:none!important}}',
-      '@container aup-panel (max-height:384px){.aup-context,.aup-card-session .aup-sep-context{display:none!important}}',
-      '@container aup-panel (max-height:325px){.aup-card-session .aup-session-grid{display:none!important}}',
+      // The context block leads the card now, so it sheds on its own: no hairline is
+      // left at the top of the card (the total keeps its own separator at the foot).
+      '@container aup-panel (max-height:384px){.aup-card-session .aup-context{display:none!important}}',
+      '@container aup-panel (max-height:330px){.aup-card-session .aup-session-grid{display:none!important}}',
       // Measured with `layout-check --tiers N`: each source beyond three adds one
       // balance row (25px) plus one per-provider row and its gap (19px) = 44px; its
       // single-model detail row is not drawn at all (1.0.16).
@@ -444,7 +447,7 @@ window.__ModuleLoader__.load({
       ...Array.from({ length: 13 }, (_, index) => {
         const count = index + 4;
         const extra = (count - 3) * 44;
-        return [[584, ['.aup-compose']], [575, ['.aup-card-session .aup-models', '.aup-card-session .aup-sep-models']], [532, ['.aup-card-session .aup-stat-list', '.aup-card-session .aup-sep-stats']], [448, ['.aup-card-session .aup-providers', '.aup-card-session .aup-sep-providers']], [384, ['.aup-context', '.aup-card-session .aup-sep-context']], [325, ['.aup-card-session .aup-session-grid']]]
+        return [[584, ['.aup-compose']], [575, ['.aup-card-session .aup-models', '.aup-card-session .aup-sep-models']], [532, ['.aup-card-session .aup-stat-list', '.aup-card-session .aup-sep-stats']], [448, ['.aup-card-session .aup-providers', '.aup-card-session .aup-sep-providers']], [384, ['.aup-card-session .aup-context']], [330, ['.aup-card-session .aup-session-grid']]]
           .map(([height, selectors]) => '@container aup-panel (max-height:' + (height + extra) + 'px){' + selectors.map((selector) => '.aup-cards[data-source-count="' + count + '"] ' + selector).join(',') + '{display:none!important}}').join('');
       }),
     ].join('\n');
@@ -632,7 +635,8 @@ window.__ModuleLoader__.load({
       );
     }
 
-    /** Display settings popover: visible cards and auto refresh (user 2026-11-09: four switches). */
+    /** Display settings popover: composer stats and auto refresh. The two cards are
+     * fixed (user 2026-11-09: 这两项配置删掉 就俩卡片 没有配置的必要). */
     function SettingsPanel({ settings, onChange, onReset, onClose, t }) {
       const switchRow = (key, labelKey, checked, patch) =>
         h(
@@ -654,8 +658,6 @@ window.__ModuleLoader__.load({
             h('span', { className: 'aup-pop-close-glyph', 'aria-hidden': true }, '×')
           )
         ),
-        switchRow('session', 'settings.card.session', settings.cards.session, (value) => ({ cards: { session: value } })),
-        switchRow('account', 'settings.card.account', settings.cards.account, (value) => ({ cards: { account: value } })),
         switchRow('hideComposerStats', 'settings.hideComposerStats', settings.hideComposerStats, (value) => ({ hideComposerStats: value })),
         switchRow('autoRefresh', 'settings.autoRefresh', settings.autoRefresh, (value) => ({ autoRefresh: value })),
         h('div', { className: 'aup-pop-hint' }, t('settings.autoRefreshHint')),
@@ -1041,7 +1043,10 @@ window.__ModuleLoader__.load({
       const currencyOf = (entry) => (typeof entry.currency === 'string' ? entry.currency : 'USD');
       const windowCode = (id) => (id === 'rolling' || id === 'fiveHour' ? t('account.planRolling') : id === 'weekly' ? t('account.planWeekly') : t('account.planMonthly'));
       // One display rule for every source (user 2026-11-08): short muted label + figure
-      // pairs, right aligned - `Balance 199.54¥ Bonus 0.00¥`, `5HW 63% WEK 70% MON 85%`.
+      // pairs, right aligned - `Bal 199.54¥ Bon 0.00¥`, `5H 63% WE 70% MO 85%`.
+      // Short codes are never glued to their figure (user 2026-11-09: 「英文和数字之间
+      // 也加个空格吧 太挤了 看不清数字了」): label and figure stay apart in every pair,
+      // and every pair keeps a visible gap before the next label.
       const pairs = (items, extraClass) => ({
         value: h('span', { className: 'aup-acct-pairs' + (extraClass === undefined ? '' : ' ' + extraClass) },
           items.map(([key, label, figure]) =>
@@ -1091,10 +1096,10 @@ window.__ModuleLoader__.load({
           const currency = currencyOf(entry);
           const money = (value) => formatMoney(String(value), currency, locale);
           if (Array.isArray(entry.windows)) {
-            // Plan rule (user 2026-11-08): `5HW 63%  WEK 70%  MON 85%` - every figure is
-            // the share LEFT, so no "left/used" wording; fixed order 5h -> week -> month.
+            // Plan rule (user 2026-11-08): `5H63%  WE70%  MO85%` - every figure is the
+            // share LEFT, so no "left/used" wording; fixed order 5h -> week -> month.
             // Command Code publishes a 5-hour and a weekly window plus the credits left
-            // beside them, so its row appends one `CRED / 额度` pair.
+            // beside them, so its row appends one `CR / 额度` pair.
             const windows = ['rolling', 'fiveHour', 'weekly', 'monthly']
               .map((id) => entry.windows.find((window) => window && window.id === id))
               .filter((window) => window !== undefined && Number.isFinite(window.usedPercent));
@@ -1385,15 +1390,61 @@ window.__ModuleLoader__.load({
       const contextTotal = contextParts.reduce((sum, part) => sum + part.value, 0);
       const contextSegments = contextTotal > 0 ? contextParts : [];
 
+      const totalBlock = h(
+        'div',
+        { className: 'aup-session-total' },
+        h('span', { className: 'aup-session-total-label' }, t('tokens.total')),
+        h('span', { className: 'aup-session-total-value' }, usage ? formatTokens(total) : '—')
+      );
+
+      // Context occupancy opens the card and the session total closes it (user
+      // 2026-11-09: 我想 contextusage 的位置和 total 换一下). How full the window is
+      // is the live, actionable figure - it had been buried under the whole card.
+      const contextBlock = h(
+        'div',
+        { className: 'aup-context' },
+        h(
+          'div',
+          { className: 'aup-context-head' },
+          h('span', null, t('tokens.context')),
+          h(
+            'span',
+            { className: 'aup-context-figures' },
+            hasContext
+              ? t('tokens.contextValue', { used: formatTokens(usedTokens), window: formatTokens(contextWindow), percent: String(percent) })
+              : t('tokens.contextUnknown')
+          )
+        ),
+        hasContext
+          ? h(
+              'div',
+              { className: 'aup-bar', 'aria-hidden': true },
+              contextSegments.length === 0
+                ? h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } })
+                : h(
+                    'span',
+                    { className: 'aup-context-used', style: { width: percent + '%' } },
+                    contextSegments.map((segment) => h('span', { key: segment.key, className: 'aup-context-seg', style: { flexGrow: segment.value, background: segment.color } }))
+                  )
+            )
+          : null,
+        contextSegments.length === 0
+          ? null
+          : h(
+              'div',
+              { className: 'aup-context-breakdown' },
+              h(
+                'div',
+                { className: 'aup-context-legend' },
+                contextSegments.map((segment) => h('span', { key: segment.key, className: 'aup-context-legend-item' }, segment.label + ' ' + Math.round((segment.value / contextTotal) * 100) + '%'))
+              )
+            )
+      );
+
       const sessionBody = h(
         'div',
         { className: 'aup-session-body' },
-        h(
-          'div',
-          { className: 'aup-session-total' },
-          h('span', { className: 'aup-session-total-label' }, t('tokens.total')),
-          h('span', { className: 'aup-session-total-value' }, usage ? formatTokens(total) : '—')
-        ),
+        contextBlock,
         composeBar,
         detailRows.length === 0
           ? h(Hint, null, t('tokens.empty'))
@@ -1433,47 +1484,8 @@ window.__ModuleLoader__.load({
         providerBlock,
         modelBlock === null ? null : h('span', { className: 'aup-session-sep aup-sep-models', 'aria-hidden': true }),
         modelBlock,
-        h('span', { className: 'aup-session-sep aup-sep-context', 'aria-hidden': true }),
-        h(
-          'div',
-          { className: 'aup-context' },
-          h(
-            'div',
-            { className: 'aup-context-head' },
-            h('span', null, t('tokens.context')),
-            h(
-              'span',
-              { className: 'aup-context-figures' },
-              hasContext
-                ? t('tokens.contextValue', { used: formatTokens(usedTokens), window: formatTokens(contextWindow), percent: String(percent) })
-                : t('tokens.contextUnknown')
-            )
-          ),
-          hasContext
-            ? h(
-                'div',
-                { className: 'aup-bar', 'aria-hidden': true },
-                contextSegments.length === 0
-                  ? h('span', { className: 'aup-bar-fill', style: { width: percent + '%' } })
-                  : h(
-                      'span',
-                      { className: 'aup-context-used', style: { width: percent + '%' } },
-                      contextSegments.map((segment) => h('span', { key: segment.key, className: 'aup-context-seg', style: { flexGrow: segment.value, background: segment.color } }))
-                    )
-              )
-            : null,
-          contextSegments.length === 0
-            ? null
-            : h(
-                'div',
-                { className: 'aup-context-breakdown' },
-                h(
-                  'div',
-                  { className: 'aup-context-legend' },
-                  contextSegments.map((segment) => h('span', { key: segment.key, className: 'aup-context-legend-item' }, segment.label + ' ' + Math.round((segment.value / contextTotal) * 100) + '%'))
-                )
-              )
-        )
+        h('span', { className: 'aup-session-sep aup-sep-total', 'aria-hidden': true }),
+        totalBlock
       );
 
       return h(
@@ -1625,11 +1637,7 @@ window.__ModuleLoader__.load({
 
       /** Merge one display-settings patch into the persisted preferences. */
       const applySettings = (patch) => {
-        setSettings((previous) => ({
-          ...previous,
-          ...patch,
-          cards: { ...previous.cards, ...(patch.cards === undefined ? {} : patch.cards) }
-        }));
+        setSettings((previous) => ({ ...previous, ...patch }));
       };
       const resetSettings = () => {
         setSettings(DEFAULT_SETTINGS);
@@ -1838,20 +1846,15 @@ window.__ModuleLoader__.load({
         h(
           'div',
           { className: 'aup-cards', 'data-source-count': Math.max(1, sessionProviders.length) },
-          settings.cards.session === true ? h(TokenSection, { useProjection, t, sessionModels }) : null,
-          settings.cards.account === true
-          ? h(AccountSection, {
-              state: account,
-              t,
-              providerBalances,
-              sources: accountSources,
-              currentSource,
-              locale: displayLocale
-            })
-          : null,
-          settings.cards.session !== true && settings.cards.account !== true
-          ? h('div', { className: 'aup-empty' }, t('settings.allHidden'))
-          : null
+          h(TokenSection, { useProjection, t, sessionModels }),
+          h(AccountSection, {
+            state: account,
+            t,
+            providerBalances,
+            sources: accountSources,
+            currentSource,
+            locale: displayLocale
+          })
         )
       );
     }

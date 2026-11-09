@@ -131,25 +131,27 @@ for (const rule of [
   '@container aup-panel (max-height:575px){.aup-card-session .aup-models,.aup-card-session .aup-sep-models{display:none!important}}',
   '@container aup-panel (max-height:532px){.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats{display:none!important}}',
   '@container aup-panel (max-height:448px){.aup-card-session .aup-providers,.aup-card-session .aup-sep-providers{display:none!important}}',
-  '@container aup-panel (max-height:384px){.aup-context,.aup-card-session .aup-sep-context{display:none!important}}',
-  '@container aup-panel (max-height:325px){.aup-card-session .aup-session-grid{display:none!important}}'
+  '@container aup-panel (max-height:384px){.aup-card-session .aup-context{display:none!important}}',
+  '@container aup-panel (max-height:330px){.aup-card-session .aup-session-grid{display:none!important}}'
 ]) {
   assert.ok(source.includes(rule), 'the measured shedding ladder contains: ' + rule);
 }
 // The ladder is re-measured for the two-card panel: no threshold or per-source
 // budget from an earlier measurement may survive.
-for (const stale of ['max-height:820px', 'max-height:811px', 'max-height:751px', 'max-height:667px', 'max-height:608px', 'max-height:601px', 'max-height:592px', '(count - 3) * 69', '(count - 3) * 61']) {
+for (const stale of ['max-height:820px', 'max-height:811px', 'max-height:751px', 'max-height:667px', 'max-height:608px', 'max-height:601px', 'max-height:592px', 'max-height:325px', '(count - 3) * 69', '(count - 3) * 61']) {
   assert.ok(!source.includes(stale), 'the stale shedding ladder is gone: ' + stale);
 }
 assert.ok(source.includes('const extra = (count - 3) * 44'), 'each source beyond three adds a measured 44px budget');
 assert.ok(!source.includes('@media (max-height:'), 'the old viewport ladder is gone');
 // A shed block takes the separator that introduces it: never two hairlines in a row.
-for (const sep of ['aup-sep-providers', 'aup-sep-models', 'aup-sep-stats', 'aup-sep-context']) {
+// The context block leads the card, so it owns no hairline; the session total does
+// (user 2026-11-09 moved the context block from the foot of the card to the top).
+for (const sep of ['aup-sep-providers', 'aup-sep-models', 'aup-sep-stats', 'aup-sep-total']) {
   assert.ok(source.includes("className: 'aup-session-sep " + sep + "'"), 'each session separator belongs to one block: ' + sep);
 }
 // No shedding step may name a separator without the block it introduces.
 for (const rule of source.match(/@container aup-panel \(max-height:\d+px\)\{[^}]*\}/g) || []) {
-  for (const [sep, block] of [['aup-sep-providers', 'aup-providers'], ['aup-sep-models', 'aup-models'], ['aup-sep-stats', 'aup-stat-list'], ['aup-sep-context', 'aup-context']]) {
+  for (const [sep, block] of [['aup-sep-providers', 'aup-providers'], ['aup-sep-models', 'aup-models'], ['aup-sep-stats', 'aup-stat-list'], ['aup-sep-total', 'aup-session-total']]) {
     if (rule.includes(sep)) assert.ok(rule.includes(block), 'hiding ' + sep + ' hides ' + block + ' too: ' + rule);
   }
 }
@@ -230,12 +232,44 @@ assert.ok(source.includes("'.aup-account-body{flex:1 1 auto;min-height:0;display
 assert.ok(source.includes('align-content:space-evenly;flex:1 1 auto'), 'the balance rows spread out inside the balance card');
 // Mixed sessions: one aligned row per source in the statistics-table rhythm, no tabs.
 assert.ok(source.includes("'.aup-acct-srcs{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr);"), 'every source row reads name left, figures right');
+// Shorter labels, same meaning (user 2026-11-09: 5HW100%WEK86%MON76% -> 5H100%WE86%MO76%,
+// 其他也类似，可以进一步缩短 能看懂就行 不用那么多字符): the window codes keep the
+// unit's first letter and the wallet words are abbreviated, in both dictionaries.
+for (const [key, value] of [['account.planRolling', '5H'], ['account.planWeekly', 'WE'], ['account.planMonthly', 'MO']]) {
+  assert.ok(source.includes("'" + key + "': '" + value + "'"), 'the window code is shortened to ' + value);
+}
+for (const stale of ["'account.planRolling': '5HW'", "'account.planWeekly': 'WEK'", "'account.planMonthly': 'MON'", "'account.creditsLabel': 'CRED'", "'balance.recharge': 'Balance'", "'account.bonusLabel': 'Bonus'"]) {
+  assert.ok(!source.includes(stale), 'the long label is gone: ' + stale);
+}
+assert.ok(source.includes("'account.creditsLabel': 'CR'"), 'the credit code is shortened to CR');
+assert.ok(source.includes("'balance.recharge': 'Bal'") && source.includes("'account.bonusLabel': 'Bon'"), 'the wallet labels are shortened to Bal / Bon');
+// A label is never glued to its figure (user 2026-11-09: 「英文和数字之间也加个空格吧
+// 太挤了 看不清数字了」「数字重叠严重」): every pair keeps the inner gap, and the wide
+// panel is generous on purpose - no negative letter-spacing at comfort widths, a real
+// gap inside each pair and a wider one before the next pair.
+assert.ok(source.includes("'.aup-acct-pairs{display:inline-flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 12px;letter-spacing:normal}'"), 'the wide panel gives the pairs air instead of squeezing glyphs');
+assert.ok(source.includes("'.aup-acct-pair{display:inline-flex;align-items:baseline;gap:5px;white-space:nowrap}'"), 'the label keeps a 5px gap before its figure');
+assert.ok(source.includes("'.aup-acct-pairs.aup-acct-pairs-tight{column-gap:10px}'"), 'the tight step tightens the pair gap, never the letters');
+assert.ok(!source.includes('aup-acct-pair-code'), 'no pair glues its label to the figure');
+// Every pair keeps a visible gap before the NEXT pair's label (user 2026-11-09:
+// 「Balance195.63¥Bonus0.00¥ -- Bonus 前面加个空格」), and no document tier may erase it;
+// the same air comes back only as the pane narrows, and never below the readable floor.
+for (const rule of [
+  '@container aup-panel (max-width:440px){.aup-acct-pairs{gap:2px 9px}',
+  '@container aup-panel (max-width:380px){.aup-acct-pairs{gap:2px 7px;letter-spacing:-0.3px}',
+  '.aup-acct-pairs{gap:1px 5px;letter-spacing:-0.7px',
+  '.aup-acct-pairs{gap:0 5px;letter-spacing:-1px}'
+]) {
+  assert.ok(source.includes(rule), 'every width tier keeps a real gap between pairs: ' + rule);
+}
+assert.ok(source.includes('.aup-acct-pair{gap:4px}') && source.includes('.aup-acct-pair{gap:3px}') && source.includes('.aup-acct-pair{gap:2px}'), 'the inner gap steps down with the pane and never reaches zero');
+assert.ok(!source.includes('gap:1px 0;letter-spacing:-0.7px') && !source.includes('gap:0 1px'), 'no tier erases the gap between pairs');
 assert.ok(!source.includes('aup-acct-track') && !source.includes('aup-acct-fill'), 'balance rows write the amount; no capsule bars');
 assert.ok(source.includes("'.aup-acct-src,.aup-acct-row{display:grid;grid-template-columns:subgrid;grid-column:1/-1;align-items:center;min-height:21px;"), 'source rows take their columns from the shared table');
 assert.ok(!source.includes('aup-src-tab') && !source.includes('aup-account-pane'), 'no source tabs or stacked panes remain');
 assert.ok(!source.includes('.aup-cards>.aup-card:last-child{flex:1 1 auto}'), 'no card earns space just for being last');
 assert.ok(!source.includes('scrollbar-gutter'), 'the card column spans the full pane width');
-assert.ok(source.includes('.aup-card-session .aup-session-body>.aup-context{margin-top:0}'), 'the context block rides the even spread, not a bottom anchor');
+assert.ok(source.includes('.aup-card-session .aup-session-body>.aup-context{margin-top:0}'), 'the leading context block sits flush under the card title');
 assert.ok(source.includes('.aup-stat-list::before{content:""'), 'a hairline separates the two stat columns');
 // Housekeeping: no dead selectors or stale dictionary entries survive a cleanup pass.
 for (const gone of ['.aup-series-value{', '.aup-model-track{', '.aup-model-fill{', "'.aup-glyph{", "'stats.sessionScope'", '.aup-dim{', '.aup-skeleton{', '.aup-series-slot{']) {
@@ -571,8 +605,7 @@ const accountState = {
 };
 const DEFAULT_SETTINGS = {
   autoRefresh: true,
-  hideComposerStats: true,
-  cards: { session: true, account: true }
+  hideComposerStats: true
 };
 // The tab body reads eight hook slots in this order (a bare useRef consumes none):
 // account, session models, provider balances, display settings, account request,
@@ -653,6 +686,18 @@ function render(sessionModelsValue, providerBalancesValue, settingsValue, settin
   const sessionBody = walk(readyTree, (n) => hasClass(n, 'aup-session-body'))[0];
   const bodyOrder = walk(sessionBody, () => true).map((n) => String((n.props && n.props.className) || ''));
   assert.ok(bodyOrder.indexOf('aup-stat-list') < bodyOrder.indexOf('aup-providers'), 'the provider block sits after the statistics table');
+  // The context block opens the session card and the session total closes it (user
+  // 2026-11-09: 我想 contextusage 的位置和 total 换一下 - the live "how full is the
+  // window" figure is the actionable one, so it leads, and the running session total
+  // reads as the card's closing line exactly where the context block used to sit).
+  const sessionBlocks = (sessionBody.children || [])
+    .filter(Boolean)
+    .map((child) => String((child.props && child.props.className) || ''));
+  assert.equal(sessionBlocks[0], 'aup-context', 'the context block opens the session card: ' + sessionBlocks[0]);
+  assert.equal(sessionBlocks[sessionBlocks.length - 1], 'aup-session-total', 'the session total closes the session card: ' + sessionBlocks[sessionBlocks.length - 1]);
+  assert.equal(sessionBlocks[sessionBlocks.length - 2], 'aup-session-sep aup-sep-total', 'the closing total keeps the hairline that introduces it');
+  assert.ok(bodyOrder.indexOf('aup-context') < bodyOrder.indexOf('aup-session-total'), 'context usage is read before the session total');
+  assert.ok(!source.includes('aup-sep-context'), 'the old context separator is gone with its position');
   // A provider that ran a single model is already fully described by its provider
   // row, so the per-model detail drops it instead of printing the same figure twice
   // (user 2026-11-09: 「重复了 provider+type 保留一次统计即可」).
@@ -755,6 +800,12 @@ function render(sessionModelsValue, providerBalancesValue, settingsValue, settin
   const detailOrder = walk(detailBody, () => true).map((node) => String((node.props && node.props.className) || ''));
   assert.ok(detailOrder.indexOf('aup-providers') > detailOrder.indexOf('aup-stat-list'), 'the provider block sits after the statistics table');
   assert.ok(detailOrder.indexOf('aup-providers') < detailOrder.indexOf('aup-models'), 'the provider block sits before the per-model detail');
+  // ...and the session total closes the card below every detail block.
+  const detailBlocks = (detailBody.children || [])
+    .filter(Boolean)
+    .map((child) => String((child.props && child.props.className) || ''));
+  assert.equal(detailBlocks[detailBlocks.length - 1], 'aup-session-total', 'the session total closes the card below the per-model detail');
+  assert.ok(detailOrder.indexOf('aup-models') < detailOrder.indexOf('aup-session-total'), 'the total is read after the per-model detail');
 
   // Multi-model providers keep every one of their model rows (user 2026-11-09:
   // "session usage 里的任何信息都是不允许隐藏的"); single-model providers are folded
@@ -893,8 +944,9 @@ function render(sessionModelsValue, providerBalancesValue, settingsValue, settin
   );
   const planCard = walk(planTree, (node) => node.type === 'section' && hasClass(node, 'aup-card-account'))[0];
   const planText = flat(planCard);
-  // Plan format (user 2026-11-08): `5HW 63%  WEK 70%  MON 85%`, every figure is the share left.
-  assert.ok(planText.includes('5HW 99% WEK 88% MON 65%'), 'plan windows read 5HW / WEK / MON as the share left: ' + planText);
+  // Plan format (user 2026-11-08): `5H 63%  WE 70%  MO 85%` (shortened 2026-11-09),
+  // every figure is the share left.
+  assert.ok(planText.includes('5H 99% WE 88% MO 65%'), 'plan windows read the shortened 5H / WE / MO codes as the share left: ' + planText);
   assert.ok(!/剩余|已用|left|used/.test(planText.replace('账户余额', '')), 'plan figures carry no left/used wording: ' + planText);
 
   // Command Code publishes the same 5-hour / weekly plan windows as a share and the
@@ -913,8 +965,12 @@ function render(sessionModelsValue, providerBalancesValue, settingsValue, settin
   const commandCodeText = flat(commandCodeCard);
   // Share left in fixed order, then the credits left - never "used" or a spend figure.
   assert.ok(commandCodeText.includes('Command Code'), 'the Command Code source keeps its own display name: ' + commandCodeText);
-  assert.ok(commandCodeText.includes('5HW 0% WEK 50%'), 'Command Code windows read the share left: ' + commandCodeText);
-  assert.ok(commandCodeText.includes('CRED 6.99$') || commandCodeText.includes('额度 6.99$'), 'Command Code credits read the amount left with the symbol last: ' + commandCodeText);
+  assert.ok(commandCodeText.includes('5H 0% WE 50%'), 'Command Code windows read the share left: ' + commandCodeText);
+  assert.ok(commandCodeText.includes('CR 6.99$') || commandCodeText.includes('额度 6.99$'), 'Command Code credits read the amount left with the symbol last: ' + commandCodeText);
+  // A short code is a separate cell from its figure (`5H 0%`), never one glued string.
+  const ccPairs = walk(commandCodeCard, (node) => hasClass(node, 'aup-acct-pair'));
+  assert.equal(ccPairs.length, 3, 'the Command Code row shows its two windows and the credits left: ' + ccPairs.length);
+  assert.equal(ccPairs.filter((node) => node.children.length === 2 && hasClass(node.children[0], 'aup-acct-pair-label')).length, 3, 'every short code keeps its own label cell before the figure');
   const commandCodeRows = walk(commandCodeTree, (node) => hasClass(node, 'aup-provider-row')).map(flat);
   assert.ok(commandCodeRows[0].includes('Command Code') && commandCodeRows[0].includes('4.5M'), 'the session card per-provider row names the Command Code source: ' + JSON.stringify(commandCodeRows));
 
@@ -974,6 +1030,9 @@ function render(sessionModelsValue, providerBalancesValue, settingsValue, settin
   // DeepSeek API format (user 2026-11-08): name left, `余额 542.52¥ 赠送 10.00¥` right.
   const deepseekRow = walk(mixedWallet, (node) => hasClass(node, 'aup-acct-src'))[0];
   assert.equal(flat(walk(deepseekRow, (node) => hasClass(node, 'aup-acct-src-value'))[0]), '余额 542.52¥ 赠送 10.00¥', 'DeepSeek reads Balance x Bonus y on the right: ' + flat(deepseekRow));
+  // Wallet words keep the gap between label and figure, exactly like the short codes.
+  assert.equal(walk(deepseekRow, (node) => hasClass(node, 'aup-acct-pair')).length, 2, 'the wallet row is two label/figure pairs');
+  assert.equal(walk(deepseekRow, (node) => hasClass(node, 'aup-acct-pair')).filter((pair) => pair.children.length === 2 && hasClass(pair.children[0], 'aup-acct-pair-label')).length, 2, 'every wallet label is its own cell before the figure');
   for (const row of walk(mixedWallet, (node) => hasClass(node, 'aup-acct-src'))) {
     assert.equal(row.children.length, 2, 'every source row has exactly two cells');
   }
@@ -1002,7 +1061,7 @@ function render(sessionModelsValue, providerBalancesValue, settingsValue, settin
   assert.equal(currentRows[0].props['aria-current'], 'true', 'the highlight is exposed to assistive tech');
   assert.ok(source.includes('.aup-acct-src[data-current]{background:color-mix('), 'the highlight is a background tint, not a pill');
   assert.ok(!source.includes('data-current] .aup-acct-src-label::after'), 'no dot decoration');
-  assert.ok(flat(autoCard).includes('5HW 99% WEK 98% MON 97%') && flat(autoCard).includes('542.52'), 'plan and wallet render side by side: ' + flat(autoCard));
+  assert.ok(flat(autoCard).includes('5H 99% WE 98% MO 97%') && flat(autoCard).includes('542.52'), 'plan and wallet render side by side: ' + flat(autoCard));
 
   // Card titles stay clean: the provider name lives in the tab row, never next to the title.
   for (const node of walk(mixedWalletTree, (n) => n.type === 'section' && hasClass(n, 'aup-card'))) {
@@ -1080,45 +1139,44 @@ function walkRoles(node, role, out = []) {
   assert.ok(gear, 'header exposes a settings trigger');
   assert.equal(gear.props['aria-expanded'], false, 'settings button');
 
-  // Open: two card switches, auto refresh, hide composer stats and a reset action
-  // (user 2026-11-09: the panel keeps four switches only).
+  // Open: exactly the two switches that still mean something - composer stats and
+  // auto refresh (user 2026-11-09: 这两项配置删掉 就俩卡片 没有配置的必要).
   const open = render(undefined, undefined, DEFAULT_SETTINGS, true);
   const dialog = walkRoles(open, 'dialog')[0];
   assert.ok(dialog, 'settings dialog opens');
   const switches = walkRoles(dialog, 'switch');
-  assert.equal(switches.length, 4, 'settings keep exactly four switches');
+  assert.equal(switches.length, 2, 'settings keep exactly two switches');
   assert.deepEqual(
     switches.map((node) => node.props['aria-label']),
-    ['会话消耗', '账户余额', '隐藏底栏会话统计', '自动刷新'],
-    'the four switches are the two cards, the composer-stats toggle and auto refresh'
+    ['隐藏底栏会话统计', '自动刷新'],
+    'the two switches are the composer-stats toggle and auto refresh'
   );
+  assert.ok(!source.includes('settings.card.'), 'no per-card switch copy remains');
   assert.equal(walk(dialog, (node) => node.props && String(node.props.className || '').includes('aup-dims-mini')).length, 0, 'no range picker remains in the settings');
   assert.ok(walk(dialog, (node) => node.props && node.props.className === 'aup-pop-link').length === 1, 'reset action present');
   assert.equal(flat(walk(dialog, (node) => node.props && node.props.className === 'aup-pop-title')[0]), '设置', 'settings title is short');
   assert.ok(walk(dialog, (node) => node.type === 'button' && node.props['aria-label'] === '关闭').length === 1, 'settings can be closed from the header');
   const popHint = flat(walk(dialog, (node) => node.props && node.props.className === 'aup-pop-hint')[0]);
   assert.ok(popHint.length > 0 && popHint.length <= 20, 'footer hint is one short line: ' + popHint);
+  // The platform-usage auto refresh went with the deleted card, so the hint must not
+  // advertise a timer the panel does not run.
+  assert.ok(!/用量|Usage/.test(popHint), 'the hint names only the balance timer: ' + popHint);
 
-  // Hidden cards: each switch owns its own card.
-  const hiddenSettings = { ...DEFAULT_SETTINGS, cards: { session: false, account: true } };
-  const hidden = render(undefined, undefined, hiddenSettings);
-  assert.equal(walk(hidden, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-session')).length, 0, 'session card hidden by settings');
-  assert.equal(walk(hidden, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-account')).length, 1, 'the account switch leaves the balance card on');
-  assert.equal(walk(hidden, (node) => hasClass(node, 'aup-card-stats')).length, 0, 'no hidden statistics card leaves an empty shell behind');
-
-  // All cards hidden -> empty hint, settings still reachable.
-  const empty = render(undefined, undefined, { ...DEFAULT_SETTINGS, cards: { session: false, account: false } });
-  assert.equal(walk(empty, (node) => node.props && node.props.className === 'aup-empty').length, 1, 'empty hint when every card is hidden');
-  assert.ok(walk(empty, (node) => node.type === 'button' && node.props['aria-haspopup'] === 'dialog').length === 1, 'settings reachable while empty');
+  // Both cards always render: there is no way to hide one (user 2026-11-09).
+  const alwaysOn = render(undefined, undefined, { ...DEFAULT_SETTINGS, cards: { session: false, account: false } });
+  assert.equal(walk(alwaysOn, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-session')).length, 1, 'the session card is not configurable');
+  assert.equal(walk(alwaysOn, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-account')).length, 1, 'the balance card is not configurable');
+  assert.equal(walk(alwaysOn, (node) => node.props && node.props.className === 'aup-empty').length, 0, 'a legacy hide-card preference leaves no empty panel');
+  assert.equal(walk(alwaysOn, (node) => hasClass(node, 'aup-card-stats')).length, 0, 'no hidden statistics card leaves an empty shell behind');
 
   // Persisted preferences are read on mount (initializers, no queued settings value);
-  // keys from the deleted statistics card are silently ignored.
+  // every key from a shape the panel no longer has is silently ignored.
   storage.set('dsh.account-usage.settings.v1', JSON.stringify({
     dimension: 'week',
     autoRefresh: false,
     showCost: false,
     usageList: true,
-    cards: { session: false, account: true, stats: true }
+    cards: { session: false, account: false, stats: true }
   }));
   stateQueue.push(
     accountState,
@@ -1127,8 +1185,8 @@ function walkRoles(node, role, out = []) {
   );
   const restored = bodyRegistration.component({ t: first.t, useProjection: () => undefined, ...bodyProps });
   stateQueue.length = 0;
-  assert.equal(walk(restored, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-session')).length, 0, 'stored card visibility applied');
-  assert.equal(walk(restored, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-account')).length, 1, 'the stored account switch is applied');
+  assert.equal(walk(restored, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-session')).length, 1, 'a stored card visibility is ignored: both cards stay');
+  assert.equal(walk(restored, (node) => node.type === 'section' && String(node.props.className).includes('aup-card-account')).length, 1, 'a stored account switch is ignored too');
   assert.equal(walk(restored, (node) => hasClass(node, 'aup-dim')).length, 0, 'a stored range is ignored: the range picker is gone');
   assert.equal(walk(restored, (node) => hasClass(node, 'aup-series-row')).length, 0, 'a stored detail-list flag is ignored');
   storage.delete('dsh.account-usage.settings.v1');

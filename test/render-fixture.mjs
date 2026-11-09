@@ -240,11 +240,11 @@ const accountState = {
   }
 };
 // Two cards only (1.0.16): the platform statistics card and its dimension control
-// are gone, so the settings shape has no dimension / showCost / usageList keys.
+// are gone, and the two remaining cards are not configurable (user 2026-11-09), so the
+// settings shape is just the two toggles.
 const DEFAULT_SETTINGS = {
   autoRefresh: true,
-  hideComposerStats: true,
-  cards: { session: true, account: true }
+  hideComposerStats: true
 };
 function render(settingsValue, settingsOpen, sessionModelsValue, providerBalancesValue, projectionValue) {
   stateQueue.push(

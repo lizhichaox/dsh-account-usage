@@ -1,5 +1,67 @@
 # Changelog
 
+## 1.0.17 — 2026-11-09
+
+### 会话卡：上下文占用打头、合计收尾；标签缩短；设置只剩 2 项开关
+
+- **上下文占用与合计对调**（#49，用户：「我想 contextusage 的位置和 total 换一下是不是更好」）。
+  会话卡各区块的渲染顺序改为：
+  `.aup-context`（上下文：head + 条 + 图例）→ `.aup-compose`（Token 构成条）→
+  `.aup-session-grid`（2×2 明细：输入 / 输出 / 缓存读 / 缓存写）→ `.aup-stat-list`（统计表）→
+  `.aup-providers`（按 provider 的会话内消耗）→ `.aup-models`（按模型明细）→
+  `span.aup-session-sep.aup-sep-total` → `.aup-session-total`（合计）。
+  上下文块从卡片底部移到最前，**因此不再拥有分割线**：`aup-sep-context` 删除，
+  阶梯隐藏上下文块时不再牵连任何分割线；`aup-sep-total` 与合计行仍然**同生共死**（#33），
+  合计仍在按模型明细之后。高度不变（内容仍是 **526px**、chrome **58px**），
+  仅阶梯末档随顺序调整从 **325 → 330**（去 Token 2×2 明细那一级，内容 272 + 58）。
+  阶梯因此为 **584 → 575 → 532 → 448 → 384 → 330**；`verify:ui` 的实测高度点改为
+  `330/331/384/448/532/575/584/585/700/900/1080/1200`。
+- **标签缩短、英文与数字之间留出空隙**（#50）。用户三次反馈：「5HW100%WEK86%MON76% --
+  缩短一下…能看懂就行」「英文和数字之间也加个空格吧 太挤了 看不清数字了」「数字重叠严重」。
+  - 缩写：套餐窗口 `5HW / WEK / MON → 5H / WE / MO`，Command Code 额度 `CRED → CR`，
+    钱包 `Balance → Bal`、`Bonus → Bon`（**中文文案不变**：额度 / 余额 / 赠送）。
+    示例：`5H 63%  WE 70%  MO 85%`、`Bal 199.54¥  Bon 0.00¥`、`5H 0%  WE 50%  CR 6.99$`。
+  - 间距改由 `gap` 承担，不再靠负字距硬挤：宽面板
+    `.aup-acct-pairs{gap:2px 12px;letter-spacing:normal}`、`.aup-acct-pair{gap:5px}`
+    （组间 12px、对内 5px）；`aup-acct-pairs-tight` 的 `column-gap:10px`；
+    变窄时按容器查询分档收 `gap`：440px 起 9/4 → 380px 起 7/3（ls -0.3px）→
+    330px 起 5/2（ls -0.7px）→ 320px 起 5/2（ls -1px，tight -1.6px）。
+  - **任何档位都不许把标签与数值贴合**：宽面板取消负字距（负字距正是「数字重叠」的直接成因），
+    窄档只收 pair 之间的 gap，pair 内部始终留可见空隙。
+  - 冒烟断言：`the window code is shortened to 5H`（`WE` / `MO` 同形）/
+    `the credit code is shortened to CR` / `the wallet labels are shortened to Bal / Bon` /
+    `the long label is gone: …`（6 条旧串必须消失）/ `the wide panel gives the pairs air instead of
+    squeezing glyphs` / `the label keeps a 5px gap before its figure` /
+    `the tight step tightens the pair gap, never the letters` / `no pair glues its label to the figure` /
+    `every width tier keeps a real gap between pairs: …` / `the inner gap steps down with the pane
+    and never reaches zero` / `no tier erases the gap between pairs` /
+    `every short code keeps its own label cell before the figure` /
+    `every wallet label is its own cell before the figure`。
+- **设置只留 2 项开关**（#51，用户：「这两项配置删掉 就俩卡片 没有配置的必要」）。
+  设置面板从 1.0.16 的 4 项收敛为 **2 项 + 恢复默认**：
+  **隐藏底栏会话统计**（默认开）、**自动刷新**（默认开），
+  提示行改为「余额每 5 分钟自动刷新」/「Balance refreshes every 5 min」。
+  两张卡**永远渲染**，没有显隐开关——`.aup-empty` 样式、`aup-empty` 节点、
+  `settings.allHidden` 判定与两张卡的开关文案一并删除；
+  `DEFAULT_SETTINGS` 只剩 `{autoRefresh, hideComposerStats}`，持久化结构里没有 `cards`。
+  旧键 `cards.session` / `cards.account` / `cards.stats` 与 1.0.16 起就存在的
+  `dimension` / `showCost` / `usageList` 一样**静默忽略**（不报错、不迁移、不提示），
+  旧偏好不会让面板变空。开关顺序固定：先隐藏底栏会话统计、再自动刷新。
+  冒烟断言：`settings keep exactly two switches`（数量 = 2）/
+  `the two switches are the composer-stats toggle and auto refresh`（deepEqual
+  `['隐藏底栏会话统计','自动刷新']`）/ `no per-card switch copy remains`（源码不得再含 `settings.card.`）/
+  `the hint names only the balance timer: …` / `the session card is not configurable` /
+  `the balance card is not configurable` / `a legacy hide-card preference leaves no empty panel` /
+  `a stored card visibility is ignored: both cards stay` / `a stored account switch is ignored too`。
+- 文档：AGENTS.md 速查表新增 **#49**（上下文与合计对调）、**#50**（标签缩短 + 英文与数字留空隙）、
+  **#51**（设置只留 2 项开关），§0.1 的 #16 改为「2 项开关」、#46 的设置项描述指向 #51；
+  §2 区块顺序段、§4「会话卡内容」的 8 条有序清单（结尾一句「渲染顺序即上面这个顺序」）、
+  §6 设置段、§13 三条决策全部按 1.0.17 重写，历史基准表新增 1.0.17 行。
+- 验证：`npm run verify`（语法 + 冒烟 + 敏感信息扫描 + 索引自检）；
+  `npm run verify:ui`（真实 `client.js` 渲染的真实 markup 在本机 Chrome 无头里量几何），
+  高度点已按 330 档更新。真机像素（标签是否「看得出空隙」）仍需用户肉眼确认——
+  自动验证只能锁住 CSS 里的 `gap` 数值与断言名。
+
 ## 1.0.16 — 2026-11-09
 
 ### 面板只剩两张卡：删掉「用量统计」，按 provider 的会话内消耗并入会话卡

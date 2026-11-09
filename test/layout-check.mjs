@@ -307,6 +307,19 @@ out.acctPairs = [...document.querySelectorAll('.aup-acct-srcs .aup-acct-src')].f
     labelWidth: label === null ? 0 : Math.round(label.getBoundingClientRect().width),
     available: Math.round(rowRect.right - label.getBoundingClientRect().right),
     natural: Math.round(items.reduce((sum, el) => sum + el.getBoundingClientRect().width, 0) + (Number.parseFloat(getComputedStyle(pairs).columnGap) || 0) * Math.max(0, items.length - 1)),
+    // The figure of each pair and the gap the browser gave it: textContent joins the
+    // cells without spaces, so the label/figure separation is measured, not grepped.
+    pairs: items.map((el) => {
+      const labelEl = el.querySelector('.aup-acct-pair-label');
+      const figureEl = el.children[1] ?? null;
+      const labelRect = labelEl === null ? null : labelEl.getBoundingClientRect();
+      const figureRect = figureEl === null ? null : figureEl.getBoundingClientRect();
+      return {
+        label: labelEl === null ? '' : labelEl.textContent,
+        figure: figureEl === null ? '' : figureEl.textContent,
+        gap: labelRect === null || figureRect === null ? 0 : Math.round((figureRect.left - labelRect.right) * 10) / 10
+      };
+    }),
     text: pairs.textContent
   }];
 });
@@ -420,7 +433,7 @@ function mixedPlanCase(locale) {
   return fixture;
 }
 // Command Code reports two windows plus the credits left, which is the longest row
-// this provider can produce (`CRED 999.99$` is the widest credit figure), so it joins
+// this provider can produce (`CR 999.99$` is the widest credit figure), so it joins
 // the narrow no-wrap check together with the three-`100%` plan worst case.
 function commandCodeCase(locale) {
   const fixture = sourcesCase(3, locale);
@@ -486,7 +499,7 @@ if (process.argv.includes('--tiers')) {
     ['− model rows', '.aup-card-session .aup-models,.aup-card-session .aup-sep-models'],
     ['− stat rows', '.aup-card-session .aup-stat-list,.aup-card-session .aup-sep-stats'],
     ['− provider rows', '.aup-card-session .aup-providers,.aup-card-session .aup-sep-providers'],
-    ['− context block', '.aup-context,.aup-card-session .aup-sep-context'],
+    ['− context block', '.aup-card-session .aup-context'],
     ['− token 2×2', '.aup-card-session .aup-session-grid']
   ];
   // `--tiers 5` measures a five-source mixed session (per-source ladder budget).
@@ -663,7 +676,15 @@ for (const locale of ['zh', 'en']) for (const [width, fixture] of [[420, command
   if (!result) { providerFailures.push(label + ': no measurement'); continue; }
   const row = (result.acctPairs ?? []).find((pair) => pair.label === 'Command Code');
   if (row === undefined) providerFailures.push(label + ': no Command Code row measured');
-  if (row !== undefined && row.text.includes('CRED') !== (locale === 'en')) providerFailures.push(label + ': wrong credit label -> ' + row.text);
+  // The credits pair is present with its own short label, and every label keeps a
+  // measurable gap before its figure (user 2026-11-09: 「英文和数字之间也加个空格吧」).
+  if (row !== undefined) {
+    const creditPair = row.pairs[row.pairs.length - 1];
+    if (creditPair === undefined || creditPair.label !== (locale === 'en' ? 'CR' : '额度')) providerFailures.push(label + ': wrong credit label -> ' + JSON.stringify(row.pairs));
+    for (const pair of row.pairs) {
+      if (pair.gap < 1) providerFailures.push(`${label}: label touches its figure -> ${pair.label} ${pair.figure} (${pair.gap}px)`);
+    }
+  }
   for (const pair of result.acctPairs ?? []) {
     if (pair.lines !== 1) providerFailures.push(`${label}: balance figures wrapped -> ${pair.label} ${pair.text}`);
     if (pair.clipped) providerFailures.push(`${label}: balance figures clipped -> ${pair.label} ${pair.text}`);
@@ -692,9 +713,9 @@ if (process.argv.includes('--providers')) {
 }
 const SWEEPS = [
   // 584/585 straddle the first shedding step (hide the decorative token bar at
-  // <= 584); 575/532/448/384/325 sit on the later steps, and 700/900/1080/1200 cover
-  // the ordinary panes where the whole panel is visible.
-  { width: 420, heights: [325, 384, 448, 532, 575, 584, 585, 700, 900, 1080, 1200] },
+  // <= 584); 575/532/448/384/330 sit on the later steps, 330/331 straddle the last
+  // one, and 700/900/1080/1200 cover the ordinary panes where all of it is visible.
+  { width: 420, heights: [330, 331, 384, 448, 532, 575, 584, 585, 700, 900, 1080, 1200] },
   // The documented minimum width at the first ladder step and at full content.
   { width: 340, heights: [584, 900, 1080] }
 ];
